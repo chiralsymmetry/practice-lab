@@ -1,6 +1,6 @@
 import vm from "node:vm";
 
-const html = await Bun.file("programmer-low-level-numeracy.html").text();
+const html = await Bun.file("dist/programmer-low-level-numeracy.html").text();
 const scriptMatch = html.match(/<script>\n([\s\S]*)\n  <\/script>/);
 
 if (!scriptMatch) {

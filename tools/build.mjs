@@ -2,7 +2,7 @@ const apps = [
   {
     id: "programmer-low-level-numeracy",
     sourceDir: "apps/programmer-low-level-numeracy",
-    output: "programmer-low-level-numeracy.html",
+    output: "dist/programmer-low-level-numeracy.html",
   },
 ];
 
@@ -22,6 +22,7 @@ async function buildApp(app) {
     throw new Error(`${app.id}: template placeholders were not replaced`);
   }
 
+  await Bun.$`mkdir -p dist`.quiet();
   await Bun.write(app.output, html);
   console.log(`built ${app.output}`);
 }
