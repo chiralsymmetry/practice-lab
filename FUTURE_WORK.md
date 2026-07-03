@@ -35,6 +35,103 @@ Probably avoid for this app:
 - Broad decimal mental arithmetic as a main category. It is useful, but it changes the identity of this app from low-level programmer numeracy to general number training.
 - Static explanation-heavy material beyond concise Learn cards. Long explanations belong in notes or docs; static recall belongs in flashcards.
 
+## Sister App: Floating Point Practice
+
+Floating point is a strong fit for generated practice because the rules are precise, surprising, and scalable. Tiny custom formats can make the mechanism visible before moving up to real-world formats such as C++ `float`.
+
+This could either be a sister app or an advanced extension of the low-level numeracy app. It should probably be separate if it grows into IEEE 754 behavior, C++ snippets, rounding, and numerical pitfalls.
+
+Possible formats:
+
+- FP4:
+  - Very small toy format for first exposure.
+  - Sign bit, tiny exponent, tiny fraction.
+  - Enough to show sign, exponent bias, significand, zero, overflow, and rounding.
+- FP6 and FP8:
+  - More values, but still small enough to enumerate visually.
+  - Good for conversion tables, adjacent values, and spacing/ULP questions.
+- FP16 and bfloat16:
+  - Real practical formats.
+  - Good for machine-learning and graphics-adjacent intuition.
+- FP32:
+  - C++ `float`.
+  - Sign/exponent/fraction bits, decimal approximations, special values, and common bugs.
+- FP64:
+  - C++ `double`.
+  - Same concepts at a larger scale, with more emphasis on precision and error.
+
+Possible categories:
+
+- Bit layout:
+  - Split a bit pattern into sign, exponent, and fraction fields.
+  - Decode exponent bias.
+  - Identify normal, subnormal, zero, infinity, or NaN.
+  - Convert between bit pattern, hex, and value for small formats.
+- Value conversion:
+  - Encode a small decimal or rational value into FP4/FP6/FP8.
+  - Decode a toy floating-point value into exact rational form.
+  - Give the nearest representable value.
+  - Identify the next larger or next smaller representable value.
+- Rounding:
+  - Round to nearest, ties to even.
+  - Round toward zero, `+inf`, or `-inf` later.
+  - Identify whether a value rounds up, down, or exactly.
+  - Show guard/round/sticky-bit style questions at higher levels.
+- Spacing and precision:
+  - ULP size at a given magnitude.
+  - Machine epsilon.
+  - Why large numbers have bigger gaps.
+  - Which integers are exactly representable.
+- Arithmetic:
+  - Addition and subtraction in small formats.
+  - Multiplication by powers of two.
+  - Overflow to infinity.
+  - Underflow to subnormal or zero.
+  - Loss of low bits when adding numbers with very different magnitudes.
+- Numerical behavior:
+  - Non-associativity: `(a + b) + c` vs `a + (b + c)`.
+  - Cancellation.
+  - Comparing floats.
+  - Why `0.1 + 0.2` surprises people.
+  - Choosing tolerances for approximate equality.
+- C++ `float` context:
+  - Interpret `float` bit patterns such as `0x3f800000`.
+  - Predict whether a value is exactly representable.
+  - Classify `NaN`, `inf`, `-0.0`, normal, and subnormal values.
+  - Tiny snippets involving `float`, `double`, casts, comparisons, and literals.
+
+Good dynamic fits:
+
+- Render a toy floating-point layout and ask what each field means.
+- Generate all values in FP4 or FP6 and ask for ordering, nearest value, or spacing.
+- Show a C++ `float` hex pattern and ask for sign/exponent/category/value.
+- Ask which of several decimal values are exactly representable.
+- Ask whether an operation produces exact result, rounded result, overflow, underflow, infinity, or NaN.
+
+Low-hanging fruit:
+
+- FP4/FP6 bit decoding.
+- Toy-format conversion to exact rational values.
+- Normal vs subnormal vs zero vs infinity vs NaN classification.
+- Exponent bias practice.
+- Powers of two and exact representability.
+- FP32 sign/exponent/fraction field interpretation.
+
+Needs careful limits:
+
+- Use exact integer/rational arithmetic internally for toy formats instead of relying on JavaScript `Number` behavior.
+- Be explicit about the chosen format: exponent bits, fraction bits, bias, subnormal support, infinities/NaNs, and rounding mode.
+- Keep decimal formatting controlled; many answers should be exact fractions or structured fields rather than long decimal strings.
+- IEEE 754 has many edge cases, so real `float`/`double` questions should start with classification and representation before full arithmetic.
+- C++ adds its own wrinkles: literal types, promotions, casts, library formatting, floating-point environment, and compiler optimizations.
+
+Recommendation:
+
+- Start with FP4 and FP6 as transparent teaching formats.
+- Add a visual bit-field renderer early.
+- Build exact encode/decode helpers first, then add rounding and arithmetic.
+- Treat C++ `float` as a later bridge from the toy formats to practical programming questions.
+
 ## Sister App: C++ Mental Execution
 
 C++ is a strong fit for dynamic practice, but the best shape is not "write a whole program." It is small mental execution puzzles: given a short snippet, predict final values, output, types, overloads, aliases, ownership, or whether the snippet is valid.
