@@ -1,0 +1,20 @@
+# Editor and OS clutter
+.DS_Store
+Thumbs.db
+*~
+*.swp
+*.swo
+.vscode/
+.idea/
+
+# Logs and temporary files
+*.log
+tmp/
+temp/
+
+# Dependency/build directories we do not use or commit
+node_modules/
+.bun/
+
+# Local generated scratch output
+dist/
