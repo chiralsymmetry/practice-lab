@@ -20,8 +20,17 @@
     return TEXT.lang || "en-US";
   }
 
-  var USER_LOCALE = detectLocale();
-  var DECIMAL_SEPARATOR = getDecimalSeparator(USER_LOCALE);
+  var BROWSER_LOCALE = detectLocale();
+  var FORMAT_LOCALE = BROWSER_LOCALE;
+  var DECIMAL_SEPARATOR = getDecimalSeparator(FORMAT_LOCALE);
+
+  var CURRENCY_FORMATS = {
+    usd: { symbol: "$", position: "before" },
+    eur: { symbol: "EUR", position: "before" },
+    sek: { symbol: "kr", position: "after" },
+    gbp: { symbol: "GBP", position: "before" },
+    none: { symbol: "", position: "none" }
+  };
 
   function t(path, fallback) {
     var value = path.split(".").reduce(function (current, part) {
@@ -66,15 +75,49 @@
     if (typeof Intl === "undefined" || !Intl.NumberFormat) {
       return roundTo(value, maxDecimals).toFixed(minDecimals);
     }
-    return new Intl.NumberFormat(USER_LOCALE, {
+    return new Intl.NumberFormat(FORMAT_LOCALE, {
       minimumFractionDigits: minDecimals,
       maximumFractionDigits: maxDecimals
     }).format(value);
   }
 
+  function localeForNumberFormat(setting) {
+    if (setting === "comma") return "sv-SE";
+    if (setting === "point") return "en-US";
+    return BROWSER_LOCALE;
+  }
+
+  function applyNumberFormatSetting() {
+    var setting = progress && progress.settings ? progress.settings.numberFormat : "auto";
+    FORMAT_LOCALE = localeForNumberFormat(setting);
+    DECIMAL_SEPARATOR = getDecimalSeparator(FORMAT_LOCALE);
+  }
+
+  function activeCurrencyId() {
+    var setting = progress && progress.settings ? progress.settings.currencyFormat : "auto";
+    if (setting !== "auto") return setting;
+    var locale = BROWSER_LOCALE.toLowerCase();
+    if (locale.indexOf("sv") === 0) return "sek";
+    if (locale === "en-gb" || locale.indexOf("en-gb-") === 0) return "gbp";
+    if (locale === "en-us" || locale.indexOf("en-us-") === 0) return "usd";
+    if (/^(de|fr|es|it|nl|fi|et|lv|lt|pt|el|ga|sk|sl|mt|cy|ga|hr|ro|bg|cs|pl|da|nb|nn|is)/.test(locale)) return "eur";
+    return "usd";
+  }
+
+  function activeUnitSystem() {
+    var setting = progress && progress.settings ? progress.settings.unitSystem : "auto";
+    if (setting !== "auto") return setting;
+    return BROWSER_LOCALE.toLowerCase().indexOf("en-us") === 0 ? "us" : "metric";
+  }
+
   function money(value) {
     var rounded = roundTo(value, 2);
-    return (rounded < 0 ? "-$" : "$") + formatLocaleNumber(Math.abs(rounded), 2, 2);
+    var format = CURRENCY_FORMATS[activeCurrencyId()] || CURRENCY_FORMATS.usd;
+    var number = formatLocaleNumber(Math.abs(rounded), 2, 2);
+    var sign = rounded < 0 ? "-" : "";
+    if (format.position === "none") return sign + number;
+    if (format.position === "after") return sign + number + " " + format.symbol;
+    return sign + format.symbol + number;
   }
 
   function percent(value) {
@@ -118,6 +161,7 @@
     var value = String(text || "")
       .trim()
       .replace(/[−–—]/g, "-")
+      .replace(/\b(?:kr|sek|usd|eur|gbp|dollars?|euros?|pounds?)\b/gi, "")
       .replace(/[$€£¥%\s_\u00a0']/g, "");
     if (!value) return null;
     var sign = "";
@@ -153,7 +197,10 @@
   }
 
   function evaluateCalculatorExpression(text) {
-    var source = String(text || "").replace(/[×]/g, "*").replace(/[÷]/g, "/");
+    var source = String(text || "")
+      .replace(/\b(?:kr|sek|usd|eur|gbp|dollars?|euros?|pounds?)\b/gi, "")
+      .replace(/[×]/g, "*")
+      .replace(/[÷]/g, "/");
     var index = 0;
 
     function skipSpace() {
@@ -277,12 +324,15 @@
     return rng.int(Math.ceil(min / step), Math.floor(max / step)) * step;
   }
 
+  function unitPriceUnits() {
+    return activeUnitSystem() === "us" ? ["lb", "fl oz", "item"] : ["kg", "liter", "item"];
+  }
+
   var CATEGORIES = [
     {
       id: "unitPrices",
       generate: function (level, rng) {
-        var units = ["kg", "lb", "liter", "item"];
-        var unit = rng.pick(units);
+        var unit = rng.pick(unitPriceUnits());
         var quantity = level <= 2 ? rng.pick([2, 3, 4, 5, 6, 8, 10]) : rng.int(3, level === 5 ? 48 : 24);
         var unitPrice = randomPrice(rng, level <= 2 ? 50 : 65, level >= 4 ? 950 : 450, 5) / 100;
         var price = roundTo(unitPrice * quantity, 2);
@@ -428,6 +478,9 @@
       activeView: "practice",
       settings: {
         adaptive: true,
+        numberFormat: "auto",
+        currencyFormat: "auto",
+        unitSystem: "auto",
         enabledCategories: CATEGORIES.map(function (category) { return category.id; })
       },
       manual: {
@@ -453,6 +506,9 @@
     });
     if (!getCategory(merged.manual.categoryId)) merged.manual.categoryId = CATEGORIES[0].id;
     merged.manual.level = clamp(Number(merged.manual.level) || 1, 1, 5);
+    if (["auto", "point", "comma"].indexOf(merged.settings.numberFormat) === -1) merged.settings.numberFormat = "auto";
+    if (["auto", "usd", "eur", "sek", "gbp", "none"].indexOf(merged.settings.currencyFormat) === -1) merged.settings.currencyFormat = "auto";
+    if (["auto", "metric", "us"].indexOf(merged.settings.unitSystem) === -1) merged.settings.unitSystem = "auto";
     merged.settings.enabledCategories = merged.settings.enabledCategories.filter(function (id) {
       return CATEGORIES.some(function (category) { return category.id === id; });
     });
@@ -692,6 +748,9 @@
   }
 
   function renderSettings() {
+    elements.numberFormatSelect.value = progress.settings.numberFormat;
+    elements.currencyFormatSelect.value = progress.settings.currencyFormat;
+    elements.unitSystemSelect.value = progress.settings.unitSystem;
     elements.enabledCategories.innerHTML = CATEGORIES.map(function (category) {
       var checked = progress.settings.enabledCategories.indexOf(category.id) !== -1 ? " checked" : "";
       return '<label class="check-row"><input type="checkbox" data-enabled-category="' + category.id + '"' + checked + '><span>' + escapeHtml(titleFor(category.id)) + "</span></label>";
@@ -738,6 +797,13 @@
     progress.settings.adaptive = false;
     progress.manual.categoryId = categoryId;
     progress.manual.level = clamp(Number(level) || 1, 1, 5);
+    saveProgress();
+    generateQuestion();
+  }
+
+  function applyConventionChange() {
+    applyNumberFormatSetting();
+    localizeDecimalButtons();
     saveProgress();
     generateQuestion();
   }
@@ -816,6 +882,18 @@
     elements.levelSelect.addEventListener("change", function () {
       setManualSelection(elements.categorySelect.value, Number(elements.levelSelect.value));
     });
+    elements.numberFormatSelect.addEventListener("change", function () {
+      progress.settings.numberFormat = elements.numberFormatSelect.value;
+      applyConventionChange();
+    });
+    elements.currencyFormatSelect.addEventListener("change", function () {
+      progress.settings.currencyFormat = elements.currencyFormatSelect.value;
+      applyConventionChange();
+    });
+    elements.unitSystemSelect.addEventListener("change", function () {
+      progress.settings.unitSystem = elements.unitSystemSelect.value;
+      applyConventionChange();
+    });
     elements.matrix.addEventListener("click", function (event) {
       var button = event.target.closest("[data-matrix-category]");
       if (!button) return;
@@ -842,8 +920,7 @@
     elements.importBtn.addEventListener("click", function () {
       try {
         progress = ensureProgressShape(JSON.parse(elements.dataBox.value));
-        saveProgress();
-        generateQuestion();
+        applyConventionChange();
       } catch (error) {
         alert(t("messages.invalidJson", "Invalid JSON"));
       }
@@ -851,8 +928,7 @@
     elements.resetBtn.addEventListener("click", function () {
       if (!confirm(t("messages.resetConfirm", "Reset all local progress?"))) return;
       progress = defaultProgress();
-      saveProgress();
-      generateQuestion();
+      applyConventionChange();
     });
     elements.pauseBtn.addEventListener("click", pause);
     elements.resumeBtn.addEventListener("click", resume);
@@ -911,7 +987,7 @@
       "questionCategory", "questionLevel", "questionMastery", "questionPrompt", "answerForm", "answerInput", "submitBtn", "nextBtn",
       "skipBtn", "answerKeypad", "feedback", "pauseOverlay", "resumeBtn", "categorySelect", "levelSelect", "metricMastery",
       "metricAccuracy", "metricStreak", "metricAvgTime", "matrix", "statTotalAttempts", "statTotalCorrect", "statTotalTime",
-      "statActiveCells", "weakList", "strongList", "enabledCategories", "dataBox", "exportBtn", "copyBtn", "importBtn", "resetBtn",
+      "statActiveCells", "weakList", "strongList", "numberFormatSelect", "currencyFormatSelect", "unitSystemSelect", "enabledCategories", "dataBox", "exportBtn", "copyBtn", "importBtn", "resetBtn",
       "learnGrid", "calculatorInput", "calculatorOutput", "calculatorKeys", "calculatorUseBtn"
     ].forEach(function (id) {
       elements[id] = document.getElementById(id);
@@ -920,8 +996,7 @@
   }
 
   function localizeDecimalButtons() {
-    if (DECIMAL_SEPARATOR === ".") return;
-    document.querySelectorAll('[data-keypad-insert="."], [data-calc-insert="."]').forEach(function (button) {
+    document.querySelectorAll('[data-keypad-insert="."], [data-keypad-insert=","], [data-calc-insert="."], [data-calc-insert=","]').forEach(function (button) {
       button.textContent = DECIMAL_SEPARATOR;
       if (button.dataset.keypadInsert) button.dataset.keypadInsert = DECIMAL_SEPARATOR;
       if (button.dataset.calcInsert) button.dataset.calcInsert = DECIMAL_SEPARATOR;
@@ -930,8 +1005,9 @@
 
   function init() {
     collectElements();
-    localizeDecimalButtons();
     progress = loadProgress();
+    applyNumberFormatSetting();
+    localizeDecimalButtons();
     bindEvents();
     generateQuestion();
     setView(progress.activeView || "practice");
@@ -944,6 +1020,7 @@
     }
     assert("normalize money", normalizeNumber("$1,234.50") === 1234.5);
     assert("normalize european money", normalizeNumber("1.234,50") === 1234.5);
+    assert("normalize sek suffix", normalizeNumber("1.234,50 kr") === 1234.5);
     assert("normalize decimal comma", normalizeNumber("12,5%") === 12.5);
     assert("normalize percent", normalizeNumber("12.5%") === 12.5);
     assert("normalize invalid", normalizeNumber("12x") === null);
@@ -951,6 +1028,8 @@
     assert("calculator parentheses", evaluateCalculatorExpression("2*(3+4)") === 14);
     assert("calculator decimal comma", evaluateCalculatorExpression("1,5+2") === 3.5);
     assert("calculator percent", evaluateCalculatorExpression("25%*120") === 30);
+    assert("calculator currency words", evaluateCalculatorExpression("10 kr + 2") === 12);
+    assert("unit settings", unitPriceUnits().length === 3);
     var rng = makeRng(321);
     CATEGORIES.forEach(function (category) {
       LEVELS.forEach(function (level) {

@@ -77,13 +77,13 @@ export default {
         concept: "Unit price makes differently sized offers comparable.",
         rules: "Divide total price by quantity. The lower unit price is cheaper per unit.",
         example: "$6.00 for 3 kg means $2.00/kg.",
-        format: "Usually money rounded to cents."
+        format: "Usually a value rounded to hundredths."
       },
       discounts: {
         concept: "Discounts reduce the price before tax unless the question says otherwise.",
         rules: "A p% discount means paying 100-p percent of the original price.",
         example: "$80 at 25% off is $60 before tax.",
-        format: "Money rounded to cents."
+        format: "Money rounded to hundredths."
       },
       percentChange: {
         concept: "Percent change compares the change to the original value.",
@@ -95,30 +95,45 @@ export default {
         concept: "Interest grows money by a rate over time.",
         rules: "Simple interest: P(1+rt). Compound interest: P(1+r)^t for yearly compounding.",
         example: "$100 at 5% for 2 years compounds to $110.25.",
-        format: "Money rounded to cents."
+        format: "Money rounded to hundredths."
       },
       inflation: {
         concept: "Inflation changes purchasing power and nominal prices.",
         rules: "Apply the rate like any other percent increase, often repeatedly over years.",
         example: "$100 with 3% inflation becomes $103 after one year.",
-        format: "Money rounded to cents, or percent when asked."
+        format: "Money rounded to hundredths, or percent when asked."
       },
       subscriptions: {
         concept: "Recurring costs are easier to compare over a shared time horizon.",
         rules: "Convert everything to the requested number of months, then compare totals.",
         example: "$12/month for 12 months is $144/year.",
-        format: "Money rounded to cents."
+        format: "Money rounded to hundredths."
       },
       expectedValue: {
         concept: "Expected value is the long-run average outcome from probabilities and payoffs.",
         rules: "Multiply each outcome by its probability, then add.",
         example: "25% chance of $20 has expected value $5.",
-        format: "Money rounded to cents."
+        format: "Money rounded to hundredths."
       }
     },
     settings: {
       title: "Settings",
       intro: "Stored locally in this browser.",
+      numberFormat: "Number format",
+      numberFormatAuto: "Auto",
+      numberFormatPoint: "1.23",
+      numberFormatComma: "1,23",
+      currencyFormat: "Currency",
+      currencyFormatAuto: "Auto",
+      currencyFormatUsd: "$",
+      currencyFormatEur: "EUR",
+      currencyFormatSek: "kr",
+      currencyFormatGbp: "GBP",
+      currencyFormatNone: "None",
+      unitSystem: "Units",
+      unitSystemAuto: "Auto",
+      unitSystemMetric: "Metric",
+      unitSystemUs: "US",
       adaptiveCategories: "Adaptive categories",
       data: "Data",
       dataIntro: "Export, import, or reset local progress.",
@@ -156,12 +171,12 @@ export default {
     prompts: {
       unitPrices: {
         title: "Find the unit price.",
-        note: "Enter the price per unit, rounded to cents.",
+        note: "Enter the price per unit, rounded to hundredths.",
         explanation: "{price} / {quantity} = {answer} per {unit}."
       },
       discounts: {
         title: "Find the final price.",
-        note: "Enter money rounded to cents.",
+        note: "Enter money rounded to hundredths.",
         explanation: "After {discount}% off, tax of {tax}% is applied. Final price: {answer}."
       },
       percentChange: {
@@ -171,12 +186,12 @@ export default {
       },
       interest: {
         title: "Find the ending balance.",
-        note: "Enter money rounded to cents.",
+        note: "Enter money rounded to hundredths.",
         explanation: "{kind} interest gives an ending balance of {answer}."
       },
       inflation: {
         title: "Adjust for inflation.",
-        note: "Enter money rounded to cents.",
+        note: "Enter money rounded to hundredths.",
         explanation: "Applying {rate}% inflation for {years} years gives {answer}."
       },
       subscriptions: {
@@ -186,7 +201,7 @@ export default {
       },
       expectedValue: {
         title: "Find the expected value.",
-        note: "Enter money rounded to cents.",
+        note: "Enter money rounded to hundredths.",
         explanation: "{probability}% * {payoff} minus the certain cost {cost} gives {answer}."
       }
     }

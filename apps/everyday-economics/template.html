@@ -177,6 +177,33 @@
             <div class="section-head"><div><h2 id="settings-title">{{settings.title}}</h2><p>{{settings.intro}}</p></div></div>
             <div class="field-grid">
               <div>
+                <label for="numberFormatSelect">{{settings.numberFormat}}</label>
+                <select id="numberFormatSelect">
+                  <option value="auto">{{settings.numberFormatAuto}}</option>
+                  <option value="point">{{settings.numberFormatPoint}}</option>
+                  <option value="comma">{{settings.numberFormatComma}}</option>
+                </select>
+              </div>
+              <div>
+                <label for="currencyFormatSelect">{{settings.currencyFormat}}</label>
+                <select id="currencyFormatSelect">
+                  <option value="auto">{{settings.currencyFormatAuto}}</option>
+                  <option value="usd">{{settings.currencyFormatUsd}}</option>
+                  <option value="eur">{{settings.currencyFormatEur}}</option>
+                  <option value="sek">{{settings.currencyFormatSek}}</option>
+                  <option value="gbp">{{settings.currencyFormatGbp}}</option>
+                  <option value="none">{{settings.currencyFormatNone}}</option>
+                </select>
+              </div>
+              <div>
+                <label for="unitSystemSelect">{{settings.unitSystem}}</label>
+                <select id="unitSystemSelect">
+                  <option value="auto">{{settings.unitSystemAuto}}</option>
+                  <option value="metric">{{settings.unitSystemMetric}}</option>
+                  <option value="us">{{settings.unitSystemUs}}</option>
+                </select>
+              </div>
+              <div>
                 <label>{{settings.adaptiveCategories}}</label>
                 <div id="enabledCategories" class="check-list"></div>
               </div>
