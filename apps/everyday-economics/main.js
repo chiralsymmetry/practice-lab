@@ -311,13 +311,17 @@
       categoryId: categoryId,
       level: level,
       promptTitle: t("prompts." + promptKey + ".title", titleFor(categoryId)),
-      promptNote: t("prompts." + promptKey + ".note", "Enter the answer."),
+      promptNote: t("prompts." + promptKey + ".note", ""),
       body: body,
       expected: roundTo(expected, options.decimals === undefined ? 2 : options.decimals),
       expectedDisplay: display,
       tolerance: options.tolerance === undefined ? 0.01 : options.tolerance,
       explanation: tf("prompts." + promptKey + ".explanation", values, "")
     };
+  }
+
+  function promptBody(promptKey, values, fallback) {
+    return tf("prompts." + promptKey + ".body", values, fallback);
   }
 
   function randomPrice(rng, min, max, step) {
@@ -336,13 +340,13 @@
         var quantity = level <= 2 ? rng.pick([2, 3, 4, 5, 6, 8, 10]) : rng.int(3, level === 5 ? 48 : 24);
         var unitPrice = randomPrice(rng, level <= 2 ? 50 : 65, level >= 4 ? 950 : 450, 5) / 100;
         var price = roundTo(unitPrice * quantity, 2);
-        var body = money(price) + " for " + quantity + " " + unit + "\nWhat is the price per " + unit + "?";
-        return makeQuestion("unitPrices", level, body, unitPrice, "unitPrices", {
+        var values = {
           price: money(price),
           quantity: quantity,
           unit: unit,
           answer: money(unitPrice)
-        });
+        };
+        return makeQuestion("unitPrices", level, promptBody("unitPrices", values, ""), unitPrice, "unitPrices", values);
       }
     },
     {
@@ -353,12 +357,13 @@
         var tax = level <= 2 ? 0 : rng.pick([5, 6, 8, 10, 12]);
         var afterDiscount = price * (1 - discount / 100);
         var answer = afterDiscount * (1 + tax / 100);
-        var body = "Original price: " + money(price) + "\nDiscount: " + percent(discount) + "\nTax after discount: " + percent(tax) + "\nWhat is the final price?";
-        return makeQuestion("discounts", level, body, answer, "discounts", {
-          discount: discount,
-          tax: tax,
+        var values = {
+          price: money(price),
+          discount: percent(discount),
+          tax: percent(tax),
           answer: money(answer)
-        });
+        };
+        return makeQuestion("discounts", level, promptBody("discounts", values, ""), answer, "discounts", values);
       }
     },
     {
@@ -367,12 +372,13 @@
         var oldValue = rng.int(level <= 2 ? 10 : 40, level >= 5 ? 5000 : 800);
         var changePercent = rng.pick(level <= 2 ? [10, 20, 25, 50] : [-40, -25, -20, -15, -10, 5, 10, 12, 15, 20, 25, 35, 50]);
         var newValue = roundTo(oldValue * (1 + changePercent / 100), 2);
-        var body = "Old value: " + formatLocaleNumber(oldValue, 0, 2) + "\nNew value: " + formatLocaleNumber(newValue, 0, 2) + "\nWhat is the percent change?";
-        return makeQuestion("percentChange", level, body, changePercent, "percentChange", {
-          old: oldValue,
-          change: roundTo(newValue - oldValue, 2),
+        var values = {
+          old: formatLocaleNumber(oldValue, 0, 2),
+          newValue: formatLocaleNumber(newValue, 0, 2),
+          change: formatLocaleNumber(roundTo(newValue - oldValue, 2), 0, 2),
           answer: percent(changePercent)
-        }, { kind: "percent", display: percent(changePercent), tolerance: 0.05 });
+        };
+        return makeQuestion("percentChange", level, promptBody("percentChange", values, ""), changePercent, "percentChange", values, { kind: "percent", display: percent(changePercent), tolerance: 0.05 });
       }
     },
     {
@@ -383,11 +389,14 @@
         var years = rng.int(1, level <= 2 ? 3 : level + 2);
         var compound = level >= 3 && rng.next() < 0.7;
         var answer = compound ? principal * Math.pow(1 + rate / 100, years) : principal * (1 + rate / 100 * years);
-        var body = "Starting amount: " + money(principal) + "\nRate: " + percent(rate) + " per year\nTime: " + years + " years\nInterest type: " + (compound ? "compound yearly" : "simple") + "\nWhat is the ending balance?";
-        return makeQuestion("interest", level, body, answer, "interest", {
-          kind: compound ? "Compound" : "Simple",
+        var values = {
+          principal: money(principal),
+          rate: percent(rate),
+          years: years,
+          kind: compound ? t("prompts.interest.kindCompound", "P(1+r)^t") : t("prompts.interest.kindSimple", "P(1+rt)"),
           answer: money(answer)
-        });
+        };
+        return makeQuestion("interest", level, promptBody("interest", values, ""), answer, "interest", values);
       }
     },
     {
@@ -397,12 +406,13 @@
         var rate = rng.pick(level <= 2 ? [2, 3, 5] : [1.5, 2, 2.5, 3, 4, 5, 7]);
         var years = rng.int(1, level <= 2 ? 2 : level + 3);
         var answer = price * Math.pow(1 + rate / 100, years);
-        var body = "Today's price: " + money(price) + "\nInflation: " + percent(rate) + " per year\nTime: " + years + " years\nWhat is the future nominal price?";
-        return makeQuestion("inflation", level, body, answer, "inflation", {
-          rate: rate,
+        var values = {
+          price: money(price),
+          rate: percent(rate),
           years: years,
           answer: money(answer)
-        });
+        };
+        return makeQuestion("inflation", level, promptBody("inflation", values, ""), answer, "inflation", values);
       }
     },
     {
@@ -413,11 +423,14 @@
         var months = rng.pick(level <= 2 ? [3, 6, 12] : [6, 12, 18, 24, 36]);
         var discountMonths = level >= 4 ? rng.pick([0, 1, 2, 3]) : 0;
         var answer = setup + monthly * Math.max(0, months - discountMonths);
-        var body = "Monthly price: " + money(monthly) + "\nSetup fee: " + money(setup) + "\nPeriod: " + months + " months\nFree months: " + discountMonths + "\nWhat is the total cost?";
-        return makeQuestion("subscriptions", level, body, answer, "subscriptions", {
+        var values = {
+          monthly: money(monthly),
+          setup: money(setup),
           months: months,
+          freeMonths: discountMonths,
           answer: money(answer)
-        });
+        };
+        return makeQuestion("subscriptions", level, promptBody("subscriptions", values, ""), answer, "subscriptions", values);
       }
     },
     {
@@ -427,13 +440,13 @@
         var payoff = randomPrice(rng, level <= 2 ? 1000 : 5000, level >= 5 ? 200000 : 80000, 500) / 100;
         var cost = level <= 2 ? 0 : randomPrice(rng, 0, 3000 * level, 100) / 100;
         var answer = payoff * probability / 100 - cost;
-        var body = percent(probability) + " chance to receive " + money(payoff) + "\nCertain cost: " + money(cost) + "\nWhat is the expected value?";
-        return makeQuestion("expectedValue", level, body, answer, "expectedValue", {
-          probability: probability,
+        var values = {
+          probability: percent(probability),
           payoff: money(payoff),
           cost: money(cost),
           answer: money(answer)
-        });
+        };
+        return makeQuestion("expectedValue", level, promptBody("expectedValue", values, ""), answer, "expectedValue", values);
       }
     }
   ];

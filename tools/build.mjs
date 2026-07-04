@@ -15,7 +15,7 @@ const apps = [
     id: "everyday-economics",
     sourceDir: "apps/everyday-economics",
     outputBase: "everyday-economics",
-    locales: ["en"],
+    locales: ["en", "sv"],
   },
 ];
 

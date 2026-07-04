@@ -171,38 +171,47 @@ export default {
     prompts: {
       unitPrices: {
         title: "Find the unit price.",
+        body: "{price} for {quantity} {unit}\nWhat is the price per {unit}?",
         note: "Enter the price per unit, rounded to hundredths.",
         explanation: "{price} / {quantity} = {answer} per {unit}."
       },
       discounts: {
         title: "Find the final price.",
+        body: "Original price: {price}\nDiscount: {discount}\nTax after discount: {tax}\nWhat is the final price?",
         note: "Enter money rounded to hundredths.",
-        explanation: "After {discount}% off, tax of {tax}% is applied. Final price: {answer}."
+        explanation: "After {discount} off, tax of {tax} is applied. Final price: {answer}."
       },
       percentChange: {
         title: "Find the percent change.",
+        body: "Old value: {old}\nNew value: {newValue}\nWhat is the percent change?",
         note: "Enter the percent change; the percent sign is optional.",
         explanation: "Change is {change} over original {old}, so percent change is {answer}."
       },
       interest: {
         title: "Find the ending balance.",
+        body: "Starting amount: {principal}\nRate: {rate} per year\nTime: {years} years\nInterest type: {kind}\nWhat is the ending balance?",
         note: "Enter money rounded to hundredths.",
+        kindSimple: "simple",
+        kindCompound: "compound yearly",
         explanation: "{kind} interest gives an ending balance of {answer}."
       },
       inflation: {
         title: "Adjust for inflation.",
+        body: "Today's price: {price}\nInflation: {rate} per year\nTime: {years} years\nWhat is the future nominal price?",
         note: "Enter money rounded to hundredths.",
-        explanation: "Applying {rate}% inflation for {years} years gives {answer}."
+        explanation: "Applying {rate} inflation for {years} years gives {answer}."
       },
       subscriptions: {
         title: "Compare the subscription cost.",
+        body: "Monthly price: {monthly}\nSetup fee: {setup}\nPeriod: {months} months\nFree months: {freeMonths}\nWhat is the total cost?",
         note: "Enter the total cost over the requested period.",
         explanation: "The total over {months} months is {answer}."
       },
       expectedValue: {
         title: "Find the expected value.",
+        body: "{probability} chance to receive {payoff}\nCertain cost: {cost}\nWhat is the expected value?",
         note: "Enter money rounded to hundredths.",
-        explanation: "{probability}% * {payoff} minus the certain cost {cost} gives {answer}."
+        explanation: "{probability} * {payoff} minus the certain cost {cost} gives {answer}."
       }
     }
   }

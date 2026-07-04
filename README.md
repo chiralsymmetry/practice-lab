@@ -13,6 +13,7 @@ The built apps are standalone HTML files:
 - `dist/mental-arithmetic.html`
 - `dist/mental-arithmetic.{{lang}}.html`
 - `dist/everyday-economics.html`
+- `dist/everyday-economics.{{lang}}.html`
 
 Build it, then open it directly in a browser. Progress is stored locally in the browser with `localStorage`, but can also be freely exported/imported as JSON.
 
