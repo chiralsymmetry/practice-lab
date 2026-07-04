@@ -1,11 +1,15 @@
 # Practice Lab
 
-Practice Lab is a collection of small offline practice apps for programmer-adjacent skills. The current app is **Programmer Low-Level Numeracy**: bits, bases, fixed-width integers, masks, shifts, rotations, and endian memory order.
+Practice Lab is a collection of small offline practice apps for programmer-adjacent skills and adjacent numeracy. Current apps:
+
+- **Programmer Low-Level Numeracy**: bits, bases, fixed-width integers, masks, shifts, rotations, and endian memory order.
+- **Mental Arithmetic**: fast integer addition, subtraction, multiplication, division, complements, and percentages.
 
 The built apps are standalone HTML files:
 
 - `dist/programmer-low-level-numeracy.html`
 - `dist/programmer-low-level-numeracy.{{lang}}.html`
+- `dist/mental-arithmetic.html`
 
 Build it, then open it directly in a browser. Progress is stored locally in the browser with `localStorage`, but can also be freely exported/imported as JSON.
 
@@ -13,10 +17,10 @@ Build it, then open it directly in a browser. Progress is stored locally in the 
 
 The standalone HTML file is generated into `dist/`, which is ignored by git. Edit the source files instead:
 
-- `apps/programmer-low-level-numeracy/template.html`
-- `apps/programmer-low-level-numeracy/style.css`
-- `apps/programmer-low-level-numeracy/main.js`
-- `apps/programmer-low-level-numeracy/locales/*.mjs`
+- `apps/{{app}}/template.html`
+- `apps/{{app}}/style.css`
+- `apps/{{app}}/main.js`
+- `apps/{{app}}/locales/*.mjs`
 
 Tooling lives in:
 

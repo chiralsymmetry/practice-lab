@@ -3,6 +3,7 @@ import vm from "node:vm";
 const outputs = [
   "dist/programmer-low-level-numeracy.html",
   "dist/programmer-low-level-numeracy.sv.html",
+  "dist/mental-arithmetic.html",
 ];
 
 for (const output of outputs) {

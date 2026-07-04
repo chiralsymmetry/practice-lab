@@ -5,6 +5,12 @@ const apps = [
     outputBase: "programmer-low-level-numeracy",
     locales: ["en", "sv"],
   },
+  {
+    id: "mental-arithmetic",
+    sourceDir: "apps/mental-arithmetic",
+    outputBase: "mental-arithmetic",
+    locales: ["en"],
+  },
 ];
 
 async function readText(path) {
