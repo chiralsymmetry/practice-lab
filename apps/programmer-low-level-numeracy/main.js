@@ -2,6 +2,7 @@
       "use strict";
 
       var STORAGE_KEY = "programmerPractice.v1";
+      var TEXT = __LOCALE_TEXT__;
       var LEVELS = [-1, 0, 1, 2, 3, 4, 5];
       var CORE_LEVELS = [1, 2, 3, 4, 5];
       var LEVEL_BITS = {
@@ -24,6 +25,13 @@
       var isPaused = false;
       var submitted = false;
       var learnSpotlightId = null;
+
+      function t(path, fallback) {
+        var value = path.split(".").reduce(function (current, part) {
+          return current && Object.prototype.hasOwnProperty.call(current, part) ? current[part] : undefined;
+        }, TEXT);
+        return value === undefined ? fallback : value;
+      }
 
       var CATEGORIES = [
         {
@@ -279,7 +287,7 @@
       function levelLabel(level) {
         if (level === -1) return "1-bit";
         if (level === 0) return "2-bit";
-        return "Level " + level;
+        return t("practice.level", "Level") + " " + level;
       }
 
       function getLevels(category) {
@@ -1395,14 +1403,14 @@
         var stat = getStat(currentQuestion.categoryId, currentQuestion.level);
         document.getElementById("questionCategory").textContent = category.title;
         document.getElementById("questionLevel").textContent = levelLabel(currentQuestion.level);
-        document.getElementById("questionMastery").textContent = Math.round(stat.mastery || 0) + "% mastery";
+        document.getElementById("questionMastery").textContent = Math.round(stat.mastery || 0) + "% " + t("practice.masterySuffix", "mastery");
         document.getElementById("questionMastery").className = "pill " + (stat.mastery >= 70 ? "good" : "warn");
         renderPrompt(currentQuestion.prompt);
         document.getElementById("answerInput").value = "";
         document.getElementById("answerInput").disabled = false;
         document.getElementById("submitBtn").disabled = false;
-        document.getElementById("submitBtn").innerHTML = "Check <span class=\"key-symbol\">↵</span>";
-        document.querySelector("[data-keypad-action=\"submit\"]").textContent = "Check";
+        document.getElementById("submitBtn").innerHTML = t("practice.check", "Check") + " <span class=\"key-symbol\">↵</span>";
+        document.querySelector("[data-keypad-action=\"submit\"]").textContent = t("practice.check", "Check");
         renderPauseState();
         updateKeypadHints();
         document.getElementById("feedback").className = "feedback hidden";
@@ -1450,7 +1458,7 @@
       function renderPauseState() {
         document.querySelector(".practice-main").classList.toggle("paused", isPaused);
         document.getElementById("pauseBtn").disabled = !currentQuestion || submitted;
-        document.getElementById("pauseBtn").textContent = isPaused ? "Paused" : "Pause";
+        document.getElementById("pauseBtn").textContent = isPaused ? t("practice.paused", "Paused") : t("practice.pause", "Pause");
       }
 
       function pausePractice() {
@@ -1554,7 +1562,7 @@
         var table = document.createElement("table");
         var thead = document.createElement("thead");
         var header = document.createElement("tr");
-        ["Category"].concat(LEVELS.map(levelLabel)).forEach(function (label) {
+        [t("practice.category", "Category")].concat(LEVELS.map(levelLabel)).forEach(function (label) {
           var th = document.createElement("th");
           th.textContent = label;
           header.appendChild(th);
@@ -1587,7 +1595,7 @@
             button.dataset.level = String(level);
             button.innerHTML = "<strong></strong><span></span><div class=\"bar\"><span></span></div>";
             button.querySelector("strong").textContent = Math.round(stat.mastery || 0) + "%";
-            button.querySelectorAll("span")[0].textContent = (stat.attempts || 0) + " tries, " + accuracy(stat) + "%";
+            button.querySelectorAll("span")[0].textContent = (stat.attempts || 0) + " " + t("stats.tries", "tries") + ", " + accuracy(stat) + "%";
             button.querySelector(".bar span").style.width = clamp(stat.mastery || 0, 0, 100) + "%";
             td.appendChild(button);
             row.appendChild(td);
@@ -1630,7 +1638,9 @@
         if (cells.length === 0) {
           var empty = document.createElement("div");
           empty.className = "list-item";
-          empty.innerHTML = "<div><strong>No attempts yet</strong><span>Practice will fill this in.</span></div>";
+          empty.innerHTML = "<div><strong></strong><span></span></div>";
+          empty.querySelector("strong").textContent = t("stats.noAttemptsYet", "No attempts yet");
+          empty.querySelector("span").textContent = t("stats.noAttemptsHint", "Practice will fill this in.");
           container.appendChild(empty);
           return;
         }
@@ -1642,7 +1652,7 @@
           item.dataset.level = String(cell.level);
           item.innerHTML = "<div><strong></strong><span></span></div><span class=\"pill\"></span>";
           item.querySelector("strong").textContent = cell.category.title + " L" + cell.level;
-          item.querySelector("span").textContent = cell.stat.attempts + " tries, " + accuracy(cell.stat) + "% accuracy";
+          item.querySelector("span").textContent = cell.stat.attempts + " " + t("stats.tries", "tries") + ", " + accuracy(cell.stat) + "% " + t("stats.accuracy", "accuracy");
           item.querySelector(".pill").textContent = Math.round(cell.stat.mastery || 0) + "%";
           container.appendChild(item);
         });
@@ -1686,7 +1696,7 @@
           var example = document.createElement("code");
           example.textContent = cardData.example;
           var format = document.createElement("p");
-          format.textContent = "Answer format: " + cardData.format;
+          format.textContent = t("learn.answerFormat", "Answer format") + ": " + cardData.format;
           card.appendChild(title);
           card.appendChild(concept);
           card.appendChild(rules);
@@ -1771,9 +1781,9 @@
         recordResult(currentQuestion, result.correct, elapsedMs);
         submitted = true;
         document.getElementById("answerInput").disabled = true;
-        document.getElementById("submitBtn").innerHTML = "Next <span class=\"key-symbol\">↵</span>";
+        document.getElementById("submitBtn").innerHTML = t("practice.next", "Next") + " <span class=\"key-symbol\">↵</span>";
         document.getElementById("submitBtn").focus();
-        document.querySelector("[data-keypad-action=\"submit\"]").textContent = "Next";
+        document.querySelector("[data-keypad-action=\"submit\"]").textContent = t("practice.next", "Next");
         renderPauseState();
         showFeedback(result, elapsedMs);
         renderCurrentMetrics();
@@ -1924,12 +1934,12 @@
           renderAll();
           if (progress.view === "practice") startQuestion();
         } catch (error) {
-          box.value = "Invalid JSON: " + error.message;
+          box.value = t("messages.invalidJson", "Invalid JSON") + ": " + error.message;
         }
       }
 
       function resetProgress() {
-        if (!window.confirm("Reset all local progress?")) return;
+        if (!window.confirm(t("messages.resetConfirm", "Reset all local progress?"))) return;
         progress = createDefaultProgress();
         saveProgress();
         currentQuestion = null;

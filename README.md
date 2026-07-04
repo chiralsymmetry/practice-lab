@@ -2,9 +2,10 @@
 
 Practice Lab is a collection of small offline practice apps for programmer-adjacent skills. The current app is **Programmer Low-Level Numeracy**: bits, bases, fixed-width integers, masks, shifts, rotations, and endian memory order.
 
-The built app is a standalone HTML file:
+The built apps are standalone HTML files:
 
 - `dist/programmer-low-level-numeracy.html`
+- `dist/programmer-low-level-numeracy.{{lang}}.html`
 
 Build it, then open it directly in a browser. Progress is stored locally in the browser with `localStorage`, but can also be freely exported/imported as JSON.
 
@@ -15,6 +16,7 @@ The standalone HTML file is generated into `dist/`, which is ignored by git. Edi
 - `apps/programmer-low-level-numeracy/template.html`
 - `apps/programmer-low-level-numeracy/style.css`
 - `apps/programmer-low-level-numeracy/main.js`
+- `apps/programmer-low-level-numeracy/locales/*.mjs`
 
 Tooling lives in:
 
@@ -31,7 +33,7 @@ There is no Node/npm dependency chain. The build uses shell plus Bun, with no ex
 tools/build.sh
 ```
 
-This inlines the app CSS and JavaScript into `dist/programmer-low-level-numeracy.html`.
+This inlines the app CSS and JavaScript into localized files under `dist/`. English uses the plain `.html` filename; localized use `.{{lang}}.html`.
 
 ## Test
 
