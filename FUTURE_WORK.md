@@ -528,6 +528,266 @@ Recommendation:
 - Add a small unit parser early so numeric answers feel natural.
 - Delay full simulation until the template-based version proves useful.
 
+## Sister App: Economics and Applied Everyday Math
+
+Economics and applied personal-math questions are a good fit because the app can generate realistic scenarios instead of isolated formulas. This could sit near Mental Arithmetic, but it has a different flavor: choosing, comparing, estimating, and interpreting quantities in context.
+
+Possible categories:
+
+- Interest and compounding:
+  - Simple interest.
+  - Compound interest.
+  - Monthly vs yearly rates.
+  - Rule-of-72 style estimates.
+  - Loan balances and total paid for small examples.
+- Inflation and purchasing power:
+  - Adjust a price by an inflation rate.
+  - Compare nominal and real changes.
+  - Estimate whether a raise beats inflation.
+- Price comparison:
+  - Unit price.
+  - Discounts.
+  - Multi-buy offers.
+  - Shipping and tax included/excluded.
+  - Compare subscriptions or recurring costs over time.
+- Percent changes:
+  - Increase/decrease by a percent.
+  - Reverse a percent change.
+  - Difference between percentage points and percent change.
+  - Successive changes, such as `+20%` then `-20%`.
+- Budget and cashflow:
+  - Monthly vs yearly totals.
+  - Savings rate.
+  - Runway from balance and burn rate.
+  - Split bills, tips, and taxes.
+- Probability and expected value:
+  - Simple expected value.
+  - Break-even probability.
+  - Risk/reward comparisons.
+  - Warranties and insurance as simplified expected-value drills.
+- Indexes and ratios:
+  - Convert between index values and percentage changes.
+  - Compare ratios.
+  - Scale recipes, quantities, or rates.
+
+Good dynamic fits:
+
+- Generate small realistic stories and ask for one number.
+- Ask which option is cheaper or better over a specified time horizon.
+- Ask for a rough estimate first, then exact calculation at higher levels.
+- Show a compact table of offers, prices, rates, or payments and ask for comparison.
+- Use unit-aware answer checking for money, percentages, and time.
+
+Low-hanging fruit:
+
+- Percent changes.
+- Unit prices.
+- Discounts and sales tax.
+- Simple and compound interest.
+- Monthly/yearly conversion.
+- Rule-of-72 estimates.
+
+Needs careful limits:
+
+- Avoid pretending to give financial advice. Keep it explicitly as arithmetic and interpretation practice.
+- Use fictional numbers and scenarios.
+- Be clear about assumptions: rate period, compounding period, tax included/excluded, fees, inflation horizon, and rounding.
+- Real loans, investments, taxes, and insurance have legal and regional details that should not be implied by simplified drills.
+
+Recommendation:
+
+- Start as an "Applied Math" or "Everyday Economics" app rather than a finance-advice app.
+- Share ideas with Mental Arithmetic, but keep contextual comparison and interpretation as the main identity.
+- Add tables early because comparing options is more interesting than naked formula drills.
+
+## Sister App: Physics and Chemistry Practice
+
+Physics and chemistry can work well when questions are generated from controlled templates with units, diagrams, and exact answer rules. They should probably start as separate focused apps if they grow, but a shared "Science Practice" prototype could explore the common infrastructure: unit parsing, formula templates, generated diagrams, and dimensional reasoning.
+
+### Physics
+
+Possible categories:
+
+- Units and dimensions:
+  - SI prefixes.
+  - Unit conversion.
+  - Dimensional analysis.
+  - Identify compatible units.
+- Mechanics:
+  - Speed, distance, and time.
+  - Constant acceleration.
+  - Force, mass, and acceleration.
+  - Work, energy, and power.
+  - Momentum for simple one-dimensional cases.
+- Waves and sound:
+  - Frequency, wavelength, and speed.
+  - Period and frequency.
+  - Basic decibel comparisons later.
+- Electricity:
+  - Ohm's law and power overlap with the electronics app.
+  - Charge, current, voltage, resistance, and energy.
+- Graph interpretation:
+  - Position/time and velocity/time graphs.
+  - Slope and area under simple generated graphs.
+
+Good dynamic fits:
+
+- Generate a small diagram or graph and ask for one quantity.
+- Ask which formula applies, then ask for the numeric answer.
+- Use unit-aware checking with tolerances for rounded answers.
+- Scale difficulty by number of steps, unit conversions, and whether diagrams are included.
+
+### Chemistry
+
+Possible categories:
+
+- Periodic table basics:
+  - Atomic number, mass number, protons, neutrons, electrons.
+  - Ions and charge.
+  - Groups and periods for common elements.
+- Formula interpretation:
+  - Count atoms in a chemical formula.
+  - Molar mass for small compounds.
+  - Percent composition.
+- Moles and stoichiometry:
+  - Convert grams, moles, and particles.
+  - Balance small chemical equations.
+  - Use coefficients for simple reaction amounts.
+- Solutions:
+  - Molarity.
+  - Dilution with `C1V1 = C2V2`.
+  - Mass concentration.
+- Acids and bases later:
+  - pH and pOH for simple powers of ten.
+  - Strong acid/base assumptions only.
+
+Good dynamic fits:
+
+- Generate formulas and ask for atom counts, molar mass, or composition.
+- Generate a small balanced reaction and ask for a missing amount.
+- Render molecule/formula text cleanly with subscripts.
+- Use multiple-choice for symbolic balancing early, typed numbers for quantities.
+
+Needs careful limits:
+
+- Chemistry parsing can get complex; start with generated formulas from a safe grammar.
+- Real chemistry has significant figures, phases, equilibrium, thermodynamics, and lab safety concerns that need explicit scope.
+- Physics formulas should state assumptions such as frictionless motion, constant acceleration, ideal behavior, or one-dimensional motion.
+- Unit handling should be built early, because otherwise science questions become frustratingly picky.
+
+Recommendation:
+
+- Start with physics units and one-step mechanics if building a science app soon.
+- Start chemistry with formula parsing, molar mass, and atom counts before balancing or stoichiometry.
+- Reuse generated SVG/table rendering patterns from electronics and economics where possible.
+
+## Sister App: Calculus and Symbolic Math Practice
+
+Calculus is feasible and potentially a very good fit, but it has one important boundary: generating calculus questions is much easier than accepting arbitrary symbolic answers. A useful app should not try to become a full computer algebra system. It should use a controlled expression grammar, exact internally generated answers, and answer checking that accepts common equivalent forms without promising unlimited symbolic reasoning.
+
+Possible categories:
+
+- Derivatives:
+  - Constants and powers.
+  - Polynomial derivatives.
+  - Sums and scalar multiples.
+  - Product rule.
+  - Quotient rule.
+  - Chain rule.
+  - Basic trig, exponential, and logarithmic derivatives.
+- Antiderivatives:
+  - Power rule.
+  - Simple polynomial antiderivatives.
+  - Basic `sin`, `cos`, `exp`, and `1/x`.
+  - Include the constant of integration in a controlled way later.
+- Limits:
+  - Direct substitution.
+  - One-sided limits from generated graphs or tables.
+  - Factor-and-cancel polynomial limits.
+  - Limits involving simple rational expressions.
+- Numerical calculus:
+  - Secant slope.
+  - Tangent slope from a formula at a point.
+  - Riemann sums.
+  - Trapezoid estimates.
+  - Newton's method iterations.
+- Rule recognition:
+  - Which rule applies?
+  - Identify inner and outer functions for chain rule.
+  - Choose the next correct transformation step.
+- Graph interpretation:
+  - Estimate derivative sign from a generated curve.
+  - Match function and derivative shapes.
+  - Identify increasing/decreasing and concavity from simple generated graphs.
+
+Difficulty model:
+
+- L1:
+  - `d/dx x^n`, constants, and simple monomials.
+  - Mostly integer coefficients and positive powers.
+- L2:
+  - Polynomial derivatives and antiderivatives.
+  - Sums, differences, scalar multiples, and simple evaluation at a point.
+- L3:
+  - Product rule, quotient rule, and simple chain rule.
+  - Expressions still generated from a small grammar.
+- L4:
+  - Trig, `exp`, `ln`, nested chain rule, and simple limits.
+  - More emphasis on recognizing the rule and simplifying enough.
+- L5:
+  - Mixed expressions, multi-step prompts, derivative evaluation, limits, and numerical methods.
+
+Answer checking options:
+
+- Structured fields:
+  - Useful for early levels, such as entering coefficient and exponent.
+  - Very robust, but less natural for full expressions.
+- Constrained text parser:
+  - Support a small grammar: integers, `x`, `+`, `-`, `*`, `/`, `^`, parentheses, `sin`, `cos`, `exp`, and `ln`.
+  - Parse the learner's answer and the expected answer into expression trees.
+  - Normalize obvious forms such as constant folding, term ordering for simple sums, and removal of redundant `*1` or `+0`.
+- Numerical equivalence checks:
+  - Evaluate both expressions at several safe random `x` values.
+  - Avoid points where either expression is undefined.
+  - Useful as a practical fallback for equivalent forms such as `12x^3 - 4x` and `4x(3x^2 - 1)`.
+  - Not a proof of equality, but good enough for controlled generated expressions when combined with parser limits.
+- Multiple-choice:
+  - Good for rule recognition, valid next step, graph interpretation, and ambiguous symbolic cases.
+
+Good dynamic fits:
+
+- Generate an expression and ask for its derivative.
+- Generate a derivative and ask which original function could have produced it.
+- Generate a function and a point, then ask for the derivative value at that point.
+- Generate a short step-by-step transformation and ask for the missing step.
+- Render a generated graph and ask about slope, tangent sign, concavity, or matching derivative shape.
+- Ask which rule applies before asking for the resulting expression.
+
+Low-hanging fruit:
+
+- Polynomial differentiation.
+- Polynomial antiderivatives.
+- Derivative-at-a-point questions.
+- Rule recognition.
+- Simple numerical slope and Riemann sum questions.
+- A tiny expression parser for controlled polynomial expressions.
+
+Needs careful limits:
+
+- Do not attempt a general-purpose CAS.
+- State the accepted syntax clearly in the Learn card and answer feedback.
+- Avoid arbitrary simplification expectations.
+- Avoid functions or domains that make equivalence checking fragile until the parser and evaluator are stronger.
+- Be careful with division by zero and undefined `ln`/trig edge cases in numerical checks.
+- If multiple constants of integration are accepted, the checker needs to understand equivalence up to a constant.
+
+Recommendation:
+
+- Start with a "Calculus Fluency" app focused on derivatives of generated polynomial expressions.
+- Add a small expression parser and evaluator before adding trig/log/exp.
+- Use numerical equivalence at safe sample points as a pragmatic checking layer, not as the only line of defense.
+- Add multiple-choice rule recognition early because it gives useful practice without requiring a full symbolic checker.
+
 ## Other App Ideas
 
 - Git practice:
