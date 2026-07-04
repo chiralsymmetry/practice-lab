@@ -11,6 +11,12 @@ const apps = [
     outputBase: "mental-arithmetic",
     locales: ["en", "sv"],
   },
+  {
+    id: "everyday-economics",
+    sourceDir: "apps/everyday-economics",
+    outputBase: "everyday-economics",
+    locales: ["en"],
+  },
 ];
 
 async function readText(path) {

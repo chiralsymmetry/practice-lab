@@ -5,6 +5,7 @@ const outputs = [
   "dist/programmer-low-level-numeracy.sv.html",
   "dist/mental-arithmetic.html",
   "dist/mental-arithmetic.sv.html",
+  "dist/everyday-economics.html",
 ];
 
 for (const output of outputs) {

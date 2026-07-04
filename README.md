@@ -4,6 +4,7 @@ Practice Lab is a collection of small offline practice apps for programmer-adjac
 
 - **Programmer Low-Level Numeracy**: bits, bases, fixed-width integers, masks, shifts, rotations, and endian memory order.
 - **Mental Arithmetic**: fast integer addition, subtraction, multiplication, division, complements, and percentages.
+- **Everyday Economics**: applied math for prices, percentages, interest, inflation, subscriptions, and expected value.
 
 The built apps are standalone HTML files:
 
@@ -11,6 +12,7 @@ The built apps are standalone HTML files:
 - `dist/programmer-low-level-numeracy.{{lang}}.html`
 - `dist/mental-arithmetic.html`
 - `dist/mental-arithmetic.{{lang}}.html`
+- `dist/everyday-economics.html`
 
 Build it, then open it directly in a browser. Progress is stored locally in the browser with `localStorage`, but can also be freely exported/imported as JSON.
 
