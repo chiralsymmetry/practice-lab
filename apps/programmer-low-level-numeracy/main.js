@@ -1561,9 +1561,11 @@
             categorySelect.appendChild(option);
           });
         }
-        categorySelect.value = progress.manual.categoryId;
+        var activeCategoryId = progress.settings.adaptive && currentQuestion ? currentQuestion.categoryId : progress.manual.categoryId;
+        var activeLevel = progress.settings.adaptive && currentQuestion ? currentQuestion.level : progress.manual.level;
+        categorySelect.value = activeCategoryId;
         var levelSelect = document.getElementById("levelSelect");
-        var category = getCategory(progress.manual.categoryId);
+        var category = getCategory(activeCategoryId);
         var levels = getLevels(category);
         var optionValues = Array.from(levelSelect.options).map(function (option) {
           return Number(option.value);
@@ -1580,8 +1582,11 @@
             levelSelect.appendChild(option);
           });
         }
-        progress.manual.level = closestLevel(category, progress.manual.level);
-        levelSelect.value = String(progress.manual.level);
+        if (!progress.settings.adaptive) {
+          progress.manual.level = closestLevel(category, progress.manual.level);
+          activeLevel = progress.manual.level;
+        }
+        levelSelect.value = String(closestLevel(category, activeLevel));
       }
 
       function renderCurrentMetrics() {
@@ -1904,10 +1909,10 @@
         document.getElementById("resumeBtn").addEventListener("click", resumePractice);
         document.getElementById("learnCurrentBtn").addEventListener("click", showCurrentLearnCard);
         document.getElementById("categorySelect").addEventListener("change", function (event) {
-          setManualSelection(event.target.value, progress.manual.level);
+          setManualSelection(event.target.value, Number(document.getElementById("levelSelect").value));
         });
         document.getElementById("levelSelect").addEventListener("change", function (event) {
-          setManualSelection(progress.manual.categoryId, Number(event.target.value));
+          setManualSelection(document.getElementById("categorySelect").value, Number(event.target.value));
         });
         document.getElementById("answerForm").addEventListener("submit", submitAnswer);
         document.getElementById("answerKeypad").addEventListener("pointerdown", function (event) {
