@@ -235,6 +235,24 @@
         }
       };
 
+      function localizeStaticData() {
+        CATEGORIES.forEach(function (category) {
+          var labels = t("categories." + category.id, null);
+          if (!labels) return;
+          category.title = labels.title || category.title;
+          category.short = labels.short || category.short;
+        });
+
+        var cards = t("learnCards", null);
+        if (cards) {
+          Object.keys(LEARN_CARDS).forEach(function (id) {
+            if (cards[id]) LEARN_CARDS[id] = cards[id];
+          });
+        }
+      }
+
+      localizeStaticData();
+
       function Rng(seed) {
         this.state = seed >>> 0 || 0x9e3779b9;
       }
@@ -1756,12 +1774,12 @@
         var feedback = document.getElementById("feedback");
         feedback.className = "feedback " + (result.correct ? "correct" : "incorrect");
         feedback.classList.remove("hidden");
-        var verdict = result.correct ? "Correct" : "Not quite";
+        var verdict = result.correct ? t("messages.correct", "Correct") : t("messages.notQuite", "Not quite");
         feedback.innerHTML = "";
         var strong = document.createElement("strong");
-        strong.textContent = verdict + " - expected " + result.expectedText;
+        strong.textContent = verdict + " - " + t("messages.expected", "expected") + " " + result.expectedText;
         var details = document.createElement("div");
-        details.textContent = result.explanation + " Time: " + timeText(elapsedMs) + ".";
+        details.textContent = result.explanation + " " + t("messages.time", "Time") + ": " + timeText(elapsedMs) + ".";
         feedback.appendChild(strong);
         feedback.appendChild(details);
       }
