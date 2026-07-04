@@ -9,7 +9,7 @@ const apps = [
     id: "mental-arithmetic",
     sourceDir: "apps/mental-arithmetic",
     outputBase: "mental-arithmetic",
-    locales: ["en"],
+    locales: ["en", "sv"],
   },
 ];
 

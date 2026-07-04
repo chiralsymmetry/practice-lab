@@ -10,6 +10,7 @@ The built apps are standalone HTML files:
 - `dist/programmer-low-level-numeracy.html`
 - `dist/programmer-low-level-numeracy.{{lang}}.html`
 - `dist/mental-arithmetic.html`
+- `dist/mental-arithmetic.{{lang}}.html`
 
 Build it, then open it directly in a browser. Progress is stored locally in the browser with `localStorage`, but can also be freely exported/imported as JSON.
 
