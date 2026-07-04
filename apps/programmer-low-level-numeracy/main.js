@@ -33,6 +33,12 @@
         return value === undefined ? fallback : value;
       }
 
+      function tf(path, values, fallback) {
+        return t(path, fallback).replace(/\{([a-zA-Z0-9_]+)\}/g, function (match, key) {
+          return Object.prototype.hasOwnProperty.call(values, key) ? String(values[key]) : match;
+        });
+      }
+
       var CATEGORIES = [
         {
           id: "powers",
@@ -689,30 +695,30 @@
         var variant = localRng.choice(level >= 3 ? ["compute", "identify", "near"] : ["compute", "identify"]);
         if (variant === "near" && exp < 4) variant = "compute";
         if (variant === "identify") {
-          return q("powers", level, rowPrompt("Find the exponent n.", [
+          return q("powers", level, rowPrompt(t("prompts.powers.findExponentTitle", "Find the exponent n."), [
             "2^n = " + value
-          ], "Enter n."), {
+          ], t("prompts.powers.findExponentNote", "Enter n.")), {
             kind: "decimal",
             value: BigInt(exp)
-          }, "2^" + exp + " equals " + value + ".");
+          }, tf("prompts.powers.findExponentExplanation", { exp: exp, value: value }, "2^{exp} equals {value}."));
         }
         if (variant === "near") {
           var offset = BigInt(localRng.choice([-3, -2, -1, 1, 2, 3])) * (1n << BigInt(exp - 4));
           var near = value + offset;
           if (near < 1n) near = value + 1n;
-          return q("powers", level, rowPrompt("Find the closest power of two.", [
+          return q("powers", level, rowPrompt(t("prompts.powers.closestTitle", "Find the closest power of two."), [
             String(near)
-          ], "Enter the exponent n."), {
+          ], t("prompts.powers.closestNote", "Enter the exponent n.")), {
             kind: "decimal",
             value: BigInt(exp)
-          }, "The closest listed power is 2^" + exp + " = " + value + ".");
+          }, tf("prompts.powers.closestExplanation", { exp: exp, value: value }, "The closest listed power is 2^{exp} = {value}."));
         }
-        return q("powers", level, rowPrompt("Compute this power of two.", [
+        return q("powers", level, rowPrompt(t("prompts.powers.computeTitle", "Compute this power of two."), [
           "2^" + exp
-        ], "Enter decimal."), {
+        ], t("prompts.powers.computeNote", "Enter decimal.")), {
           kind: "decimal",
           value: value
-        }, "2^" + exp + " equals " + value + ".");
+        }, tf("prompts.powers.findExponentExplanation", { exp: exp, value: value }, "2^{exp} equals {value}."));
       }
 
       function genNumericViews(level, localRng) {
@@ -722,51 +728,51 @@
         var unsigned = toUnsigned(raw, bits);
         var variant = localRng.choice(["bitsToUnsigned", "bitsToSigned", "unsignedToSigned", "signedToUnsigned", "signedToBits", "unsignedToBits"]);
         if (variant === "bitsToUnsigned") {
-          return q("numeric-views", level, rowPrompt("Convert this " + bits + "-bit pattern to unsigned decimal.", [
+          return q("numeric-views", level, rowPrompt(tf("prompts.numericViews.bitsToUnsignedTitle", { bits: bits }, "Convert this {bits}-bit pattern to unsigned decimal."), [
             bitsText(raw, bits)
-          ], "Enter unsigned decimal."), {
+          ], t("prompts.numericViews.bitsToUnsignedNote", "Enter unsigned decimal.")), {
             kind: "decimal",
             value: unsigned
-          }, "As unsigned, the bit pattern is " + unsigned + ".");
+          }, tf("prompts.numericViews.bitsToUnsignedExplanation", { unsigned: unsigned }, "As unsigned, the bit pattern is {unsigned}."));
         }
         if (variant === "bitsToSigned") {
-          return q("numeric-views", level, rowPrompt("Convert this " + bits + "-bit pattern to signed decimal.", [
+          return q("numeric-views", level, rowPrompt(tf("prompts.numericViews.bitsToSignedTitle", { bits: bits }, "Convert this {bits}-bit pattern to signed decimal."), [
             bitsText(raw, bits)
-          ], "Use two's complement. Enter signed decimal."), {
+          ], t("prompts.numericViews.bitsToSignedNote", "Use two's complement. Enter signed decimal.")), {
             kind: "decimal",
             value: signed
-          }, "The sign bit gives signed value " + signed + ".");
+          }, tf("prompts.numericViews.bitsToSignedExplanation", { signed: signed }, "The sign bit gives signed value {signed}."));
         }
         if (variant === "unsignedToSigned") {
-          return q("numeric-views", level, rowPrompt("Interpret this " + bits + "-bit unsigned value as signed.", [
+          return q("numeric-views", level, rowPrompt(tf("prompts.numericViews.unsignedToSignedTitle", { bits: bits }, "Interpret this {bits}-bit unsigned value as signed."), [
             String(unsigned)
-          ], "Enter the two's complement signed decimal value."), {
+          ], t("prompts.numericViews.unsignedToSignedNote", "Enter the two's complement signed decimal value.")), {
             kind: "decimal",
             value: signed
-          }, "The same bits are " + bitsText(raw, bits) + ", which is signed " + signed + ".");
+          }, tf("prompts.numericViews.unsignedToSignedExplanation", { bitText: bitsText(raw, bits), signed: signed }, "The same bits are {bitText}, which is signed {signed}."));
         }
         if (variant === "signedToUnsigned") {
-          return q("numeric-views", level, rowPrompt("Interpret this " + bits + "-bit signed value as unsigned.", [
+          return q("numeric-views", level, rowPrompt(tf("prompts.numericViews.signedToUnsignedTitle", { bits: bits }, "Interpret this {bits}-bit signed value as unsigned."), [
             String(signed)
-          ], "Enter unsigned decimal."), {
+          ], t("prompts.numericViews.signedToUnsignedNote", "Enter unsigned decimal.")), {
             kind: "decimal",
             value: unsigned
-          }, "The same bits are " + bitsText(raw, bits) + ", which is unsigned " + unsigned + ".");
+          }, tf("prompts.numericViews.signedToUnsignedExplanation", { bitText: bitsText(raw, bits), unsigned: unsigned }, "The same bits are {bitText}, which is unsigned {unsigned}."));
         }
         if (variant === "signedToBits") {
-          return q("numeric-views", level, rowPrompt("Encode this signed value as " + bits + "-bit two's complement.", [
+          return q("numeric-views", level, rowPrompt(tf("prompts.numericViews.signedToBitsTitle", { bits: bits }, "Encode this signed value as {bits}-bit two's complement."), [
             String(signed)
-          ], "Enter " + bits + " bits."), {
+          ], tf("prompts.numericViews.bitsNote", { bits: bits }, "Enter {bits} bits.")), {
             kind: "binary",
             bits: formatBits(raw, bits)
-          }, "The " + bits + "-bit encoding is " + bitsText(raw, bits) + ".");
+          }, tf("prompts.numericViews.encodingExplanation", { bits: bits, bitText: bitsText(raw, bits) }, "The {bits}-bit encoding is {bitText}."));
         }
-        return q("numeric-views", level, rowPrompt("Encode this unsigned value as " + bits + " bits.", [
+        return q("numeric-views", level, rowPrompt(tf("prompts.numericViews.unsignedToBitsTitle", { bits: bits }, "Encode this unsigned value as {bits} bits."), [
           String(unsigned)
-        ], "Enter " + bits + " bits."), {
+        ], tf("prompts.numericViews.bitsNote", { bits: bits }, "Enter {bits} bits.")), {
           kind: "binary",
           bits: formatBits(raw, bits)
-        }, "The " + bits + "-bit encoding is " + bitsText(raw, bits) + ".");
+        }, tf("prompts.numericViews.encodingExplanation", { bits: bits, bitText: bitsText(raw, bits) }, "The {bits}-bit encoding is {bitText}."));
       }
 
       function genBaseBits(level, localRng) {
@@ -775,35 +781,35 @@
         var variants = ["bitsToHex", "hexToBits", "bitsToOctal", "octalToBits"];
         var variant = localRng.choice(variants);
         if (variant === "bitsToHex") {
-          return q("base-bits", level, rowPrompt("Convert this " + bits + "-bit pattern to hexadecimal.", [
+          return q("base-bits", level, rowPrompt(tf("prompts.baseBits.bitsToHexTitle", { bits: bits }, "Convert this {bits}-bit pattern to hexadecimal."), [
             bitsText(raw, bits)
-          ], "Enter hex."), {
+          ], t("prompts.baseBits.enterHex", "Enter hex.")), {
             kind: "hex",
             hex: formatHex(raw, bits)
-          }, "Grouped in nibbles, the value is 0x" + formatHex(raw, bits) + ".");
+          }, tf("prompts.baseBits.bitsToHexExplanation", { hex: formatHex(raw, bits) }, "Grouped in nibbles, the value is 0x{hex}."));
         }
         if (variant === "hexToBits") {
-          return q("base-bits", level, rowPrompt("Convert this hexadecimal value to " + bits + " bits.", [
+          return q("base-bits", level, rowPrompt(tf("prompts.baseBits.hexToBitsTitle", { bits: bits }, "Convert this hexadecimal value to {bits} bits."), [
             hexDisplay(raw, bits)
-          ], "Enter " + bits + " bits."), {
+          ], tf("prompts.numericViews.bitsNote", { bits: bits }, "Enter {bits} bits.")), {
             kind: "binary",
             bits: formatBits(raw, bits)
-          }, "Each hex digit expands to four bits: " + bitsText(raw, bits) + ".");
+          }, tf("prompts.baseBits.hexToBitsExplanation", { bitText: bitsText(raw, bits) }, "Each hex digit expands to four bits: {bitText}."));
         }
         if (variant === "bitsToOctal") {
-          return q("base-bits", level, rowPrompt("Convert this " + bits + "-bit pattern to octal.", [
+          return q("base-bits", level, rowPrompt(tf("prompts.baseBits.bitsToOctalTitle", { bits: bits }, "Convert this {bits}-bit pattern to octal."), [
             bitsText(raw, bits)
-          ], "Enter octal."), {
+          ], t("prompts.baseBits.enterOctal", "Enter octal.")), {
             kind: "octal",
             octal: formatOctal(raw, bits)
-          }, "Grouped in threes, the value is 0o" + formatOctal(raw, bits) + ".");
+          }, tf("prompts.baseBits.bitsToOctalExplanation", { octal: formatOctal(raw, bits) }, "Grouped in threes, the value is 0o{octal}."));
         }
-        return q("base-bits", level, rowPrompt("Convert this octal value to " + bits + " bits.", [
+        return q("base-bits", level, rowPrompt(tf("prompts.baseBits.octalToBitsTitle", { bits: bits }, "Convert this octal value to {bits} bits."), [
           "0o" + formatOctal(raw, bits)
-        ], "Enter " + bits + " bits."), {
+        ], tf("prompts.numericViews.bitsNote", { bits: bits }, "Enter {bits} bits.")), {
           kind: "binary",
           bits: formatBits(raw, bits)
-        }, "Each octal digit expands to three bits, then trims to " + bits + " bits: " + bitsText(raw, bits) + ".");
+        }, tf("prompts.baseBits.octalToBitsExplanation", { bits: bits, bitText: bitsText(raw, bits) }, "Each octal digit expands to three bits, then trims to {bits} bits: {bitText}."));
       }
 
       function signedOperands(bits, localRng, operation) {
@@ -847,10 +853,10 @@
         var exact = a + b;
         var status = signedStatus(exact, bits);
         var wrapped = toUnsigned(exact, bits);
-        return q("signed-add", level, rowPrompt(bits + "-bit two's complement addition", [
+        return q("signed-add", level, rowPrompt(tf("prompts.arithmetic.signedAddTitle", { bits: bits }, "{bits}-bit two's complement addition"), [
           "  " + bitsText(toUnsigned(a, bits), bits) + "  (" + a + ")",
           "+ " + bitsText(toUnsigned(b, bits), bits) + "  (" + b + ")"
-        ], "Enter result bits plus status: + overflow, - underflow, 0 none."), {
+        ], t("prompts.arithmetic.signedStatusNote", "Enter result bits plus status: + overflow, - underflow, 0 none.")), {
           kind: "statusBits",
           bits: formatBits(wrapped, bits),
           status: status
@@ -865,10 +871,10 @@
         var exact = a - b;
         var status = signedStatus(exact, bits);
         var wrapped = toUnsigned(exact, bits);
-        return q("signed-sub", level, rowPrompt(bits + "-bit two's complement subtraction", [
+        return q("signed-sub", level, rowPrompt(tf("prompts.arithmetic.signedSubTitle", { bits: bits }, "{bits}-bit two's complement subtraction"), [
           "  " + bitsText(toUnsigned(a, bits), bits) + "  (" + a + ")",
           "- " + bitsText(toUnsigned(b, bits), bits) + "  (" + b + ")"
-        ], "Enter result bits plus status: + overflow, - underflow, 0 none."), {
+        ], t("prompts.arithmetic.signedStatusNote", "Enter result bits plus status: + overflow, - underflow, 0 none.")), {
           kind: "statusBits",
           bits: formatBits(wrapped, bits),
           status: status
@@ -877,7 +883,12 @@
 
       function signedExplanation(exact, wrapped, bits, status) {
         var range = "[" + signedMin(bits) + ", " + signedMax(bits) + "]";
-        return "Exact result " + exact + " against signed range " + range + "; wrapped bits " + bitsText(wrapped, bits) + ", status " + status + ".";
+        return tf("prompts.arithmetic.signedExplanation", {
+          exact: exact,
+          range: range,
+          wrapped: bitsText(wrapped, bits),
+          status: status
+        }, "Exact result {exact} against signed range {range}; wrapped bits {wrapped}, status {status}.");
       }
 
       function genUnsignedAdd(level, localRng) {
@@ -894,14 +905,19 @@
         var exact = a + b;
         var status = unsignedStatusAdd(exact, bits);
         var wrapped = toUnsigned(exact, bits);
-        return q("unsigned-add", level, rowPrompt(bits + "-bit unsigned addition", [
+        return q("unsigned-add", level, rowPrompt(tf("prompts.arithmetic.unsignedAddTitle", { bits: bits }, "{bits}-bit unsigned addition"), [
           "  " + bitsText(a, bits) + "  (" + a + ")",
           "+ " + bitsText(b, bits) + "  (" + b + ")"
-        ], "Enter result bits plus status: + overflow, 0 none."), {
+        ], t("prompts.arithmetic.unsignedAddStatusNote", "Enter result bits plus status: + overflow, 0 none.")), {
           kind: "statusBits",
           bits: formatBits(wrapped, bits),
           status: status
-        }, "Max is " + max + "; exact result " + exact + " wraps to " + bitsText(wrapped, bits) + " with status " + status + ".");
+        }, tf("prompts.arithmetic.unsignedAddExplanation", {
+          max: max,
+          exact: exact,
+          wrapped: bitsText(wrapped, bits),
+          status: status
+        }, "Max is {max}; exact result {exact} wraps to {wrapped} with status {status}."));
       }
 
       function genUnsignedSub(level, localRng) {
@@ -917,14 +933,17 @@
         var exact = a - b;
         var status = unsignedStatusSub(a, b);
         var wrapped = toUnsigned(exact, bits);
-        return q("unsigned-sub", level, rowPrompt(bits + "-bit unsigned subtraction", [
+        return q("unsigned-sub", level, rowPrompt(tf("prompts.arithmetic.unsignedSubTitle", { bits: bits }, "{bits}-bit unsigned subtraction"), [
           "  " + bitsText(a, bits) + "  (" + a + ")",
           "- " + bitsText(b, bits) + "  (" + b + ")"
-        ], "Enter result bits plus status: - underflow, 0 none."), {
+        ], t("prompts.arithmetic.unsignedSubStatusNote", "Enter result bits plus status: - underflow, 0 none.")), {
           kind: "statusBits",
           bits: formatBits(wrapped, bits),
           status: status
-        }, "Subtraction below zero underflows; wrapped bits are " + bitsText(wrapped, bits) + " with status " + status + ".");
+        }, tf("prompts.arithmetic.unsignedSubExplanation", {
+          wrapped: bitsText(wrapped, bits),
+          status: status
+        }, "Subtraction below zero underflows; wrapped bits are {wrapped} with status {status}."));
       }
 
       function genBitwise(level, localRng) {
@@ -937,25 +956,25 @@
         var prompt;
         if (op === "~") {
           result = mask(bits) ^ a;
-          prompt = rowPrompt(bits + "-bit binary bitwise NOT", [
+          prompt = rowPrompt(tf("prompts.bitwise.notTitle", { bits: bits }, "{bits}-bit binary bitwise NOT"), [
             "~ " + bitsText(a, bits)
-          ], "Enter wrapped result bits.");
+          ], t("prompts.bitwise.wrappedBitsNote", "Enter wrapped result bits."));
         } else {
           if (op === "+") result = a + b;
           if (op === "-") result = a - b;
           if (op === "&") result = a & b;
           if (op === "|") result = a | b;
           if (op === "^") result = a ^ b;
-          prompt = rowPrompt(bits + "-bit binary operation", [
+          prompt = rowPrompt(tf("prompts.bitwise.operationTitle", { bits: bits }, "{bits}-bit binary operation"), [
             "  " + bitsText(a, bits),
             op + " " + bitsText(b, bits)
-          ], "Enter wrapped result bits.");
+          ], t("prompts.bitwise.wrappedBitsNote", "Enter wrapped result bits."));
         }
         var wrapped = toUnsigned(result, bits);
         return q("bitwise", level, prompt, {
           kind: "binary",
           bits: formatBits(wrapped, bits)
-        }, "The fixed-width result is " + bitsText(wrapped, bits) + ".");
+        }, tf("prompts.bitwise.resultExplanation", { bitText: bitsText(wrapped, bits) }, "The fixed-width result is {bitText}."));
       }
 
       function genShifts(level, localRng) {
@@ -971,33 +990,39 @@
         if (variant === "left") {
           result = toUnsigned(raw << BigInt(amount), bits);
           carry = Number((raw >> BigInt(bits - amount)) & 1n);
-          prompt = rowPrompt("Left-shift this " + bits + "-bit pattern.", [
+          prompt = rowPrompt(tf("prompts.shifts.leftTitle", { bits: bits }, "Left-shift this {bits}-bit pattern."), [
             bitsText(raw, bits) + " << " + amount
-          ], "Enter result bits" + (askCarry ? " and carry-out bit." : "."));
+          ], askCarry ? t("prompts.shifts.resultBitsCarryNote", "Enter result bits and carry-out bit.") : t("prompts.shifts.resultBitsNote", "Enter result bits."));
         } else if (variant === "logicalRight") {
           result = raw >> BigInt(amount);
           carry = Number((raw >> BigInt(amount - 1)) & 1n);
-          prompt = rowPrompt("Logical right-shift this " + bits + "-bit pattern.", [
+          prompt = rowPrompt(tf("prompts.shifts.logicalRightTitle", { bits: bits }, "Logical right-shift this {bits}-bit pattern."), [
             bitsText(raw, bits) + " >>> " + amount
-          ], "Enter result bits" + (askCarry ? " and carry-out bit." : "."));
+          ], askCarry ? t("prompts.shifts.resultBitsCarryNote", "Enter result bits and carry-out bit.") : t("prompts.shifts.resultBitsNote", "Enter result bits."));
         } else {
           result = toUnsigned(toSigned(raw, bits) >> BigInt(amount), bits);
           carry = Number((raw >> BigInt(amount - 1)) & 1n);
-          prompt = rowPrompt("Arithmetic right-shift this " + bits + "-bit pattern.", [
+          prompt = rowPrompt(tf("prompts.shifts.arithmeticRightTitle", { bits: bits }, "Arithmetic right-shift this {bits}-bit pattern."), [
             bitsText(raw, bits) + " >> " + amount
-          ], "Enter result bits" + (askCarry ? " and carry-out bit." : "."));
+          ], askCarry ? t("prompts.shifts.resultBitsCarryNote", "Enter result bits and carry-out bit.") : t("prompts.shifts.resultBitsNote", "Enter result bits."));
         }
         if (askCarry) {
           return q("shifts", level, prompt, {
             kind: "carryBits",
             bits: formatBits(result, bits),
             carry: carry
-          }, "The shifted result is " + bitsText(result, bits) + "; carry-out is the last bit shifted out, " + carry + ".");
+          }, tf("prompts.shifts.carryExplanation", {
+            bitText: bitsText(result, bits),
+            carry: carry
+          }, "The shifted result is {bitText}; carry-out is the last bit shifted out, {carry}."));
         }
         return q("shifts", level, prompt, {
           kind: "binary",
           bits: formatBits(result, bits)
-        }, "The shifted " + bits + "-bit result is " + bitsText(result, bits) + ".");
+        }, tf("prompts.shifts.resultExplanation", {
+          bits: bits,
+          bitText: bitsText(result, bits)
+        }, "The shifted {bits}-bit result is {bitText}."));
       }
 
       function genRotates(level, localRng) {
@@ -1011,19 +1036,19 @@
         var prompt;
         if (variant === "left") {
           result = normalized === 0 ? raw : ((raw << BigInt(normalized)) | (raw >> BigInt(bits - normalized))) & mask(bits);
-          prompt = rowPrompt("Rotate this " + bits + "-bit pattern left.", [
+          prompt = rowPrompt(tf("prompts.rotates.leftTitle", { bits: bits }, "Rotate this {bits}-bit pattern left."), [
             bitsText(raw, bits) + " rol " + amount
-          ], "Enter result bits.");
+          ], t("prompts.rotates.resultBitsNote", "Enter result bits."));
         } else {
           result = normalized === 0 ? raw : ((raw >> BigInt(normalized)) | (raw << BigInt(bits - normalized))) & mask(bits);
-          prompt = rowPrompt("Rotate this " + bits + "-bit pattern right.", [
+          prompt = rowPrompt(tf("prompts.rotates.rightTitle", { bits: bits }, "Rotate this {bits}-bit pattern right."), [
             bitsText(raw, bits) + " ror " + amount
-          ], "Enter result bits.");
+          ], t("prompts.rotates.resultBitsNote", "Enter result bits."));
         }
         return q("rotates", level, prompt, {
           kind: "binary",
           bits: formatBits(result, bits)
-        }, "Rotation wraps shifted-out bits around; result " + bitsText(result, bits) + ".");
+        }, tf("prompts.rotates.explanation", { bitText: bitsText(result, bits) }, "Rotation wraps shifted-out bits around; result {bitText}."));
       }
 
       function genEndian(level, localRng) {
@@ -1042,24 +1067,24 @@
         var memory = order === "little" ? bytes.slice().reverse() : bytes.slice();
         var hardBits = level >= 4 && localRng.chance(0.45);
         if (hardBits) {
-          return q("endian", level, rowPrompt("Write the " + order + "-endian memory byte bits.", [
+          return q("endian", level, rowPrompt(tf("prompts.endian.byteBitsTitle", { order: order }, "Write the {order}-endian memory byte bits."), [
             hexDisplay(raw, bits)
-          ], "Enter 8-bit groups in memory order."), {
+          ], t("prompts.endian.byteBitsNote", "Enter 8-bit groups in memory order.")), {
             kind: "binaryBytes",
             groups: byteBits(memory)
-          }, order + "-endian memory bytes are " + memory.join(" ") + ".");
+          }, tf("prompts.endian.explanation", { order: order, bytes: memory.join(" ") }, "{order}-endian memory bytes are {bytes}."));
         }
-        return q("endian", level, rowPrompt("Write the " + order + "-endian memory bytes.", [
+        return q("endian", level, rowPrompt(tf("prompts.endian.bytesTitle", { order: order }, "Write the {order}-endian memory bytes."), [
           hexDisplay(raw, bits)
-        ], "Enter hex bytes in memory order."), {
+        ], t("prompts.endian.bytesNote", "Enter hex bytes in memory order.")), {
           kind: "bytes",
           bytes: memory
-        }, order + "-endian memory bytes are " + memory.join(" ") + ".");
+        }, tf("prompts.endian.explanation", { order: order, bytes: memory.join(" ") }, "{order}-endian memory bytes are {bytes}."));
       }
 
       function genMasks(level, localRng) {
         var bits = bitsForLevel(level, localRng);
-        var bitNote = "Bit 0 is rightmost.";
+        var bitNote = t("prompts.masks.bitNote", "Bit 0 is rightmost.");
         var maxPosition = bits - 1;
         var maskVariants = ["single", "range", "set", "clear", "toggle", "test"];
         if (level >= 3 && bits <= 16) maskVariants.push("list");
@@ -1068,110 +1093,115 @@
         var value = localRng.bigint(bits);
         if (variant === "single") {
           var single = 1n << BigInt(pos);
-          return q("masks", level, rowPrompt("Create a " + bits + "-bit mask with one bit set.", [
-            "bit " + pos
-          ], bitNote + " Enter hex."), {
+          return q("masks", level, rowPrompt(tf("prompts.masks.singleTitle", { bits: bits }, "Create a {bits}-bit mask with one bit set."), [
+            tf("prompts.masks.bitRow", { pos: pos }, "bit {pos}")
+          ], bitNote + " " + t("prompts.masks.enterHex", "Enter hex.")), {
             kind: "hex",
             hex: formatHex(single, bits)
-          }, "Bit " + pos + " is mask " + hexDisplay(single, bits) + ".");
+          }, tf("prompts.masks.singleExplanation", { pos: pos, hex: hexDisplay(single, bits) }, "Bit {pos} is mask {hex}."));
         }
         if (variant === "range") {
           var lo = localRng.int(0, Math.max(0, maxPosition - 1));
           var hi = localRng.int(lo, Math.min(maxPosition, lo + Math.max(1, Math.floor(bits / 4))));
           var rangeMask = ((1n << BigInt(hi - lo + 1)) - 1n) << BigInt(lo);
-          return q("masks", level, rowPrompt("Create a " + bits + "-bit mask with this bit range set.", [
-            "bits " + lo + " through " + hi
-          ], bitNote + " Enter hex."), {
+          return q("masks", level, rowPrompt(tf("prompts.masks.rangeTitle", { bits: bits }, "Create a {bits}-bit mask with this bit range set."), [
+            tf("prompts.masks.rangeRow", { lo: lo, hi: hi }, "bits {lo} through {hi}")
+          ], bitNote + " " + t("prompts.masks.enterHex", "Enter hex.")), {
             kind: "hex",
             hex: formatHex(rangeMask, bits)
-          }, "The range mask is " + hexDisplay(rangeMask, bits) + ".");
+          }, tf("prompts.masks.rangeExplanation", { hex: hexDisplay(rangeMask, bits) }, "The range mask is {hex}."));
         }
         if (variant === "set") {
           var setResult = value | (1n << BigInt(pos));
-          return q("masks", level, rowPrompt("Set one bit in these " + bits + "-bit flags.", [
+          return q("masks", level, rowPrompt(tf("prompts.masks.setTitle", { bits: bits }, "Set one bit in these {bits}-bit flags."), [
             hexDisplay(value, bits),
-            "set bit " + pos
-          ], bitNote + " Enter hex result."), {
+            tf("prompts.masks.setRow", { pos: pos }, "set bit {pos}")
+          ], bitNote + " " + t("prompts.masks.enterHexResult", "Enter hex result.")), {
             kind: "hex",
             hex: formatHex(setResult, bits)
-          }, "Setting bit " + pos + " gives " + hexDisplay(setResult, bits) + ".");
+          }, tf("prompts.masks.setExplanation", { pos: pos, hex: hexDisplay(setResult, bits) }, "Setting bit {pos} gives {hex}."));
         }
         if (variant === "clear") {
           var clearResult = value & (mask(bits) ^ (1n << BigInt(pos)));
-          return q("masks", level, rowPrompt("Clear one bit in these " + bits + "-bit flags.", [
+          return q("masks", level, rowPrompt(tf("prompts.masks.clearTitle", { bits: bits }, "Clear one bit in these {bits}-bit flags."), [
             hexDisplay(value, bits),
-            "clear bit " + pos
-          ], bitNote + " Enter hex result."), {
+            tf("prompts.masks.clearRow", { pos: pos }, "clear bit {pos}")
+          ], bitNote + " " + t("prompts.masks.enterHexResult", "Enter hex result.")), {
             kind: "hex",
             hex: formatHex(clearResult, bits)
-          }, "Clearing bit " + pos + " gives " + hexDisplay(clearResult, bits) + ".");
+          }, tf("prompts.masks.clearExplanation", { pos: pos, hex: hexDisplay(clearResult, bits) }, "Clearing bit {pos} gives {hex}."));
         }
         if (variant === "toggle") {
           var toggleResult = value ^ (1n << BigInt(pos));
-          return q("masks", level, rowPrompt("Toggle one bit in these " + bits + "-bit flags.", [
+          return q("masks", level, rowPrompt(tf("prompts.masks.toggleTitle", { bits: bits }, "Toggle one bit in these {bits}-bit flags."), [
             hexDisplay(value, bits),
-            "toggle bit " + pos
-          ], bitNote + " Enter hex result."), {
+            tf("prompts.masks.toggleRow", { pos: pos }, "toggle bit {pos}")
+          ], bitNote + " " + t("prompts.masks.enterHexResult", "Enter hex result.")), {
             kind: "hex",
             hex: formatHex(toggleResult, bits)
-          }, "Toggling bit " + pos + " gives " + hexDisplay(toggleResult, bits) + ".");
+          }, tf("prompts.masks.toggleExplanation", { pos: pos, hex: hexDisplay(toggleResult, bits) }, "Toggling bit {pos} gives {hex}."));
         }
         if (variant === "test") {
           var isSet = (value & (1n << BigInt(pos))) !== 0n;
-          return q("masks", level, rowPrompt("Test whether this bit is set.", [
-            bits + "-bit flags " + hexDisplay(value, bits),
-            "bit " + pos
-          ], bitNote + " Enter 1 or 0."), {
+          return q("masks", level, rowPrompt(t("prompts.masks.testTitle", "Test whether this bit is set."), [
+            tf("prompts.masks.flagsRow", { bits: bits, hex: hexDisplay(value, bits) }, "{bits}-bit flags {hex}"),
+            tf("prompts.masks.bitRow", { pos: pos }, "bit {pos}")
+          ], bitNote + " " + t("prompts.masks.enterOneOrZero", "Enter 1 or 0.")), {
             kind: "choice",
             accept: isSet ? ["1", "set", "yes", "true"] : ["0", "clear", "no", "false"],
             display: isSet ? "1" : "0"
-          }, "Bit " + pos + " is " + (isSet ? "set" : "clear") + ".");
+          }, tf("prompts.masks.testExplanation", {
+            pos: pos,
+            state: isSet ? t("prompts.masks.stateSet", "set") : t("prompts.masks.stateClear", "clear")
+          }, "Bit {pos} is {state}."));
         }
         var positions = [];
         for (var i = 0; i < bits; i += 1) {
           if ((value & (1n << BigInt(i))) !== 0n) positions.push(i);
         }
-        return q("masks", level, rowPrompt("List the set bit positions in these " + bits + "-bit flags.", [
+        return q("masks", level, rowPrompt(tf("prompts.masks.listTitle", { bits: bits }, "List the set bit positions in these {bits}-bit flags."), [
           hexDisplay(value, bits)
-        ], bitNote + " Enter positions."), {
+        ], bitNote + " " + t("prompts.masks.enterPositions", "Enter positions.")), {
           kind: "list",
           values: positions
-        }, "Set bit positions are " + (positions.length ? positions.join(", ") : "none") + ".");
+        }, tf("prompts.masks.listExplanation", {
+          positions: positions.length ? positions.join(", ") : t("prompts.masks.none", "none")
+        }, "Set bit positions are {positions}."));
       }
 
       function genRanges(level, localRng) {
         var bits = bitsForLevel(level, localRng);
         var variant = localRng.choice(["signedMin", "signedMax", "unsignedMin", "unsignedMax"]);
         if (variant === "signedMin") {
-          return q("ranges", level, rowPrompt("Give the signed minimum for this width.", [
-            bits + "-bit"
-          ], "Enter decimal."), {
+          return q("ranges", level, rowPrompt(t("prompts.ranges.signedMinTitle", "Give the signed minimum for this width."), [
+            tf("prompts.ranges.bitWidth", { bits: bits }, "{bits}-bit")
+          ], t("prompts.ranges.enterDecimal", "Enter decimal.")), {
             kind: "decimal",
             value: signedMin(bits)
-          }, "Signed minimum is -2^" + (bits - 1) + " = " + signedMin(bits) + ".");
+          }, tf("prompts.ranges.signedMinExplanation", { power: bits - 1, value: signedMin(bits) }, "Signed minimum is -2^{power} = {value}."));
         }
         if (variant === "signedMax") {
-          return q("ranges", level, rowPrompt("Give the signed maximum for this width.", [
-            bits + "-bit"
-          ], "Enter decimal."), {
+          return q("ranges", level, rowPrompt(t("prompts.ranges.signedMaxTitle", "Give the signed maximum for this width."), [
+            tf("prompts.ranges.bitWidth", { bits: bits }, "{bits}-bit")
+          ], t("prompts.ranges.enterDecimal", "Enter decimal.")), {
             kind: "decimal",
             value: signedMax(bits)
-          }, "Signed maximum is 2^" + (bits - 1) + " - 1 = " + signedMax(bits) + ".");
+          }, tf("prompts.ranges.signedMaxExplanation", { power: bits - 1, value: signedMax(bits) }, "Signed maximum is 2^{power} - 1 = {value}."));
         }
         if (variant === "unsignedMin") {
-          return q("ranges", level, rowPrompt("Give the unsigned minimum for this width.", [
-            bits + "-bit"
-          ], "Enter decimal."), {
+          return q("ranges", level, rowPrompt(t("prompts.ranges.unsignedMinTitle", "Give the unsigned minimum for this width."), [
+            tf("prompts.ranges.bitWidth", { bits: bits }, "{bits}-bit")
+          ], t("prompts.ranges.enterDecimal", "Enter decimal.")), {
             kind: "decimal",
             value: 0n
-          }, "Unsigned minimum is 0.");
+          }, t("prompts.ranges.unsignedMinExplanation", "Unsigned minimum is 0."));
         }
-        return q("ranges", level, rowPrompt("Give the unsigned maximum for this width.", [
-          bits + "-bit"
-        ], "Enter decimal."), {
+        return q("ranges", level, rowPrompt(t("prompts.ranges.unsignedMaxTitle", "Give the unsigned maximum for this width."), [
+          tf("prompts.ranges.bitWidth", { bits: bits }, "{bits}-bit")
+        ], t("prompts.ranges.enterDecimal", "Enter decimal.")), {
           kind: "decimal",
           value: unsignedMax(bits)
-        }, "Unsigned maximum is 2^" + bits + " - 1 = " + unsignedMax(bits) + ".");
+        }, tf("prompts.ranges.unsignedMaxExplanation", { bits: bits, value: unsignedMax(bits) }, "Unsigned maximum is 2^{bits} - 1 = {value}."));
       }
 
       function genExtension(level, localRng) {
@@ -1192,30 +1222,30 @@
         if (variant === "truncate") {
           var wide = localRng.bigint(destBits);
           var truncated = toUnsigned(wide, srcBits);
-          return q("extension", level, rowPrompt("Truncate this pattern to " + srcBits + " bits.", [
-            destBits + "-bit " + bitsText(wide, destBits)
-          ], "Enter the low " + srcBits + " bits."), {
+          return q("extension", level, rowPrompt(tf("prompts.extension.truncateTitle", { srcBits: srcBits }, "Truncate this pattern to {srcBits} bits."), [
+            tf("prompts.extension.truncateRow", { destBits: destBits, bitText: bitsText(wide, destBits) }, "{destBits}-bit {bitText}")
+          ], tf("prompts.extension.truncateNote", { srcBits: srcBits }, "Enter the low {srcBits} bits.")), {
             kind: "binary",
             bits: formatBits(truncated, srcBits)
-          }, "Keeping the low " + srcBits + " bits gives " + bitsText(truncated, srcBits) + ".");
+          }, tf("prompts.extension.truncateExplanation", { srcBits: srcBits, bitText: bitsText(truncated, srcBits) }, "Keeping the low {srcBits} bits gives {bitText}."));
         }
         if (variant === "sign") {
           var signed = toSigned(raw, srcBits);
           var signExtended = toUnsigned(signed, destBits);
-          return q("extension", level, rowPrompt("Sign-extend this pattern to " + destBits + " bits.", [
-            srcBits + "-bit " + bitsText(raw, srcBits)
-          ], "Enter the " + destBits + "-bit result."), {
+          return q("extension", level, rowPrompt(tf("prompts.extension.signExtendTitle", { destBits: destBits }, "Sign-extend this pattern to {destBits} bits."), [
+            tf("prompts.extension.sourceRow", { srcBits: srcBits, bitText: bitsText(raw, srcBits) }, "{srcBits}-bit {bitText}")
+          ], tf("prompts.extension.destNote", { destBits: destBits }, "Enter the {destBits}-bit result.")), {
             kind: "binary",
             bits: formatBits(signExtended, destBits)
-          }, "Sign extension preserves value " + signed + ": " + bitsText(signExtended, destBits) + ".");
+          }, tf("prompts.extension.signExtendExplanation", { signed: signed, bitText: bitsText(signExtended, destBits) }, "Sign extension preserves value {signed}: {bitText}."));
         }
         var zeroExtended = toUnsigned(raw, destBits);
-        return q("extension", level, rowPrompt("Zero-extend this pattern to " + destBits + " bits.", [
-          srcBits + "-bit " + bitsText(raw, srcBits)
-        ], "Enter the " + destBits + "-bit result."), {
+        return q("extension", level, rowPrompt(tf("prompts.extension.zeroExtendTitle", { destBits: destBits }, "Zero-extend this pattern to {destBits} bits."), [
+          tf("prompts.extension.sourceRow", { srcBits: srcBits, bitText: bitsText(raw, srcBits) }, "{srcBits}-bit {bitText}")
+        ], tf("prompts.extension.destNote", { destBits: destBits }, "Enter the {destBits}-bit result.")), {
           kind: "binary",
           bits: formatBits(zeroExtended, destBits)
-        }, "Zero extension fills high bits with zero: " + bitsText(zeroExtended, destBits) + ".");
+        }, tf("prompts.extension.zeroExtendExplanation", { bitText: bitsText(zeroExtended, destBits) }, "Zero extension fills high bits with zero: {bitText}."));
       }
 
       function createDefaultProgress() {
