@@ -112,6 +112,38 @@
                 <div class="metric"><strong id="metricAvgTime">0s</strong><span>{{practice.avgTime}}</span></div>
               </div>
             </div>
+
+            <div class="panel side-panel calculator-panel">
+              <div class="calculator-head">
+                <label for="calculatorInput">{{calculator.title}}</label>
+                <button id="calculatorUseBtn" type="button">{{calculator.use}}</button>
+              </div>
+              <input id="calculatorInput" type="text" autocomplete="off" spellcheck="false" inputmode="decimal" aria-label="{{calculator.title}}">
+              <div id="calculatorOutput" class="calculator-output" aria-live="polite">{{calculator.ready}}</div>
+              <div id="calculatorKeys" class="calculator-keys" aria-label="{{calculator.keypadAria}}">
+                <button type="button" data-calc-insert="7">7</button>
+                <button type="button" data-calc-insert="8">8</button>
+                <button type="button" data-calc-insert="9">9</button>
+                <button type="button" data-calc-insert="/" class="function">/</button>
+                <button type="button" data-calc-insert="(" class="function">(</button>
+                <button type="button" data-calc-insert="4">4</button>
+                <button type="button" data-calc-insert="5">5</button>
+                <button type="button" data-calc-insert="6">6</button>
+                <button type="button" data-calc-insert="*" class="function">*</button>
+                <button type="button" data-calc-insert=")" class="function">)</button>
+                <button type="button" data-calc-insert="1">1</button>
+                <button type="button" data-calc-insert="2">2</button>
+                <button type="button" data-calc-insert="3">3</button>
+                <button type="button" data-calc-insert="-" class="function">-</button>
+                <button type="button" data-calc-insert="%" class="function">%</button>
+                <button type="button" data-calc-insert="0">0</button>
+                <button type="button" data-calc-insert=".">.</button>
+                <button type="button" data-calc-action="backspace" class="function">{{calculator.delete}}</button>
+                <button type="button" data-calc-insert="+" class="function">+</button>
+                <button type="button" data-calc-action="evaluate" class="primary function">=</button>
+                <button type="button" data-calc-action="clear" class="function wide">{{calculator.clear}}</button>
+              </div>
+            </div>
           </aside>
         </div>
       </section>

@@ -8,8 +8,20 @@
   var questionStartedAt = 0;
   var pauseStartedAt = 0;
   var answered = false;
+  var lastCalculatorValue = null;
   var progress = null;
   var elements = {};
+
+  function detectLocale() {
+    if (typeof navigator !== "undefined") {
+      if (navigator.languages && navigator.languages.length) return navigator.languages[0];
+      if (navigator.language) return navigator.language;
+    }
+    return TEXT.lang || "en-US";
+  }
+
+  var USER_LOCALE = detectLocale();
+  var DECIMAL_SEPARATOR = getDecimalSeparator(USER_LOCALE);
 
   function t(path, fallback) {
     var value = path.split(".").reduce(function (current, part) {
@@ -41,13 +53,33 @@
     return Math.round((value + Number.EPSILON) * factor) / factor;
   }
 
+  function getDecimalSeparator(locale) {
+    if (typeof Intl === "undefined" || !Intl.NumberFormat) return ".";
+    var parts = new Intl.NumberFormat(locale).formatToParts(1.1);
+    var decimal = parts.find(function (part) {
+      return part.type === "decimal";
+    });
+    return decimal ? decimal.value : ".";
+  }
+
+  function formatLocaleNumber(value, minDecimals, maxDecimals) {
+    if (typeof Intl === "undefined" || !Intl.NumberFormat) {
+      return roundTo(value, maxDecimals).toFixed(minDecimals);
+    }
+    return new Intl.NumberFormat(USER_LOCALE, {
+      minimumFractionDigits: minDecimals,
+      maximumFractionDigits: maxDecimals
+    }).format(value);
+  }
+
   function money(value) {
     var rounded = roundTo(value, 2);
-    return (rounded < 0 ? "-$" : "$") + Math.abs(rounded).toFixed(2);
+    return (rounded < 0 ? "-$" : "$") + formatLocaleNumber(Math.abs(rounded), 2, 2);
   }
 
   function percent(value) {
-    return roundTo(value, 2).toFixed(value % 1 === 0 ? 0 : 2) + "%";
+    var rounded = roundTo(value, 2);
+    return formatLocaleNumber(rounded, rounded % 1 === 0 ? 0 : 2, 2) + "%";
   }
 
   function formatPercent(value) {
@@ -64,11 +96,145 @@
     return Math.max(1, Math.round(ms / 60000)) + "m";
   }
 
+  function normalizeSingleSeparator(value, separator) {
+    var parts = value.split(separator);
+    if (parts.length === 1) return value;
+    if (parts.length > 2) {
+      var allThousands = parts[0].length >= 1 && parts[0].length <= 3 && parts.slice(1).every(function (part) {
+        return /^\d{3}$/.test(part);
+      });
+      if (allThousands) return parts.join("");
+      return parts.slice(0, -1).join("") + "." + parts[parts.length - 1];
+    }
+    var left = parts[0];
+    var right = parts[1];
+    if (separator !== DECIMAL_SEPARATOR && right.length === 3 && left.length >= 1 && left.length <= 3) {
+      return left + right;
+    }
+    return left + "." + right;
+  }
+
+  function normalizeNumericString(text) {
+    var value = String(text || "")
+      .trim()
+      .replace(/[−–—]/g, "-")
+      .replace(/[$€£¥%\s_\u00a0']/g, "");
+    if (!value) return null;
+    var sign = "";
+    if (/^[+-]/.test(value)) {
+      sign = value[0] === "-" ? "-" : "";
+      value = value.slice(1);
+    }
+    if (!/^[\d.,]+$/.test(value) || !/\d/.test(value)) return null;
+    var lastDot = value.lastIndexOf(".");
+    var lastComma = value.lastIndexOf(",");
+    if (lastDot !== -1 && lastComma !== -1) {
+      var decimal = lastDot > lastComma ? "." : ",";
+      var thousands = decimal === "." ? "," : ".";
+      value = value.replaceAll(thousands, "").replace(decimal, ".");
+    } else if (lastComma !== -1) {
+      value = normalizeSingleSeparator(value, ",");
+    } else if (lastDot !== -1) {
+      value = normalizeSingleSeparator(value, ".");
+    }
+    if (!/^(?:\d+(?:\.\d*)?|\.\d+)$/.test(value)) return null;
+    return sign + value;
+  }
+
   function normalizeNumber(text) {
-    var value = String(text || "").trim();
-    value = value.replace(/[$€£¥%\s,_]/g, "");
-    if (!/^[+-]?(?:\d+(?:\.\d*)?|\.\d+)$/.test(value)) return null;
+    var value = normalizeNumericString(text);
+    if (value === null) return null;
     return Number(value);
+  }
+
+  function formatCalculatorResult(value) {
+    var rounded = Math.abs(value) < 1e-10 ? 0 : value;
+    return formatLocaleNumber(rounded, 0, 8);
+  }
+
+  function evaluateCalculatorExpression(text) {
+    var source = String(text || "").replace(/[×]/g, "*").replace(/[÷]/g, "/");
+    var index = 0;
+
+    function skipSpace() {
+      while (index < source.length && /[\s_$€£¥]/.test(source[index])) index += 1;
+    }
+
+    function parseNumber() {
+      skipSpace();
+      var start = index;
+      while (index < source.length && /[\d.,]/.test(source[index])) index += 1;
+      if (start === index) throw new Error("number");
+      var normalized = normalizeNumericString(source.slice(start, index));
+      if (normalized === null) throw new Error("number");
+      return Number(normalized);
+    }
+
+    function parsePrimary() {
+      skipSpace();
+      if (source[index] === "(") {
+        index += 1;
+        var value = parseExpression();
+        skipSpace();
+        if (source[index] !== ")") throw new Error("parenthesis");
+        index += 1;
+        return value;
+      }
+      return parseNumber();
+    }
+
+    function parseFactor() {
+      skipSpace();
+      var sign = 1;
+      while (source[index] === "+" || source[index] === "-") {
+        if (source[index] === "-") sign *= -1;
+        index += 1;
+        skipSpace();
+      }
+      var value = sign * parsePrimary();
+      skipSpace();
+      while (source[index] === "%") {
+        value /= 100;
+        index += 1;
+        skipSpace();
+      }
+      return value;
+    }
+
+    function parseTerm() {
+      var value = parseFactor();
+      while (true) {
+        skipSpace();
+        var operator = source[index];
+        if (operator !== "*" && operator !== "/") break;
+        index += 1;
+        var right = parseFactor();
+        if (operator === "*") value *= right;
+        else {
+          if (right === 0) throw new Error("division");
+          value /= right;
+        }
+      }
+      return value;
+    }
+
+    function parseExpression() {
+      var value = parseTerm();
+      while (true) {
+        skipSpace();
+        var operator = source[index];
+        if (operator !== "+" && operator !== "-") break;
+        index += 1;
+        var right = parseTerm();
+        value = operator === "+" ? value + right : value - right;
+      }
+      return value;
+    }
+
+    var result = parseExpression();
+    skipSpace();
+    if (index !== source.length || !Number.isFinite(result)) throw new Error("expression");
+    return result;
   }
 
   function makeRng(seed) {
@@ -137,7 +303,7 @@
         var tax = level <= 2 ? 0 : rng.pick([5, 6, 8, 10, 12]);
         var afterDiscount = price * (1 - discount / 100);
         var answer = afterDiscount * (1 + tax / 100);
-        var body = "Original price: " + money(price) + "\nDiscount: " + discount + "%\nTax after discount: " + tax + "%\nWhat is the final price?";
+        var body = "Original price: " + money(price) + "\nDiscount: " + percent(discount) + "\nTax after discount: " + percent(tax) + "\nWhat is the final price?";
         return makeQuestion("discounts", level, body, answer, "discounts", {
           discount: discount,
           tax: tax,
@@ -151,7 +317,7 @@
         var oldValue = rng.int(level <= 2 ? 10 : 40, level >= 5 ? 5000 : 800);
         var changePercent = rng.pick(level <= 2 ? [10, 20, 25, 50] : [-40, -25, -20, -15, -10, 5, 10, 12, 15, 20, 25, 35, 50]);
         var newValue = roundTo(oldValue * (1 + changePercent / 100), 2);
-        var body = "Old value: " + oldValue + "\nNew value: " + newValue + "\nWhat is the percent change?";
+        var body = "Old value: " + formatLocaleNumber(oldValue, 0, 2) + "\nNew value: " + formatLocaleNumber(newValue, 0, 2) + "\nWhat is the percent change?";
         return makeQuestion("percentChange", level, body, changePercent, "percentChange", {
           old: oldValue,
           change: roundTo(newValue - oldValue, 2),
@@ -167,7 +333,7 @@
         var years = rng.int(1, level <= 2 ? 3 : level + 2);
         var compound = level >= 3 && rng.next() < 0.7;
         var answer = compound ? principal * Math.pow(1 + rate / 100, years) : principal * (1 + rate / 100 * years);
-        var body = "Starting amount: " + money(principal) + "\nRate: " + rate + "% per year\nTime: " + years + " years\nInterest type: " + (compound ? "compound yearly" : "simple") + "\nWhat is the ending balance?";
+        var body = "Starting amount: " + money(principal) + "\nRate: " + percent(rate) + " per year\nTime: " + years + " years\nInterest type: " + (compound ? "compound yearly" : "simple") + "\nWhat is the ending balance?";
         return makeQuestion("interest", level, body, answer, "interest", {
           kind: compound ? "Compound" : "Simple",
           answer: money(answer)
@@ -181,7 +347,7 @@
         var rate = rng.pick(level <= 2 ? [2, 3, 5] : [1.5, 2, 2.5, 3, 4, 5, 7]);
         var years = rng.int(1, level <= 2 ? 2 : level + 3);
         var answer = price * Math.pow(1 + rate / 100, years);
-        var body = "Today's price: " + money(price) + "\nInflation: " + rate + "% per year\nTime: " + years + " years\nWhat is the future nominal price?";
+        var body = "Today's price: " + money(price) + "\nInflation: " + percent(rate) + " per year\nTime: " + years + " years\nWhat is the future nominal price?";
         return makeQuestion("inflation", level, body, answer, "inflation", {
           rate: rate,
           years: years,
@@ -211,7 +377,7 @@
         var payoff = randomPrice(rng, level <= 2 ? 1000 : 5000, level >= 5 ? 200000 : 80000, 500) / 100;
         var cost = level <= 2 ? 0 : randomPrice(rng, 0, 3000 * level, 100) / 100;
         var answer = payoff * probability / 100 - cost;
-        var body = probability + "% chance to receive " + money(payoff) + "\nCertain cost: " + money(cost) + "\nWhat is the expected value?";
+        var body = percent(probability) + " chance to receive " + money(payoff) + "\nCertain cost: " + money(cost) + "\nWhat is the expected value?";
         return makeQuestion("expectedValue", level, body, answer, "expectedValue", {
           probability: probability,
           payoff: money(payoff),
@@ -363,6 +529,14 @@
     return candidates[0];
   }
 
+  function resetCalculator() {
+    if (!elements.calculatorInput || !elements.calculatorOutput) return;
+    elements.calculatorInput.value = "";
+    lastCalculatorValue = null;
+    elements.calculatorOutput.className = "calculator-output";
+    elements.calculatorOutput.textContent = t("calculator.ready", "Ready");
+  }
+
   function generateQuestion() {
     var categoryId = progress.manual.categoryId;
     var level = progress.manual.level;
@@ -378,6 +552,7 @@
     answered = false;
     renderAll();
     elements.answerInput.value = "";
+    resetCalculator();
     elements.answerInput.focus();
   }
 
@@ -581,13 +756,36 @@
     elements.answerInput.focus();
   }
 
-  function insertAtCursor(text) {
-    var input = elements.answerInput;
+  function insertIntoInput(input, text) {
     var start = input.selectionStart || input.value.length;
     var end = input.selectionEnd || input.value.length;
     input.value = input.value.slice(0, start) + text + input.value.slice(end);
     input.setSelectionRange(start + text.length, start + text.length);
     input.focus({ preventScroll: true });
+  }
+
+  function insertAtCursor(text) {
+    insertIntoInput(elements.answerInput, text);
+  }
+
+  function renderCalculatorResult(value) {
+    lastCalculatorValue = value;
+    elements.calculatorOutput.className = "calculator-output good";
+    elements.calculatorOutput.textContent = formatCalculatorResult(value);
+  }
+
+  function renderCalculatorError() {
+    lastCalculatorValue = null;
+    elements.calculatorOutput.className = "calculator-output bad";
+    elements.calculatorOutput.textContent = t("calculator.error", "Check expression");
+  }
+
+  function evaluateCalculator() {
+    try {
+      renderCalculatorResult(evaluateCalculatorExpression(elements.calculatorInput.value));
+    } catch (error) {
+      renderCalculatorError();
+    }
   }
 
   function bindEvents() {
@@ -679,6 +877,32 @@
         else submitAnswer();
       }
     });
+    elements.calculatorInput.addEventListener("keydown", function (event) {
+      if (event.key !== "Enter") return;
+      event.preventDefault();
+      evaluateCalculator();
+    });
+    elements.calculatorKeys.addEventListener("click", function (event) {
+      var button = event.target.closest("button");
+      if (!button) return;
+      if (button.dataset.calcInsert) insertIntoInput(elements.calculatorInput, button.dataset.calcInsert);
+      if (button.dataset.calcAction === "backspace") {
+        var value = elements.calculatorInput.value;
+        elements.calculatorInput.value = value.slice(0, -1);
+        elements.calculatorInput.focus({ preventScroll: true });
+      }
+      if (button.dataset.calcAction === "clear") {
+        resetCalculator();
+        elements.calculatorInput.focus({ preventScroll: true });
+      }
+      if (button.dataset.calcAction === "evaluate") evaluateCalculator();
+    });
+    elements.calculatorUseBtn.addEventListener("click", function () {
+      if (lastCalculatorValue === null) evaluateCalculator();
+      if (lastCalculatorValue === null) return;
+      elements.answerInput.value = formatCalculatorResult(lastCalculatorValue);
+      elements.answerInput.focus();
+    });
   }
 
   function collectElements() {
@@ -688,15 +912,25 @@
       "skipBtn", "answerKeypad", "feedback", "pauseOverlay", "resumeBtn", "categorySelect", "levelSelect", "metricMastery",
       "metricAccuracy", "metricStreak", "metricAvgTime", "matrix", "statTotalAttempts", "statTotalCorrect", "statTotalTime",
       "statActiveCells", "weakList", "strongList", "enabledCategories", "dataBox", "exportBtn", "copyBtn", "importBtn", "resetBtn",
-      "learnGrid"
+      "learnGrid", "calculatorInput", "calculatorOutput", "calculatorKeys", "calculatorUseBtn"
     ].forEach(function (id) {
       elements[id] = document.getElementById(id);
     });
     elements.practiceMain = document.querySelector(".practice-main");
   }
 
+  function localizeDecimalButtons() {
+    if (DECIMAL_SEPARATOR === ".") return;
+    document.querySelectorAll('[data-keypad-insert="."], [data-calc-insert="."]').forEach(function (button) {
+      button.textContent = DECIMAL_SEPARATOR;
+      if (button.dataset.keypadInsert) button.dataset.keypadInsert = DECIMAL_SEPARATOR;
+      if (button.dataset.calcInsert) button.dataset.calcInsert = DECIMAL_SEPARATOR;
+    });
+  }
+
   function init() {
     collectElements();
+    localizeDecimalButtons();
     progress = loadProgress();
     bindEvents();
     generateQuestion();
@@ -709,8 +943,14 @@
       if (!condition) failures.push(name);
     }
     assert("normalize money", normalizeNumber("$1,234.50") === 1234.5);
+    assert("normalize european money", normalizeNumber("1.234,50") === 1234.5);
+    assert("normalize decimal comma", normalizeNumber("12,5%") === 12.5);
     assert("normalize percent", normalizeNumber("12.5%") === 12.5);
     assert("normalize invalid", normalizeNumber("12x") === null);
+    assert("calculator precedence", evaluateCalculatorExpression("2+3*4") === 14);
+    assert("calculator parentheses", evaluateCalculatorExpression("2*(3+4)") === 14);
+    assert("calculator decimal comma", evaluateCalculatorExpression("1,5+2") === 3.5);
+    assert("calculator percent", evaluateCalculatorExpression("25%*120") === 30);
     var rng = makeRng(321);
     CATEGORIES.forEach(function (category) {
       LEVELS.forEach(function (level) {

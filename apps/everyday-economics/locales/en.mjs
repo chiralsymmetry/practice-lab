@@ -128,6 +128,15 @@ export default {
       import: "Import",
       reset: "Reset"
     },
+    calculator: {
+      title: "Calculator",
+      keypadAria: "Calculator keypad",
+      ready: "Ready",
+      use: "Use",
+      delete: "Del",
+      clear: "Clear",
+      error: "Check expression"
+    },
     learn: {
       title: "Learn",
       intro: "Compact reminders for the applied math behind each drill. These are arithmetic exercises, not financial advice.",
