@@ -756,7 +756,11 @@
     answered = false;
     renderAll();
     elements.answerInput.value = "";
-    elements.answerInput.focus();
+    if (shouldAutoFocusAnswer()) elements.answerInput.focus();
+  }
+
+  function shouldAutoFocusAnswer() {
+    return !(window.matchMedia && window.matchMedia("(pointer: coarse)").matches);
   }
 
   function renderQuestion() {
@@ -1013,16 +1017,16 @@
     questionStartedAt += Date.now() - pauseStartedAt;
     pauseStartedAt = 0;
     elements.practiceMain.classList.remove("paused");
-    elements.answerInput.focus();
+    if (shouldAutoFocusAnswer()) elements.answerInput.focus();
   }
 
   function insertAtCursor(text) {
     var input = elements.answerInput;
-    var start = input.selectionStart || input.value.length;
-    var end = input.selectionEnd || input.value.length;
+    var focused = document.activeElement === input && typeof input.selectionStart === "number";
+    var start = focused ? input.selectionStart : input.value.length;
+    var end = focused ? input.selectionEnd : input.value.length;
     input.value = input.value.slice(0, start) + text + input.value.slice(end);
-    input.setSelectionRange(start + text.length, start + text.length);
-    input.focus({ preventScroll: true });
+    if (focused) input.setSelectionRange(start + text.length, start + text.length);
   }
 
   function bindEvents() {
@@ -1104,7 +1108,6 @@
       if (!button) return;
       if (button.dataset.keypadSet) {
         elements.answerInput.value = button.dataset.keypadSet;
-        elements.answerInput.focus({ preventScroll: true });
       }
       if (button.dataset.keypadInsert) insertAtCursor(button.dataset.keypadInsert);
       if (button.dataset.keypadAction === "backspace") {

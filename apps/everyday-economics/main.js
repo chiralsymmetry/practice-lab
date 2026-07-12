@@ -622,7 +622,11 @@
     renderAll();
     elements.answerInput.value = "";
     resetCalculator();
-    elements.answerInput.focus();
+    if (shouldAutoFocusAnswer()) elements.answerInput.focus();
+  }
+
+  function shouldAutoFocusAnswer() {
+    return !(window.matchMedia && window.matchMedia("(pointer: coarse)").matches);
   }
 
   function renderQuestion() {
@@ -832,15 +836,15 @@
     questionStartedAt += Date.now() - pauseStartedAt;
     pauseStartedAt = 0;
     elements.practiceMain.classList.remove("paused");
-    elements.answerInput.focus();
+    if (shouldAutoFocusAnswer()) elements.answerInput.focus();
   }
 
   function insertIntoInput(input, text) {
-    var start = input.selectionStart || input.value.length;
-    var end = input.selectionEnd || input.value.length;
+    var focused = document.activeElement === input && typeof input.selectionStart === "number";
+    var start = focused ? input.selectionStart : input.value.length;
+    var end = focused ? input.selectionEnd : input.value.length;
     input.value = input.value.slice(0, start) + text + input.value.slice(end);
-    input.setSelectionRange(start + text.length, start + text.length);
-    input.focus({ preventScroll: true });
+    if (focused) input.setSelectionRange(start + text.length, start + text.length);
   }
 
   function insertAtCursor(text) {
@@ -978,11 +982,9 @@
       if (button.dataset.calcAction === "backspace") {
         var value = elements.calculatorInput.value;
         elements.calculatorInput.value = value.slice(0, -1);
-        elements.calculatorInput.focus({ preventScroll: true });
       }
       if (button.dataset.calcAction === "clear") {
         resetCalculator();
-        elements.calculatorInput.focus({ preventScroll: true });
       }
       if (button.dataset.calcAction === "evaluate") evaluateCalculator();
     });
@@ -990,7 +992,7 @@
       if (lastCalculatorValue === null) evaluateCalculator();
       if (lastCalculatorValue === null) return;
       elements.answerInput.value = formatCalculatorResult(lastCalculatorValue);
-      elements.answerInput.focus();
+      if (shouldAutoFocusAnswer()) elements.answerInput.focus();
     });
   }
 

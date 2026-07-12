@@ -1494,7 +1494,9 @@
       function updateKeypadHints() {
         var useful = new Set(usefulKeypadInserts(currentQuestion && currentQuestion.expected));
         document.querySelectorAll("#answerKeypad [data-keypad-insert]").forEach(function (button) {
-          button.classList.toggle("muted-key", !useful.has(button.dataset.keypadInsert));
+          var disabled = !useful.has(button.dataset.keypadInsert);
+          button.classList.toggle("muted-key", disabled);
+          button.disabled = disabled;
         });
       }
 
@@ -1878,6 +1880,7 @@
         var button = event.target.closest("button");
         if (!button) return;
         event.preventDefault();
+        if (button.disabled) return;
         var insert = button.dataset.keypadInsert;
         var action = button.dataset.keypadAction;
         if (insert !== undefined) {
