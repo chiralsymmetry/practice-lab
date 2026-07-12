@@ -148,7 +148,7 @@ export default {
         value: "Värde: {value}",
         exponentField: "Exponentfält: {exponent}",
         nearPower: "Nära 2^{power}",
-        addition: "{x} + {y}"
+        addition: "Uttryck: {x} + {y}"
       },
       classify: {
         title: "Klassificera detta flyttalsmönster.",

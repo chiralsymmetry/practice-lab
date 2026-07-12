@@ -148,7 +148,7 @@ export default {
         value: "Value: {value}",
         exponentField: "Exponent field: {exponent}",
         nearPower: "Near 2^{power}",
-        addition: "{x} + {y}"
+        addition: "Expression: {x} + {y}"
       },
       classify: {
         title: "Classify this floating-point pattern.",
