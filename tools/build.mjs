@@ -17,6 +17,12 @@ const apps = [
     outputBase: "everyday-economics",
     locales: ["en", "sv"],
   },
+  {
+    id: "floating-point-practice",
+    sourceDir: "apps/floating-point-practice",
+    outputBase: "floating-point-practice",
+    locales: ["en", "sv"],
+  },
 ];
 
 async function readText(path) {

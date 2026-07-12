@@ -7,6 +7,8 @@ const outputs = [
   "dist/mental-arithmetic.sv.html",
   "dist/everyday-economics.html",
   "dist/everyday-economics.sv.html",
+  "dist/floating-point-practice.html",
+  "dist/floating-point-practice.sv.html",
 ];
 
 for (const output of outputs) {
