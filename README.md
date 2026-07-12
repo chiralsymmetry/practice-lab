@@ -54,6 +54,26 @@ tools/test.sh
 
 This rebuilds the app, checks that the inline script parses, and runs the app's browser-console self-tests through Bun.
 
+## GitHub Pages and Releases
+
+The workflow in `.github/workflows/pages.yml` builds and tests the apps with Bun, uploads `dist/` as the GitHub Pages artifact, deploys it, and creates a GitHub Release.
+
+Repository setup:
+
+- In GitHub, go to **Settings -> Pages**.
+- Set **Build and deployment -> Source** to **GitHub Actions**.
+- Make sure GitHub Actions are enabled for the repository.
+- Push to `main`, or run **Build and Deploy Pages** manually from the Actions tab.
+
+The published site root uses the generated `dist/index.html` landing page, with links to each standalone app and locale. The generated files still stay out of git.
+
+Release notes:
+
+- Each successful workflow run creates a sequential release tag such as `r0001`, `r0002`, and so on.
+- The release contains `practice-lab-dist.zip`, which is the generated standalone HTML site.
+- The next release number is computed from existing `rXXXX` tags. Do not delete or rename those tags unless you intentionally want to affect the sequence.
+- The workflow needs `contents: write`, `pages: write`, and `id-token: write` permissions through the repository's normal `GITHUB_TOKEN`.
+
 ## Notes
 
 - Keep generated HTML files out of git. Build them into `dist/` for local use or release packaging.
