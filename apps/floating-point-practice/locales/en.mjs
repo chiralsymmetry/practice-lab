@@ -159,7 +159,7 @@ export default {
       },
       decode: {
         title: "Decode this floating-point value.",
-        note: "Enter the exact value as an integer or fraction.",
+        note: "Enter the exact value as an integer, fraction, decimal, or mixed number.",
         explanation: "This pattern is a {kind} value equal to {value}."
       },
       encode: {

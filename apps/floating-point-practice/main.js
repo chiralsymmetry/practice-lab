@@ -98,6 +98,7 @@
       expected: expected.display,
       accepted: accepted.map(normalizeAnswer),
       explanation: tf("prompts." + promptKey + ".explanation", values, expected.display),
+      keypad: expected.keypad || null,
       quickInput: expected.quickInput || null
     };
   }
@@ -361,7 +362,9 @@
       return level >= 2 || item.decoded.kind === "normal";
     });
     var picked = rng.pick(values);
-    return makeQuestion("decode", level, patternExpression(format, picked.raw), valueAnswer(picked.decoded), "decode", {
+    var answer = valueAnswer(picked.decoded);
+    answer.keypad = "decimal";
+    return makeQuestion("decode", level, patternExpression(format, picked.raw), answer, "decode", {
       format: format.label,
       value: picked.decoded.display,
       kind: picked.decoded.kind
@@ -385,7 +388,8 @@
     var answer = bits(picked.raw, format.bits);
     return makeQuestion("encode", level, formatSpec(format) + "\n" + tf("prompts.common.value", { value: picked.decoded.display }, "Value: " + picked.decoded.display), {
       display: patternFor(format, picked.raw),
-      accepted: [answer, spacedBits(picked.raw, format.bits), "0b" + answer, hexBits(picked.raw, format.bits), "0x" + hexBits(picked.raw, format.bits)]
+      accepted: [answer, spacedBits(picked.raw, format.bits), "0b" + answer, hexBits(picked.raw, format.bits), "0x" + hexBits(picked.raw, format.bits)],
+      keypad: "binary"
     }, "encode", {
       bits: patternFor(format, picked.raw),
       value: picked.decoded.display
@@ -408,7 +412,8 @@
       var unbiased = exp - format.bias;
       return makeQuestion("spacing", level, formatSpec(format) + "\n" + tf("prompts.common.exponentField", { exponent: bits(exp, format.expBits) }, "Exponent field: " + bits(exp, format.expBits)), {
         display: String(unbiased),
-        accepted: [String(unbiased)]
+        accepted: [String(unbiased)],
+        keypad: "decimal"
       }, "bias", {
         exponent: bits(exp, format.expBits),
         bias: format.bias,
@@ -420,7 +425,8 @@
     var answer = spacingDisplay(format, e);
     return makeQuestion("spacing", level, formatSpec(format) + "\n" + tf("prompts.common.nearPower", { power: e }, "Near 2^" + e), {
       display: answer,
-      accepted: [answer, decimalDisplay(spacingFraction(format, e))]
+      accepted: [answer, decimalDisplay(spacingFraction(format, e))],
+      keypad: "decimal"
     }, "spacing", {
       format: format.label,
       power: e,
@@ -484,8 +490,8 @@
 
   function yesNoAnswer(value) {
     return value
-      ? { display: t("answers.yes", "yes"), accepted: ["yes", "y", "true", "1", "ja", "j"] }
-      : { display: t("answers.no", "no"), accepted: ["no", "n", "false", "0", "nej"] };
+      ? { display: t("answers.yes", "yes"), accepted: ["yes", "y", "true", "1", "ja", "j"], quickInput: [t("answers.yes", "yes"), t("answers.no", "no")] }
+      : { display: t("answers.no", "no"), accepted: ["no", "n", "false", "0", "nej"], quickInput: [t("answers.yes", "yes"), t("answers.no", "no")] };
   }
 
   function genExactness(level, rng) {
@@ -812,6 +818,43 @@
     ].join("");
   }
 
+  function renderDecimalKeypad() {
+    elements.answerKeypad.className = "keypad";
+    elements.answerKeypad.innerHTML = [
+      keypadButton("7", { "data-keypad-insert": "7" }),
+      keypadButton("8", { "data-keypad-insert": "8" }),
+      keypadButton("9", { "data-keypad-insert": "9" }),
+      keypadButton(t("practice.delete", "Del"), { "data-keypad-action": "backspace" }, "function"),
+      keypadButton("4", { "data-keypad-insert": "4" }),
+      keypadButton("5", { "data-keypad-insert": "5" }),
+      keypadButton("6", { "data-keypad-insert": "6" }),
+      keypadButton(t("practice.clear", "Clear"), { "data-keypad-action": "clear" }, "function"),
+      keypadButton("1", { "data-keypad-insert": "1" }),
+      keypadButton("2", { "data-keypad-insert": "2" }),
+      keypadButton("3", { "data-keypad-insert": "3" }),
+      keypadButton("-", { "data-keypad-insert": "-" }, "function"),
+      keypadButton("0", { "data-keypad-insert": "0" }),
+      keypadButton(".", { "data-keypad-insert": "." }, "function"),
+      keypadButton("/", { "data-keypad-insert": "/" }, "function"),
+      keypadButton("␣", { "data-keypad-insert": " " }, "function"),
+      keypadButton(t("practice.check", "Check"), { "data-keypad-action": "submit" }, "primary function submit"),
+      keypadButton("↵", { "data-keypad-action": "next" }, "function")
+    ].join("");
+  }
+
+  function renderBinaryKeypad() {
+    elements.answerKeypad.className = "keypad binary-keypad";
+    elements.answerKeypad.innerHTML = [
+      keypadButton("0", { "data-keypad-insert": "0" }),
+      keypadButton("1", { "data-keypad-insert": "1" }),
+      keypadButton("␣", { "data-keypad-insert": " " }, "function"),
+      keypadButton(t("practice.delete", "Del"), { "data-keypad-action": "backspace" }, "function"),
+      keypadButton(t("practice.clear", "Clear"), { "data-keypad-action": "clear" }, "function"),
+      keypadButton(t("practice.check", "Check"), { "data-keypad-action": "submit" }, "primary function submit"),
+      keypadButton("↵", { "data-keypad-action": "next" }, "function")
+    ].join("");
+  }
+
   function renderWordKeypad(words) {
     elements.answerKeypad.className = "keypad word-keypad";
     elements.answerKeypad.innerHTML = words.map(function (word) {
@@ -826,6 +869,10 @@
   function renderAnswerKeypad() {
     if (currentQuestion && currentQuestion.quickInput && currentQuestion.quickInput.length) {
       renderWordKeypad(currentQuestion.quickInput);
+    } else if (currentQuestion && currentQuestion.keypad === "decimal") {
+      renderDecimalKeypad();
+    } else if (currentQuestion && currentQuestion.keypad === "binary") {
+      renderBinaryKeypad();
     } else {
       renderDefaultKeypad();
     }
@@ -1231,6 +1278,11 @@
         assert(category.id + " L" + level + " accepted answer", q.accepted.indexOf(normalizeAnswer(q.expected)) !== -1);
       });
     });
+    assert("decode uses decimal keypad", getCategory("decode").generate(1, makeRng(10)).keypad === "decimal");
+    assert("encode uses binary keypad", getCategory("encode").generate(1, makeRng(11)).keypad === "binary");
+    assert("spacing uses decimal keypad", getCategory("spacing").generate(1, makeRng(12)).keypad === "decimal");
+    assert("exactness uses yes/no quick input", getCategory("exactness").generate(1, makeRng(13)).quickInput.length === 2);
+    assert("will-change uses yes/no quick input", getCategory("will-change").generate(1, makeRng(14)).quickInput.length === 2);
     return { ok: failures.length === 0, failures: failures };
   }
 

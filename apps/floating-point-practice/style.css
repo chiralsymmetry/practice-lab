@@ -400,6 +400,10 @@ label {
   grid-template-columns: repeat(5, minmax(0, 1fr));
 }
 
+.binary-keypad {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
 .word-keypad button.word {
   min-height: 54px;
   font-size: 1.05rem;

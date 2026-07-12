@@ -159,7 +159,7 @@ export default {
       },
       decode: {
         title: "Avkoda detta flyttalsvärde.",
-        note: "Skriv det exakta värdet som heltal eller bråk.",
+        note: "Skriv det exakta värdet som heltal, bråk, decimalform eller blandad form.",
         explanation: "Mönstret är ett {kind}-värde lika med {value}."
       },
       encode: {
