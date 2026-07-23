@@ -817,6 +817,60 @@ Recommendation:
 
 The core project focus should stay on generated practice for technical and computing fluency at first. Non-technical domains can still fit later if they benefit strongly from generation, exact checking, interaction, or simulation.
 
+### Japanese Practice
+
+Japanese is personally interesting and could be a good later app because several beginner-to-intermediate skills are dynamic, structured, and checkable without becoming a general translation engine. It would also exercise the localization and text-input parts of Practice Lab in a useful way.
+
+Possible categories:
+
+- Counting and numbers:
+  - Convert between Arabic numerals and Japanese readings.
+  - Practice large number units such as `万`, `億`, and `兆`.
+  - Choose the correct counter reading for generated quantities.
+  - Practice sound changes such as `いっぽん`, `さんぼん`, `ろっぴゃく`, and `はっせん`.
+- Dates and time:
+  - Months, days of the month, weekdays, years, and eras later.
+  - Convert generated dates to Japanese readings.
+  - Interpret Japanese date strings.
+  - Practice relative dates such as today, tomorrow, yesterday, next week, and last month.
+- Kana and readings:
+  - Hiragana/katakana recognition.
+  - Kana-to-romaji and romaji-to-kana if useful, though many apps already cover this.
+  - Small minimal-pair drills for long vowels, small `っ`, and contracted sounds.
+- Particles and sentence patterns:
+  - Fill in `は`, `が`, `を`, `に`, `で`, `へ`, `と`, `も`, and `の` in controlled sentences.
+  - Translate or construct very small template sentences.
+  - Example template: `XはYです`, where `X` is a generated noun and `Y` is a generated noun or adjective.
+- Adjectives and basic conjugation:
+  - `い`-adjective present/past/negative forms.
+  - `な`-adjective and noun sentence forms.
+  - Polite vs plain forms later.
+- Verb forms later:
+  - Dictionary, `ます`, negative, past, `て` form, potential, and volitional.
+  - Start from tightly controlled verb groups rather than open-ended translation.
+
+Good dynamic fits:
+
+- Generated number/date prompts with exact checking.
+- Generated sentence templates with controlled vocabulary and grammar.
+- Multiple-choice or button-based answers for particles and conjugation categories.
+- Mixed-direction drills: read, write, choose, and interpret.
+- Optional romaji acceptance at low levels, then kana/kanji-first answers later.
+
+Needs careful limits:
+
+- Do not attempt free-form machine translation.
+- Keep grammar prompts template-based, with generated nouns/adjectives/verbs from a known vocabulary table.
+- Be explicit about accepted writing systems for each category: romaji, kana, kanji, or mixed.
+- Japanese has many valid phrasings; open translation answers can become frustrating unless the app controls the expected form tightly.
+- Static vocabulary memorization may still be better in Anki unless the app adds generated context, conjugation, counters, or date/number mechanics.
+
+Recommendation:
+
+- Start with "Japanese Numbers & Dates" rather than a broad grammar app.
+- Add counters once basic number reading works.
+- Keep the wider grammar practice as a minor controlled-template mode until the answer checker has proven pleasant.
+
 ### Music Practice
 
 Music is a plausible later app because many skills are dynamic and visual, and several can be checked exactly. There are already many music apps, so this should not drive the shared architecture early, but it is worth keeping as a possible "same engine, different domain" experiment.
