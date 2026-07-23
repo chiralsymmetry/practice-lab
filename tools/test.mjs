@@ -11,6 +11,8 @@ const outputs = [
   "dist/floating-point-practice.sv.html",
   "dist/cpp-mental-execution.html",
   "dist/cpp-mental-execution.sv.html",
+  "dist/japanese-numbers-dates.html",
+  "dist/japanese-numbers-dates.sv.html",
 ];
 
 for (const output of outputs) {

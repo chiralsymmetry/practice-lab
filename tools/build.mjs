@@ -29,6 +29,12 @@ const apps = [
     outputBase: "cpp-mental-execution",
     locales: ["en", "sv"],
   },
+  {
+    id: "japanese-numbers-dates",
+    sourceDir: "apps/japanese-numbers-dates",
+    outputBase: "japanese-numbers-dates",
+    locales: ["en", "sv"],
+  },
 ];
 
 async function readText(path) {
