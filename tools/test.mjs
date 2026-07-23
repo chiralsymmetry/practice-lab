@@ -13,6 +13,8 @@ const outputs = [
   "dist/cpp-mental-execution.sv.html",
   "dist/japanese-numbers-dates.html",
   "dist/japanese-numbers-dates.sv.html",
+  "dist/electric-circuits-basics.html",
+  "dist/electric-circuits-basics.sv.html",
 ];
 
 for (const output of outputs) {

@@ -35,6 +35,12 @@ const apps = [
     outputBase: "japanese-numbers-dates",
     locales: ["en", "sv"],
   },
+  {
+    id: "electric-circuits-basics",
+    sourceDir: "apps/electric-circuits-basics",
+    outputBase: "electric-circuits-basics",
+    locales: ["en", "sv"],
+  },
 ];
 
 async function readText(path) {

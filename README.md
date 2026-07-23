@@ -8,6 +8,7 @@ Practice Lab is a collection of small offline practice apps for programmer-adjac
 - **Floating Point Practice**: FP4 through FP32 drills for classification, exact decoding/encoding, spacing, exactness, and small additions that disappear.
 - **C++ Code Reading**: trace runtime state, aliasing, types, overloads, lifetime, and declaration-heavy callables in small controlled snippets.
 - **Japanese Numbers & Dates**: practice Japanese readings for numbers, counters, months, dates, weekdays, and relative days.
+- **Electric Circuits Basics**: ideal DC circuit drills with generated schematics for Ohm's law, power, resistor networks, voltage dividers, and LEDs.
 
 The built apps are standalone HTML files:
 
@@ -23,6 +24,8 @@ The built apps are standalone HTML files:
 - `dist/cpp-mental-execution.{{lang}}.html`
 - `dist/japanese-numbers-dates.html`
 - `dist/japanese-numbers-dates.{{lang}}.html`
+- `dist/electric-circuits-basics.html`
+- `dist/electric-circuits-basics.{{lang}}.html`
 
 Build it, then open it directly in a browser. Progress is stored locally in the browser with `localStorage`, but can also be freely exported/imported as JSON.
 
