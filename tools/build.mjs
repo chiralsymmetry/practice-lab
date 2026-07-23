@@ -23,6 +23,12 @@ const apps = [
     outputBase: "floating-point-practice",
     locales: ["en", "sv"],
   },
+  {
+    id: "cpp-mental-execution",
+    sourceDir: "apps/cpp-mental-execution",
+    outputBase: "cpp-mental-execution",
+    locales: ["en", "sv"],
+  },
 ];
 
 async function readText(path) {

@@ -6,6 +6,7 @@ Practice Lab is a collection of small offline practice apps for programmer-adjac
 - **Mental Arithmetic**: fast integer addition, subtraction, multiplication, division, complements, and percentages.
 - **Everyday Economics**: applied math for prices, percentages, interest, inflation, subscriptions, and expected value.
 - **Floating Point Practice**: FP4 through FP32 drills for classification, exact decoding/encoding, spacing, exactness, and small additions that disappear.
+- **C++ Code Reading**: trace runtime state, aliasing, types, overloads, lifetime, and declaration-heavy callables in small controlled snippets.
 
 The built apps are standalone HTML files:
 
@@ -17,6 +18,8 @@ The built apps are standalone HTML files:
 - `dist/everyday-economics.{{lang}}.html`
 - `dist/floating-point-practice.html`
 - `dist/floating-point-practice.{{lang}}.html`
+- `dist/cpp-mental-execution.html`
+- `dist/cpp-mental-execution.{{lang}}.html`
 
 Build it, then open it directly in a browser. Progress is stored locally in the browser with `localStorage`, but can also be freely exported/imported as JSON.
 
