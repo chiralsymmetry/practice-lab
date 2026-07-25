@@ -3,8 +3,9 @@ export default {
   lang: "sv",
   suffix: ".sv",
   text: {
-    appTitle: "Grunder i elektriska kretsar",
-    brandSubtitle: "Genererade DC-övningar för Ohms lag, effekt, resistorer, spänningsdelare och LED.",
+    localeCode: "sv",
+    appTitle: "Elektriska kretsar",
+    brandSubtitle: "Genererade kretsanalysövningar från SI-enheter och DC-nät till transienter, AC, komponenter, operationsförstärkare och praktiska gränser.",
     summary: {
       aria: "Sammanfattning av framsteg",
       mastery: "Snittstyrka",
@@ -27,6 +28,7 @@ export default {
       paused: "Pausad",
       learnThis: "Lär detta",
       category: "Kategori",
+      family: "Frågefamilj",
       level: "Nivå",
       mastery: "0% styrka",
       masterySuffix: "styrka",
@@ -37,6 +39,7 @@ export default {
       keypadAria: "Svarsknappar",
       delete: "Radera",
       clear: "Rensa",
+      choose: "Välj…",
       pauseText: "Timern är stoppad för den här frågan.",
       resume: "Fortsätt",
       controlsAria: "Övningskontroller",

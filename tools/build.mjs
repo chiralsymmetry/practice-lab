@@ -36,9 +36,9 @@ const apps = [
     locales: ["en", "sv"],
   },
   {
-    id: "electric-circuits-basics",
-    sourceDir: "apps/electric-circuits-basics",
-    outputBase: "electric-circuits-basics",
+    id: "electric-circuits",
+    sourceDir: "apps/electric-circuits",
+    outputBase: "electric-circuits",
     locales: ["en", "sv"],
   },
 ];

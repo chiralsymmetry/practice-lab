@@ -3,8 +3,9 @@ export default {
   lang: "en",
   suffix: "",
   text: {
-    appTitle: "Electric Circuits Basics",
-    brandSubtitle: "Generated DC circuit drills for Ohm's law, power, resistors, dividers, and LEDs.",
+    localeCode: "en",
+    appTitle: "Electric Circuits",
+    brandSubtitle: "Generated circuit-analysis drills from SI units and DC networks through transients, AC, devices, op-amps, and practical limits.",
     summary: {
       aria: "Progress summary",
       mastery: "Avg mastery",
@@ -27,6 +28,7 @@ export default {
       paused: "Paused",
       learnThis: "Learn this",
       category: "Category",
+      family: "Question family",
       level: "Level",
       mastery: "0% mastery",
       masterySuffix: "mastery",
@@ -37,6 +39,7 @@ export default {
       keypadAria: "Answer keypad",
       delete: "Del",
       clear: "Clear",
+      choose: "Choose…",
       pauseText: "The timer is stopped for this question.",
       resume: "Resume",
       controlsAria: "Practice controls",
