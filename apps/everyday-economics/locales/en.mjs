@@ -5,6 +5,7 @@ export default {
   text: {
     appTitle: "Everyday Economics",
     brandSubtitle: "Applied math drills for prices, percentages, interest, inflation, and simple risk.",
+    educationalNote: "Educational practice only — not financial, tax, legal, investment, or purchasing advice.",
     summary: {
       aria: "Progress summary",
       mastery: "Avg mastery",
@@ -27,6 +28,8 @@ export default {
       paused: "Paused",
       learnThis: "Learn this",
       category: "Category",
+      family: "Question family",
+      choose: "Choose…",
       level: "Level",
       mastery: "0% mastery",
       masterySuffix: "mastery",

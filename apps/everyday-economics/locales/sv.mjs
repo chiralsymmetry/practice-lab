@@ -5,6 +5,7 @@ export default {
   text: {
     appTitle: "Vardagsekonomi",
     brandSubtitle: "Tillämpade matteövningar för priser, procent, ränta, inflation och enkel risk.",
+    educationalNote: "Endast för utbildning — inte finansiell, skatte-, juridisk, investerings- eller köprådgivning.",
     summary: {
       aria: "Sammanfattning av framsteg",
       mastery: "Snittnivå",
@@ -27,6 +28,8 @@ export default {
       paused: "Pausat",
       learnThis: "Lär detta",
       category: "Kategori",
+      family: "Frågetyp",
+      choose: "Välj…",
       level: "Nivå",
       mastery: "0% nivå",
       masterySuffix: "nivå",

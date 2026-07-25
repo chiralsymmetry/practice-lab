@@ -141,6 +141,13 @@ label {
   color: var(--muted);
 }
 
+.brand .educational-note {
+  max-width: 72ch;
+  color: var(--amber);
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
 .summary-strip,
 .metric-grid,
 .stats-grid {
@@ -308,6 +315,11 @@ label {
   color: var(--amber);
 }
 
+.pill.good {
+  background: var(--green-soft);
+  color: var(--green);
+}
+
 .prompt {
   min-height: 178px;
   display: grid;
@@ -343,6 +355,15 @@ label {
   font-size: 0.92rem;
 }
 
+.prompt-row {
+  padding: 9px 11px;
+  border-left: 3px solid var(--teal);
+  background: var(--surface-soft);
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: clamp(0.92rem, 2vw, 1.08rem);
+  overflow-wrap: anywhere;
+}
+
 .key-symbol {
   display: inline-flex;
   align-items: center;
@@ -359,6 +380,24 @@ label {
 
 .answer-form {
   margin-top: 18px;
+}
+
+.answer-controls {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.answer-control {
+  min-width: 0;
+}
+
+.answer-control input,
+.answer-control select {
+  margin-top: 8px;
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 1.05rem;
 }
 
 .answer-form label {
@@ -491,6 +530,17 @@ label {
   margin-bottom: 4px;
 }
 
+.worked-route {
+  margin: 9px 0 0;
+  padding-left: 22px;
+}
+
+.interpretation,
+.feedback-time {
+  margin: 8px 0 0;
+  color: var(--muted);
+}
+
 .side-stack,
 .field-grid,
 .list,
@@ -534,6 +584,23 @@ label {
   overflow-x: auto;
   border: 1px solid var(--line);
   border-radius: var(--radius);
+}
+
+.matrix-heading td {
+  background: var(--surface-soft);
+  font-weight: 800;
+}
+
+.subcategory-label {
+  display: block;
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.unavailable-cell {
+  color: var(--muted);
+  text-align: center;
 }
 
 table {
@@ -611,10 +678,16 @@ tr:last-child td {
 
 .split-grid,
 .settings-grid,
-.learn-grid {
+.learn-category-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 16px;
+}
+
+.learn-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 18px;
 }
 
 .settings-grid {
@@ -702,7 +775,7 @@ tr:last-child td {
   .practice-layout,
   .settings-grid,
   .split-grid,
-  .learn-grid {
+  .learn-category-grid {
     grid-template-columns: 1fr;
   }
 
