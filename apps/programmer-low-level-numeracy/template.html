@@ -55,6 +55,7 @@
             <div class="question-head">
               <div>
                 <span id="questionCategory" class="pill">{{practice.category}}</span>
+                <span id="questionFamily" class="pill">{{practice.family}}</span>
                 <span id="questionLevel" class="pill">{{practice.level}}</span>
               </div>
               <span id="questionMastery" class="pill warn">{{practice.mastery}}</span>
@@ -63,9 +64,8 @@
             <div id="questionPrompt" class="prompt" aria-live="polite"></div>
 
             <form id="answerForm" class="answer-form">
-              <label for="answerInput">{{practice.answer}}</label>
+              <div id="answerControls" class="answer-controls"></div>
               <div class="answer-row">
-                <input id="answerInput" type="text" autocomplete="off" spellcheck="false" inputmode="text">
                 <button id="submitBtn" class="primary" type="submit">{{practice.check}} <span class="key-symbol">↵</span></button>
                 <button id="nextBtn" type="button">{{practice.next}}</button>
                 <button id="skipBtn" type="button">{{practice.skip}}</button>
@@ -115,6 +115,10 @@
                 <div>
                   <label for="categorySelect">{{practice.category}}</label>
                   <select id="categorySelect"></select>
+                </div>
+                <div>
+                  <label for="familySelect">{{practice.family}}</label>
+                  <select id="familySelect"></select>
                 </div>
                 <div>
                   <label for="levelSelect">{{practice.level}}</label>
@@ -215,6 +219,10 @@
               <label class="check-row">
                 <input id="groupBitsToggle" type="checkbox">
                 <span>{{settings.groupBits}}</span>
+              </label>
+              <label class="check-row">
+                <input id="octalToggle" type="checkbox">
+                <span>{{settings.includeOctal}}</span>
               </label>
               <div>
                 <label>{{settings.adaptiveCategories}}</label>
