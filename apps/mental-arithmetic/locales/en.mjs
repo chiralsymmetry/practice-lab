@@ -3,8 +3,9 @@ export default {
   lang: "en",
   suffix: "",
   text: {
+    locale: "en-US",
     appTitle: "Mental Arithmetic",
-    brandSubtitle: "Fast integer arithmetic drills for everyday head calculation.",
+    brandSubtitle: "Build fast, flexible head-calculation strategies—not tolerance for written algorithms.",
     summary: {
       aria: "Progress summary",
       mastery: "Avg mastery",
@@ -27,6 +28,7 @@ export default {
       paused: "Paused",
       learnThis: "Learn this",
       category: "Category",
+      family: "Question family",
       level: "Level",
       mastery: "0% mastery",
       masterySuffix: "mastery",
@@ -46,12 +48,12 @@ export default {
       avgTime: "Avg time"
     },
     matrix: {
-      title: "Category Matrix",
-      intro: "Each level cell opens manual practice for that category."
+      title: "Skill Matrix",
+      intro: "Each cell opens one strategy family at a supported level."
     },
     stats: {
       title: "Stats",
-      intro: "Progress across all stored category levels.",
+      intro: "New mastery is tracked by family and strategy; migrated category totals remain in overall history.",
       totalAttempts: "Total attempts",
       totalCorrect: "Total correct",
       totalTime: "Total time",
@@ -59,55 +61,15 @@ export default {
       needsWork: "Needs Work",
       strongest: "Strongest",
       tries: "tries",
-      accuracy: "accuracy",
-      noAttemptsYet: "No attempts yet",
-      noAttemptsHint: "Practice will fill this in."
+      noAttemptsYet: "No family attempts yet"
     },
     categories: {
-      addition: { title: "Addition", short: "Add" },
-      subtraction: { title: "Subtraction", short: "Sub" },
-      multiplication: { title: "Multiplication", short: "Mul" },
-      division: { title: "Division", short: "Div" },
-      complements: { title: "Complements", short: "Comp" },
-      percentages: { title: "Percentages", short: "Pct" }
-    },
-    learnCards: {
-      addition: {
-        concept: "Addition speed often comes from splitting one number into friendly pieces.",
-        rules: "Bridge through 10, 100, or 1000 when it reduces carrying.",
-        example: "68 + 47 = 68 + 32 + 15 = 115",
-        format: "Enter the integer result."
-      },
-      subtraction: {
-        concept: "Subtraction is easier when you count distance or compensate both sides.",
-        rules: "Adding the same amount to both operands keeps the difference unchanged.",
-        example: "103 - 78 = 105 - 80 = 25",
-        format: "Enter the integer result."
-      },
-      multiplication: {
-        concept: "Use nearby round numbers, doubling, halving, and small facts.",
-        rules: "Distribute: a * (b + c) = a*b + a*c.",
-        example: "24 * 16 = 24 * (8 * 2) = 384",
-        format: "Enter the integer product."
-      },
-      division: {
-        concept: "These drills use exact division, so the answer is an integer quotient.",
-        rules: "Think of division as finding the missing factor.",
-        example: "144 / 12 = 12 because 12 * 12 = 144",
-        format: "Enter the integer quotient."
-      },
-      complements: {
-        concept: "Complements build fast number sense for making round totals.",
-        rules: "Find the amount needed to reach 10, 100, 1000, or another target.",
-        example: "73 needs 27 to reach 100",
-        format: "Enter the missing amount."
-      },
-      percentages: {
-        concept: "Many percentages are fractions with friendlier mental forms.",
-        rules: "10% is divide by 10, 5% is half of 10%, 25% is a quarter.",
-        example: "15% of 80 = 10% of 80 + 5% of 80 = 12",
-        format: "Enter the integer result."
-      }
+      addition: { title: "Addition" },
+      subtraction: { title: "Subtraction" },
+      multiplication: { title: "Multiplication" },
+      division: { title: "Division" },
+      complements: { title: "Complements" },
+      percentages: { title: "Percentages" }
     },
     settings: {
       title: "Settings",
@@ -119,55 +81,41 @@ export default {
       export: "Export",
       copy: "Copy",
       import: "Import",
-      reset: "Reset"
+      reset: "Reset",
+      resetConfirm: "Reset all local progress?"
     },
     learn: {
       title: "Learn",
-      intro: "Compact reminders for the mental strategies behind each drill.",
-      concept: "Concept",
-      rules: "Rule of thumb",
-      example: "Example",
-      format: "Answer format"
+      intro: "The intended mental strategy and a structurally similar example for every question family."
     },
-    messages: {
-      invalidJson: "Invalid JSON",
-      resetConfirm: "Reset all local progress?",
+    question: {
+      compute: "Compute mentally.",
+      missing: "Find the missing integer.",
+      missingFactor: "Recover the missing factor.",
+      complement: "Find the complement.",
+      nextMultiple: "How much reaches the next strictly greater multiple?",
+      missingPercent: "Find the missing integer percentage."
+    },
+    feedback: {
       correct: "Correct",
       notQuite: "Not quite",
-      expected: "expected",
-      time: "Time"
-    },
-    prompts: {
-      addition: {
-        title: "Add these numbers.",
-        note: "Enter the sum.",
-        explanation: "{a} + {b} = {answer}."
-      },
-      subtraction: {
-        title: "Subtract these numbers.",
-        note: "Enter the difference.",
-        explanation: "{a} - {b} = {answer}."
-      },
-      multiplication: {
-        title: "Multiply these numbers.",
-        note: "Enter the product.",
-        explanation: "{a} * {b} = {answer}."
-      },
-      division: {
-        title: "Divide these numbers.",
-        note: "Enter the exact integer quotient.",
-        explanation: "{dividend} / {divisor} = {answer}."
-      },
-      complements: {
-        title: "Find the complement.",
-        note: "Enter the missing amount.",
-        explanation: "{value} + {answer} = {target}."
-      },
-      percentages: {
-        title: "Compute the percentage.",
-        note: "Enter the integer result.",
-        explanation: "{percent}% of {base} = {answer}."
-      }
+      expected: "Expected",
+      time: "Time",
+      integerOnly: "Enter one exact integer with no units or expression.",
+      lostCarry: "The result is short by a place-value bridge; keep the carried ten, hundred, or thousand.",
+      compensation: "You rounded correctly but did not undo the small change.",
+      omittedAddend: "Your total omits one addend; mark each member after grouping it.",
+      reversedSign: "The magnitude is right, but subtraction keeps the displayed operand order.",
+      equalCompensation: "Shift both operands by the same amount; changing only one changes the difference.",
+      addedFactors: "This answer adds the factors; multiplication needs equal groups or a product strategy.",
+      distribution: "You found the landmark product but omitted the distributed correction.",
+      doubleHalf: "Halve one factor and double the other together so the product stays unchanged.",
+      incompleteFactorization: "That is the first exact division step; divide by the remaining factor too.",
+      strictNext: "“Next” is strictly greater, so an exact multiple needs one full interval.",
+      fivePercent: "Dividing by 5 gives 20%; 5% is one twentieth.",
+      rateVsDifference: "The question asks for a rate, not the numerical difference between whole and part.",
+      route: "Use the shown mental route and keep each intermediate exact.",
+      invalidJson: "Invalid JSON"
     }
   }
 };

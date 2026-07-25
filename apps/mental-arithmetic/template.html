@@ -46,6 +46,7 @@
             <div class="question-head">
               <div>
                 <span id="questionCategory" class="pill">{{practice.category}}</span>
+                <span id="questionFamily" class="pill">{{practice.family}}</span>
                 <span id="questionLevel" class="pill">{{practice.level}}</span>
               </div>
               <span id="questionMastery" class="pill warn">{{practice.mastery}}</span>
@@ -97,6 +98,10 @@
                 <div>
                   <label for="categorySelect">{{practice.category}}</label>
                   <select id="categorySelect"></select>
+                </div>
+                <div>
+                  <label for="familySelect">{{practice.family}}</label>
+                  <select id="familySelect"></select>
                 </div>
                 <div>
                   <label for="levelSelect">{{practice.level}}</label>

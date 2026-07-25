@@ -308,6 +308,11 @@ label {
   color: var(--amber);
 }
 
+.pill.good {
+  background: var(--green-soft);
+  color: var(--green);
+}
+
 .prompt {
   min-height: 178px;
   display: grid;
@@ -419,6 +424,18 @@ label {
   margin-bottom: 4px;
 }
 
+.worked-route {
+  margin-top: 6px;
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+}
+
+.feedback-time {
+  display: block;
+  margin-top: 6px;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
 .side-stack,
 .field-grid,
 .list,
@@ -462,6 +479,31 @@ label {
   overflow-x: auto;
   border: 1px solid var(--line);
   border-radius: var(--radius);
+}
+
+.matrix-heading {
+  position: sticky;
+  left: 0;
+  margin: 0;
+  padding: 14px 12px 8px;
+  background: var(--surface);
+  font-size: 1rem;
+}
+
+.matrix-wrap table + .matrix-heading {
+  border-top: 1px solid var(--line);
+}
+
+.subcategory-label {
+  display: block;
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
+.unavailable-cell {
+  color: var(--muted);
+  text-align: center;
 }
 
 table {
@@ -543,6 +585,21 @@ tr:last-child td {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 16px;
+}
+
+.learn-grid {
+  grid-template-columns: 1fr;
+}
+
+.learn-category-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.learn-category > h2 {
+  margin: 10px 0 12px;
+  font-size: 1.15rem;
 }
 
 .settings-grid {
@@ -630,7 +687,8 @@ tr:last-child td {
   .practice-layout,
   .settings-grid,
   .split-grid,
-  .learn-grid {
+  .learn-grid,
+  .learn-category-grid {
     grid-template-columns: 1fr;
   }
 
