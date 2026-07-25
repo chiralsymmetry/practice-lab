@@ -3,8 +3,8 @@ export default {
   lang: "sv",
   suffix: ".sv",
   text: {
-    appTitle: "Japanska tal och datum",
-    brandSubtitle: "Öva japanska läsningar för tal, räknare, månader, datum och veckodagar.",
+    appTitle: "Japanska tal, tid och pengar",
+    brandSubtitle: "Öva tal, räknare, telefonnummer, klockslag, datum, varaktighet och yen.",
     summary: {
       aria: "Sammanfattning av framsteg",
       mastery: "Snittnivå",
@@ -27,6 +27,7 @@ export default {
       paused: "Pausat",
       learnThis: "Lär detta",
       category: "Kategori",
+      family: "Frågefamilj",
       level: "Nivå",
       mastery: "0% nivå",
       masterySuffix: "nivå",
@@ -37,6 +38,7 @@ export default {
       keypadAria: "Svarsknappar",
       delete: "Radera",
       clear: "Töm",
+      choose: "Välj…",
       pauseText: "Tidtagningen är stoppad för den här frågan.",
       resume: "Fortsätt",
       controlsAria: "Övningskontroller",

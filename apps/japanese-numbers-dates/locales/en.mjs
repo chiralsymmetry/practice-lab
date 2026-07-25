@@ -3,8 +3,8 @@ export default {
   lang: "en",
   suffix: "",
   text: {
-    appTitle: "Japanese Numbers & Dates",
-    brandSubtitle: "Practice Japanese readings for numbers, counters, months, dates, and weekdays.",
+    appTitle: "Japanese Numbers, Time & Money",
+    brandSubtitle: "Practice numbers, counters, phones, clock time, dates, durations, and yen.",
     summary: {
       aria: "Progress summary",
       mastery: "Avg mastery",
@@ -27,6 +27,7 @@ export default {
       paused: "Paused",
       learnThis: "Learn this",
       category: "Category",
+      family: "Question family",
       level: "Level",
       mastery: "0% mastery",
       masterySuffix: "mastery",
@@ -37,6 +38,7 @@ export default {
       keypadAria: "Answer keypad",
       delete: "Del",
       clear: "Clear",
+      choose: "Choose…",
       pauseText: "The timer is stopped for this question.",
       resume: "Resume",
       controlsAria: "Practice controls",

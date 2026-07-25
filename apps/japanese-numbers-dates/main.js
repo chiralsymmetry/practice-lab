@@ -1,837 +1,276 @@
 (function () {
   "use strict";
 
-  var TEXT = __LOCALE_TEXT__;
-  var STORAGE_KEY = "practiceLab.japaneseNumbersDates.v1";
-  var LEVELS = [1, 2, 3, 4, 5];
-  var currentQuestion = null;
-  var questionStartedAt = 0;
-  var pauseStartedAt = 0;
-  var answered = false;
-  var progress = null;
-  var elements = {};
+  var TEXT=__LOCALE_TEXT__,STORAGE_KEY="practiceLab.japaneseNumbersDates.v2",LEGACY_KEY="practiceLab.japaneseNumbersDates.v1",LEVELS=[1,2,3,4,5];
+  var progress,currentQuestion,startedAt=0,pauseStartedAt=0,pausedMs=0,answered=false,activeInput=null,recentSignatures=[],recentPrompts=[],elements={};
+  function t(path,fallback){var value=path.split(".").reduce(function(node,key){return node&&Object.prototype.hasOwnProperty.call(node,key)?node[key]:undefined;},TEXT);return value===undefined?fallback:value;}
+  function L(en,sv){return TEXT.code==="sv"?sv:en;}
+  function esc(value){return String(value).replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;");}
+  function clamp(v,a,b){return Math.max(a,Math.min(b,v));}
+  function seconds(ms){return ms?(ms/1000).toFixed(ms<10000?1:0)+"s":"0s";}
+  function minutes(ms){return ms?Math.max(1,Math.round(ms/60000))+"m":"0m";}
 
-  function t(path, fallback) {
-    var value = path.split(".").reduce(function (current, part) {
-      return current && Object.prototype.hasOwnProperty.call(current, part) ? current[part] : undefined;
-    }, TEXT);
-    return value === undefined ? fallback : value;
+  function Rng(seed){var x=seed>>>0;x^=x>>>16;x=Math.imul(x,0x7feb352d);x^=x>>>15;x=Math.imul(x,0x846ca68b);x^=x>>>16;this.state=x>>>0||0x9e3779b9;}
+  Rng.prototype.next=function(){this.state=(Math.imul(this.state,1664525)+1013904223)>>>0;return this.state;};
+  Rng.prototype.int=function(a,b){return a+Math.floor(this.next()/4294967296*(b-a+1));};
+  Rng.prototype.pick=function(items){return items[this.int(0,items.length-1)];};
+  function progressive(level,rng,count,base){return rng.int(0,Math.min(count,(base||1)+level-1)-1);}
+
+  var DIGIT_KANA=["ゼロ","いち","に","さん","よん","ご","ろく","なな","はち","きゅう"];
+  var DIGIT_ROMAJI=["zero","ichi","ni","san","yon","go","roku","nana","hachi","kyuu"];
+  function below10000(n){
+    if(n===0)return DIGIT_KANA[0];
+    var out=[],th=Math.floor(n/1000),hu=Math.floor(n%1000/100),te=Math.floor(n%100/10),one=n%10;
+    if(th)out.push({1:"せん",3:"さんぜん",8:"はっせん"}[th]||DIGIT_KANA[th]+"せん");
+    if(hu)out.push({1:"ひゃく",3:"さんびゃく",6:"ろっぴゃく",8:"はっぴゃく"}[hu]||DIGIT_KANA[hu]+"ひゃく");
+    if(te)out.push(te===1?"じゅう":DIGIT_KANA[te]+"じゅう");
+    if(one)out.push(DIGIT_KANA[one]);
+    return out.join("");
+  }
+  function cardinal(n){if(n===0)return DIGIT_KANA[0];var high=Math.floor(n/10000),low=n%10000;return(high?below10000(high)+"まん":"")+(low?below10000(low):"");}
+  function parseBelow10000(text){
+    if(!text)return 0;
+    var total=0,maps=[
+      [["はっせん",8000],["さんぜん",3000],["きゅうせん",9000],["ななせん",7000],["ろくせん",6000],["ごせん",5000],["よんせん",4000],["にせん",2000],["せん",1000]],
+      [["はっぴゃく",800],["ろっぴゃく",600],["さんびゃく",300],["きゅうひゃく",900],["ななひゃく",700],["ごひゃく",500],["よんひゃく",400],["にひゃく",200],["ひゃく",100]],
+      [["きゅうじゅう",90],["はちじゅう",80],["ななじゅう",70],["ろくじゅう",60],["ごじゅう",50],["よんじゅう",40],["さんじゅう",30],["にじゅう",20],["じゅう",10]],
+      [["きゅう",9],["はち",8],["なな",7],["ろく",6],["ご",5],["よん",4],["さん",3],["に",2],["いち",1]]
+    ];
+    for(var i=0;i<maps.length;i++){var found=maps[i].find(function(row){return text.startsWith(row[0]);});if(found){total+=found[1];text=text.slice(found[0].length);}}
+    return text?null:total;
+  }
+  function parseCardinal(text){
+    if(text==="ゼロ"||hira(text)==="ぜろ")return 0;
+    text=hira(text);var split=text.split("まん");if(split.length>2)return null;
+    if(split.length===1)return parseBelow10000(split[0]);
+    var high=parseBelow10000(split[0]),low=parseBelow10000(split[1]);return high===null||low===null?null:high*10000+low;
+  }
+  function romajiBelow(n){
+    if(n===0)return"zero";var out=[],th=Math.floor(n/1000),hu=Math.floor(n%1000/100),te=Math.floor(n%100/10),one=n%10;
+    if(th)out.push({1:"sen",3:"sanzen",8:"hassen"}[th]||DIGIT_ROMAJI[th]+"sen");
+    if(hu)out.push({1:"hyaku",3:"sanbyaku",6:"roppyaku",8:"happyaku"}[hu]||DIGIT_ROMAJI[hu]+"hyaku");
+    if(te)out.push(te===1?"juu":DIGIT_ROMAJI[te]+"juu");if(one)out.push(DIGIT_ROMAJI[one]);return out.join("");
+  }
+  function cardinalRomaji(n){if(n===0)return"zero";var high=Math.floor(n/10000),low=n%10000;return(high?romajiBelow(high)+"man":"")+(low?romajiBelow(low):"");}
+  function groupText(n){return Math.floor(n/10000)+" | "+String(n%10000).padStart(4,"0");}
+  function cardinalForLevel(level,rng){
+    if(level===1)return rng.int(0,99);
+    if(level===2)return rng.pick([300,600,800,3000,8000,rng.int(100,9999)]);
+    if(level===3)return rng.int(1,9999)*10000;
+    if(level===4)return rng.int(1,999)*10000+rng.int(1,9999);
+    var high=rng.int(1,9999),low=rng.pick([rng.int(1,99),rng.int(100,999),rng.int(1000,9999)]);return high*10000+low;
   }
 
-  function tf(path, values, fallback) {
-    return t(path, fallback).replace(/\{([a-zA-Z0-9_]+)\}/g, function (match, key) {
-      return Object.prototype.hasOwnProperty.call(values, key) ? String(values[key]) : match;
-    });
-  }
-
-  function escapeHtml(value) {
-    return String(value)
-      .replaceAll("&", "&amp;")
-      .replaceAll("<", "&lt;")
-      .replaceAll(">", "&gt;")
-      .replaceAll('"', "&quot;");
-  }
-
-  function clamp(value, min, max) {
-    return Math.max(min, Math.min(max, value));
-  }
-
-  function formatPercent(value) {
-    return Math.round(value) + "%";
-  }
-
-  function formatSeconds(ms) {
-    if (!ms) return "0s";
-    return (ms / 1000).toFixed(ms < 10000 ? 1 : 0) + "s";
-  }
-
-  function formatMinutes(ms) {
-    if (!ms) return "0m";
-    return Math.max(1, Math.round(ms / 60000)) + "m";
-  }
-
-  function normalizeInteger(text) {
-    var value = String(text || "").trim().normalize("NFKC").replace(/[\s,_]/g, "");
-    if (!/^[+-]?\d+$/.test(value)) return null;
-    return Number(value);
-  }
-
-  function normalizeText(text) {
-    return String(text || "")
-      .trim()
-      .normalize("NFKC")
-      .toLowerCase()
-      .replaceAll("ā", "aa")
-      .replaceAll("ī", "ii")
-      .replaceAll("ū", "uu")
-      .replaceAll("ē", "ee")
-      .replaceAll("ō", "ou")
-      .replace(/[、。.,_\-'\s]/g, "");
-  }
-
-  function parseDateAnswer(text) {
-    var value = String(text || "").trim().normalize("NFKC");
-    var match = value.match(/^0?(\d{1,2})\s*(?:\/|-|\.|\s)\s*0?(\d{1,2})$/);
-    if (!match) return null;
-    return Number(match[1]) + "/" + Number(match[2]);
-  }
-
-  function answerSet(question) {
-    return [question.expected].concat(question.aliases || []).map(normalizeText);
-  }
-
-  function checkAnswer(answer, question) {
-    if (question.answerKind === "integer") return normalizeInteger(answer) === question.expected;
-    if (question.answerKind === "date") return parseDateAnswer(answer) === question.expected;
-    return answerSet(question).indexOf(normalizeText(answer)) !== -1;
-  }
-
-  function makeRng(seed) {
-    var state = seed >>> 0;
-    return {
-      next: function () {
-        state = (state * 1664525 + 1013904223) >>> 0;
-        return state / 4294967296;
-      },
-      int: function (min, max) {
-        return min + Math.floor(this.next() * (max - min + 1));
-      },
-      pick: function (items) {
-        return items[this.int(0, items.length - 1)];
-      }
-    };
-  }
-
-  var KANA_ONES = ["ゼロ", "いち", "に", "さん", "よん", "ご", "ろく", "なな", "はち", "きゅう"];
-  var ROMAJI_ONES = ["zero", "ichi", "ni", "san", "yon", "go", "roku", "nana", "hachi", "kyuu"];
-  var MONTH_KANA = ["", "いちがつ", "にがつ", "さんがつ", "しがつ", "ごがつ", "ろくがつ", "しちがつ", "はちがつ", "くがつ", "じゅうがつ", "じゅういちがつ", "じゅうにがつ"];
-  var MONTH_ROMAJI = ["", "ichigatsu", "nigatsu", "sangatsu", "shigatsu", "gogatsu", "rokugatsu", "shichigatsu", "hachigatsu", "kugatsu", "juugatsu", "juuichigatsu", "juunigatsu"];
-  var DAY_KANA = ["", "ついたち", "ふつか", "みっか", "よっか", "いつか", "むいか", "なのか", "ようか", "ここのか", "とおか", "じゅういちにち", "じゅうににち", "じゅうさんにち", "じゅうよっか", "じゅうごにち", "じゅうろくにち", "じゅうしちにち", "じゅうはちにち", "じゅうくにち", "はつか", "にじゅういちにち", "にじゅうににち", "にじゅうさんにち", "にじゅうよっか", "にじゅうごにち", "にじゅうろくにち", "にじゅうしちにち", "にじゅうはちにち", "にじゅうくにち", "さんじゅうにち", "さんじゅういちにち"];
-  var DAY_ROMAJI = ["", "tsuitachi", "futsuka", "mikka", "yokka", "itsuka", "muika", "nanoka", "youka", "kokonoka", "tooka", "juuichinichi", "juuninichi", "juusannichi", "juuyokka", "juugonichi", "juurokunichi", "juushichinichi", "juuhachinichi", "juukunichi", "hatsuka", "nijuuichinichi", "nijuuninichi", "nijuusannichi", "nijuuyokka", "nijuugonichi", "nijuurokunichi", "nijuushichinichi", "nijuuhachinichi", "nijuukunichi", "sanjuunichi", "sanjuuichinichi"];
-  var WEEKDAY_KANJI = ["月曜日", "火曜日", "水曜日", "木曜日", "金曜日", "土曜日", "日曜日"];
-  var WEEKDAY_KANA = ["げつようび", "かようび", "すいようび", "もくようび", "きんようび", "どようび", "にちようび"];
-  var WEEKDAY_ROMAJI = ["getsuyoubi", "kayoubi", "suiyoubi", "mokuyoubi", "kinyoubi", "doyoubi", "nichiyoubi"];
-  var RELATIVE_DAYS = [
-    { offset: -2, kana: "おととい", romaji: "ototoi", key: "dayBeforeYesterday" },
-    { offset: -1, kana: "きのう", romaji: "kinou", key: "yesterday" },
-    { offset: 0, kana: "きょう", romaji: "kyou", key: "today" },
-    { offset: 1, kana: "あした", romaji: "ashita", key: "tomorrow" },
-    { offset: 2, kana: "あさって", romaji: "asatte", key: "dayAfterTomorrow" }
+  var ROMA=[
+    ["きゃ","kya"],["きゅ","kyu"],["きょ","kyo"],["しゃ","sha"],["しゅ","shu"],["しょ","sho"],["ちゃ","cha"],["ちゅ","chu"],["ちょ","cho"],["にゃ","nya"],["にゅ","nyu"],["にょ","nyo"],["ひゃ","hya"],["ひゅ","hyu"],["ひょ","hyo"],["びゃ","bya"],["びゅ","byu"],["びょ","byo"],["ぴゃ","pya"],["ぴゅ","pyu"],["ぴょ","pyo"],["りゃ","rya"],["りゅ","ryu"],["りょ","ryo"],
+    ["あ","a"],["い","i"],["う","u"],["え","e"],["お","o"],["か","ka"],["き","ki"],["く","ku"],["け","ke"],["こ","ko"],["が","ga"],["ぎ","gi"],["ぐ","gu"],["げ","ge"],["ご","go"],["さ","sa"],["し","shi"],["す","su"],["せ","se"],["そ","so"],["ざ","za"],["じ","ji"],["ず","zu"],["ぜ","ze"],["ぞ","zo"],["た","ta"],["ち","chi"],["つ","tsu"],["て","te"],["と","to"],["だ","da"],["ぢ","ji"],["づ","zu"],["で","de"],["ど","do"],["な","na"],["に","ni"],["ぬ","nu"],["ね","ne"],["の","no"],["は","ha"],["ひ","hi"],["ふ","fu"],["へ","he"],["ほ","ho"],["ば","ba"],["び","bi"],["ぶ","bu"],["べ","be"],["ぼ","bo"],["ぱ","pa"],["ぴ","pi"],["ぷ","pu"],["ぺ","pe"],["ぽ","po"],["ま","ma"],["み","mi"],["む","mu"],["め","me"],["も","mo"],["や","ya"],["ゆ","yu"],["よ","yo"],["ら","ra"],["り","ri"],["る","ru"],["れ","re"],["ろ","ro"],["わ","wa"],["を","o"],["ん","n"]
   ];
-
-  function kanaBelow10000(n) {
-    if (n === 0) return KANA_ONES[0];
-    var parts = [];
-    var thousands = Math.floor(n / 1000);
-    var hundreds = Math.floor(n % 1000 / 100);
-    var tens = Math.floor(n % 100 / 10);
-    var ones = n % 10;
-    if (thousands) parts.push({ 1: "せん", 3: "さんぜん", 8: "はっせん" }[thousands] || KANA_ONES[thousands] + "せん");
-    if (hundreds) parts.push({ 1: "ひゃく", 3: "さんびゃく", 6: "ろっぴゃく", 8: "はっぴゃく" }[hundreds] || KANA_ONES[hundreds] + "ひゃく");
-    if (tens) parts.push(tens === 1 ? "じゅう" : KANA_ONES[tens] + "じゅう");
-    if (ones) parts.push(KANA_ONES[ones]);
-    return parts.join("");
+  function hira(value){return String(value).normalize("NFKC").replace(/[\u30a1-\u30f6]/g,function(ch){return String.fromCharCode(ch.charCodeAt(0)-0x60);});}
+  function romanize(value){
+    var s=hira(value),out="",geminate=false;
+    while(s){if(s[0]==="っ"){geminate=true;s=s.slice(1);continue;}var found=ROMA.find(function(row){return s.startsWith(row[0]);});if(!found){s=s.slice(1);continue;}var syllable=found[1];if(geminate){out+=syllable[0];geminate=false;}out+=syllable;s=s.slice(found[0].length);}
+    return out;
   }
+  function normText(value){return hira(String(value||"").trim()).toLowerCase().replaceAll("ā","aa").replaceAll("ī","ii").replaceAll("ū","uu").replaceAll("ē","ee").replaceAll("ō","ou").replace(/[、。・.,_\-'¥￥円\s]/g,"");}
+  function normInteger(value){var s=String(value||"").normalize("NFKC").trim().replace(/[,\s¥￥円]/g,"");return/^-?\d+$/.test(s)?String(Number(s)):null;}
+  function normDecimal(value){var s=String(value||"").normalize("NFKC").trim().replace(/[,\s]/g,"").replace(/万(?:円)?$/,"").replace(/[¥￥円]/g,"");if(!/^-?(?:\d+|\d*\.\d+)$/.test(s))return null;var sign=s.startsWith("-")?"-":"";s=s.replace(/^-/,"");var parts=s.split("."),whole=(parts[0]||"0").replace(/^0+(?=\d)/,""),fraction=(parts[1]||"").replace(/0+$/,"");return sign+whole+(fraction?"."+fraction:"");}
+  function scaledString(units,factor){var whole=Math.floor(units/factor),rem=units%factor;if(!rem)return String(whole);var width=String(factor).length-1,fraction=String(rem).padStart(width,"0").replace(/0+$/,"");return whole+"."+fraction;}
+  function normPhone(value){var s=String(value||"").normalize("NFKC").replace(/[()\s-]/g,"");return/^\d+$/.test(s)?s:null;}
+  function normTime(value){var m=String(value||"").normalize("NFKC").trim().match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/);return m?String(Number(m[1]))+":"+m[2]+(m[3]?":"+m[3]:""):null;}
+  function normDate(value){var m=String(value||"").normalize("NFKC").trim().match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);return m?m[1]+"-"+m[2].padStart(2,"0")+"-"+m[3].padStart(2,"0"):null;}
 
-  function romajiBelow10000(n) {
-    if (n === 0) return ROMAJI_ONES[0];
-    var parts = [];
-    var thousands = Math.floor(n / 1000);
-    var hundreds = Math.floor(n % 1000 / 100);
-    var tens = Math.floor(n % 100 / 10);
-    var ones = n % 10;
-    if (thousands) parts.push({ 1: "sen", 3: "sanzen", 8: "hassen" }[thousands] || ROMAJI_ONES[thousands] + " sen");
-    if (hundreds) parts.push({ 1: "hyaku", 3: "sanbyaku", 6: "roppyaku", 8: "happyaku" }[hundreds] || ROMAJI_ONES[hundreds] + " hyaku");
-    if (tens) parts.push(tens === 1 ? "juu" : ROMAJI_ONES[tens] + " juu");
-    if (ones) parts.push(ROMAJI_ONES[ones]);
-    return parts.join(" ");
-  }
+  var MONTH=["","いちがつ","にがつ","さんがつ","しがつ","ごがつ","ろくがつ","しちがつ","はちがつ","くがつ","じゅうがつ","じゅういちがつ","じゅうにがつ"];
+  var DAY=["","ついたち","ふつか","みっか","よっか","いつか","むいか","なのか","ようか","ここのか","とおか","じゅういちにち","じゅうににち","じゅうさんにち","じゅうよっか","じゅうごにち","じゅうろくにち","じゅうしちにち","じゅうはちにち","じゅうくにち","はつか","にじゅういちにち","にじゅうににち","にじゅうさんにち","にじゅうよっか","にじゅうごにち","にじゅうろくにち","にじゅうしちにち","にじゅうはちにち","にじゅうくにち","さんじゅうにち","さんじゅういちにち"];
+  var WEEKDAY=[["月曜日","げつようび"],["火曜日","かようび"],["水曜日","すいようび"],["木曜日","もくようび"],["金曜日","きんようび"],["土曜日","どようび"],["日曜日","にちようび"]];
+  var HOUR=["","いちじ","にじ","さんじ","よじ","ごじ","ろくじ","しちじ","はちじ","くじ","じゅうじ","じゅういちじ","じゅうにじ"];
+  var MINUTE=["","いっぷん","にふん","さんぷん","よんぷん","ごふん","ろっぷん","ななふん","はっぷん","きゅうふん","じゅっぷん"];
+  function minuteReading(n){if(n===0)return"";var tens=Math.floor(n/10),ones=n%10;if(!ones)return(tens===1?"":cardinal(tens))+MINUTE[10];return(tens?cardinal(tens*10):"")+MINUTE[ones];}
+  function secondReading(n){return cardinal(n)+"びょう";}
+  function clockReading(h,m,period,s){var hour12=((h-1)%12)+1;return(period?period==="am"?"ごぜん":"ごご":"")+HOUR[hour12]+(m===30&&!s?"はん":minuteReading(m))+(s?secondReading(s):"");}
+  function iso(y,m,d){return String(y)+"-"+String(m).padStart(2,"0")+"-"+String(d).padStart(2,"0");}
+  function validDay(y,m,d){return new Date(Date.UTC(y,m-1,d)).getUTCDate()===d&&new Date(Date.UTC(y,m-1,d)).getUTCMonth()===m-1;}
+  function shiftDate(y,m,d,offset){var date=new Date(Date.UTC(y,m-1,d));date.setUTCDate(date.getUTCDate()+offset);return iso(date.getUTCFullYear(),date.getUTCMonth()+1,date.getUTCDate());}
+  function weekday(y,m,d){return(new Date(Date.UTC(y,m-1,d)).getUTCDay()+6)%7;}
 
-  function kanaNumber(n) {
-    if (n < 10000) return kanaBelow10000(n);
-    var high = Math.floor(n / 10000);
-    var low = n % 10000;
-    return kanaBelow10000(high) + "まん" + (low ? kanaBelow10000(low) : "");
-  }
-
-  function romajiNumber(n) {
-    if (n < 10000) return romajiBelow10000(n);
-    var high = Math.floor(n / 10000);
-    var low = n % 10000;
-    return romajiBelow10000(high) + " man" + (low ? " " + romajiBelow10000(low) : "");
-  }
-
-  function numberRange(level) {
-    return [[0, 10], [11, 99], [100, 999], [1000, 9999], [10000, 99999]][level - 1];
-  }
-
-  function titleFor(id) {
-    return t("categories." + id + ".title", id);
-  }
-
-  function shortFor(id) {
-    return t("categories." + id + ".short", titleFor(id));
-  }
-
-  function makeQuestion(categoryId, level, promptKey, expression, expected, aliases, values, answerKind) {
-    values = values || {};
-    return {
-      categoryId: categoryId,
-      level: level,
-      promptTitle: tf("prompts." + promptKey + ".title", values, titleFor(categoryId)),
-      promptNote: tf("prompts." + promptKey + ".note", values, "Enter the answer."),
-      expression: expression,
-      expected: expected,
-      aliases: aliases || [],
-      answerKind: answerKind || "text",
-      explanation: tf("prompts." + promptKey + ".explanation", values, String(expected))
-    };
-  }
-
-  function counterTables() {
-    return {
-      people: [
-        ["ひとり", "hitori"], ["ふたり", "futari"], ["さんにん", "sannin"], ["よにん", "yonin"], ["ごにん", "gonin"],
-        ["ろくにん", "rokunin"], ["ななにん", "nananin"], ["はちにん", "hachinin"], ["きゅうにん", "kyuunin"], ["じゅうにん", "juunin"]
-      ],
-      flat: [
-        ["いちまい", "ichimai"], ["にまい", "nimai"], ["さんまい", "sanmai"], ["よんまい", "yonmai"], ["ごまい", "gomai"],
-        ["ろくまい", "rokumai"], ["ななまい", "nanamai"], ["はちまい", "hachimai"], ["きゅうまい", "kyuumai"], ["じゅうまい", "juumai"]
-      ],
-      long: [
-        ["いっぽん", "ippon"], ["にほん", "nihon"], ["さんぼん", "sanbon"], ["よんほん", "yonhon"], ["ごほん", "gohon"],
-        ["ろっぽん", "roppon"], ["ななほん", "nanahon"], ["はっぽん", "happon"], ["きゅうほん", "kyuuhon"], ["じゅっぽん", "juppon", "juppon"]
-      ],
-      small: [
-        ["いっこ", "ikko"], ["にこ", "niko"], ["さんこ", "sanko"], ["よんこ", "yonko"], ["ごこ", "goko"],
-        ["ろっこ", "rokko"], ["ななこ", "nanako"], ["はっこ", "hakko"], ["きゅうこ", "kyuuko"], ["じゅっこ", "jukko", "jikko"]
-      ],
-      books: [
-        ["いっさつ", "issatsu"], ["にさつ", "nisatsu"], ["さんさつ", "sansatsu"], ["よんさつ", "yonsatsu"], ["ごさつ", "gosatsu"],
-        ["ろくさつ", "rokusatsu"], ["ななさつ", "nanasatsu"], ["はっさつ", "hassatsu"], ["きゅうさつ", "kyuusatsu"], ["じゅっさつ", "jussatsu"]
-      ],
-      times: [
-        ["いっかい", "ikkai"], ["にかい", "nikai"], ["さんかい", "sankai"], ["よんかい", "yonkai"], ["ごかい", "gokai"],
-        ["ろっかい", "rokkai"], ["ななかい", "nanakai"], ["はっかい", "hakkai"], ["きゅうかい", "kyuukai"], ["じゅっかい", "jukkai"]
-      ]
-    };
-  }
-
-  function counterChoices(level) {
-    if (level === 1) return ["people"];
-    if (level === 2) return ["people", "flat"];
-    if (level === 3) return ["flat", "long", "small"];
-    if (level === 4) return ["long", "small", "books", "times"];
-    return ["people", "flat", "long", "small", "books", "times"];
-  }
-
-  function counterLabel(id) {
-    return t("counterLabels." + id, id);
-  }
-
-  var CATEGORIES = [
-    {
-      id: "numberReading",
-      generate: function (level, rng) {
-        var range = numberRange(level);
-        var n = rng.int(range[0], range[1]);
-        var expected = kanaNumber(n);
-        return makeQuestion("numberReading", level, "numberReading", String(n), expected, [romajiNumber(n)], { n: n, answer: expected });
-      }
-    },
-    {
-      id: "numberValue",
-      generate: function (level, rng) {
-        var range = numberRange(level);
-        var n = rng.int(range[0], range[1]);
-        return makeQuestion("numberValue", level, "numberValue", kanaNumber(n), n, [], { n: n, reading: kanaNumber(n) }, "integer");
-      }
-    },
-    {
-      id: "dates",
-      generate: function (level, rng) {
-        if (level === 1) {
-          var month = rng.int(1, 12);
-          return makeQuestion("dates", level, "monthReading", month + "月", MONTH_KANA[month], [MONTH_ROMAJI[month]], { month: month, answer: MONTH_KANA[month] });
-        }
-        if (level === 2) {
-          var day = rng.int(1, 31);
-          return makeQuestion("dates", level, "dayReading", day + "日", DAY_KANA[day], [DAY_ROMAJI[day]], { day: day, answer: DAY_KANA[day] });
-        }
-        if (level <= 4) {
-          var m = rng.int(1, 12);
-          var d = rng.int(1, 28);
-          var expected = MONTH_KANA[m] + DAY_KANA[d];
-          return makeQuestion("dates", level, "dateReading", m + "/" + d, expected, [MONTH_ROMAJI[m] + " " + DAY_ROMAJI[d]], { month: m, day: d, answer: expected });
-        }
-        var month2 = rng.int(1, 12);
-        var day2 = rng.int(1, 28);
-        var dateKey = month2 + "/" + day2;
-        return makeQuestion("dates", level, "dateValue", MONTH_KANA[month2] + " " + DAY_KANA[day2], dateKey, [month2 + "-" + day2, month2 + " " + day2], { month: month2, day: day2, answer: dateKey }, "date");
-      }
-    },
-    {
-      id: "calendarWords",
-      generate: function (level, rng) {
-        if (level <= 2) {
-          var month = rng.int(1, 12);
-          if (level === 1) return makeQuestion("calendarWords", level, "monthNumber", MONTH_KANA[month], month, [], { month: month, reading: MONTH_KANA[month] }, "integer");
-          return makeQuestion("calendarWords", level, "monthReading", t("calendar.monthNames." + month, "month " + month), MONTH_KANA[month], [MONTH_ROMAJI[month]], { month: month, answer: MONTH_KANA[month] });
-        }
-        if (level <= 4) {
-          var index = rng.int(0, 6);
-          if (level === 3) {
-            return makeQuestion("calendarWords", level, "weekdayJapanese", t("calendar.weekdayNames." + index, WEEKDAY_KANJI[index]), WEEKDAY_KANJI[index], [WEEKDAY_KANA[index], WEEKDAY_ROMAJI[index]], { weekday: t("calendar.weekdayNames." + index, WEEKDAY_KANJI[index]), answer: WEEKDAY_KANJI[index] });
-          }
-          return makeQuestion("calendarWords", level, "weekdayNumber", WEEKDAY_KANA[index], index + 1, [], { weekday: WEEKDAY_KANA[index], answer: index + 1 }, "integer");
-        }
-        var item = rng.pick(RELATIVE_DAYS);
-        if (rng.int(0, 1) === 0) {
-          return makeQuestion("calendarWords", level, "relativeJapanese", t("calendar.relative." + item.key, item.key), item.kana, [item.romaji], { word: t("calendar.relative." + item.key, item.key), answer: item.kana });
-        }
-        return makeQuestion("calendarWords", level, "relativeOffset", item.kana, item.offset, [], { word: item.kana, answer: item.offset }, "integer");
-      }
-    },
-    {
-      id: "counters",
-      generate: function (level, rng) {
-        var tables = counterTables();
-        var counter = rng.pick(counterChoices(level));
-        var count = rng.int(1, level <= 2 ? 5 : 10);
-        var entry = tables[counter][count - 1];
-        var label = counterLabel(counter);
-        var expected = entry[0];
-        var aliases = entry.slice(1);
-        return makeQuestion("counters", level, "counterReading", count + " " + label, expected, aliases, { count: count, label: label, answer: expected });
-      }
-    }
-  ];
-
-  var LEARN_CARDS = CATEGORIES.map(function (category) {
-    return { id: category.id };
-  });
-
-  function getCategory(id) {
-    return CATEGORIES.find(function (category) {
-      return category.id === id;
-    }) || CATEGORIES[0];
-  }
-
-  function cellKey(categoryId, level) {
-    return categoryId + ":" + level;
-  }
-
-  function defaultCell() {
-    return {
-      attempts: 0,
-      correct: 0,
-      streak: 0,
-      recent: [],
-      avgMs: 0,
-      totalMs: 0,
-      lastAt: 0,
-      mastery: 0,
-      missedAt: 0
-    };
-  }
-
-  function defaultProgress() {
-    var cells = {};
-    CATEGORIES.forEach(function (category) {
-      LEVELS.forEach(function (level) {
-        cells[cellKey(category.id, level)] = defaultCell();
-      });
-    });
-    return {
-      version: 1,
-      activeView: "practice",
-      settings: {
-        adaptive: true,
-        enabledCategories: CATEGORIES.map(function (category) { return category.id; })
-      },
-      manual: {
-        categoryId: CATEGORIES[0].id,
-        level: 1
-      },
-      cells: cells
-    };
-  }
-
-  function ensureProgressShape(value) {
-    var base = defaultProgress();
-    value = value && typeof value === "object" ? value : {};
-    var merged = Object.assign(base, value);
-    merged.settings = Object.assign(base.settings, value.settings || {});
-    merged.manual = Object.assign(base.manual, value.manual || {});
-    merged.cells = Object.assign(base.cells, value.cells || {});
-    CATEGORIES.forEach(function (category) {
-      LEVELS.forEach(function (level) {
-        var key = cellKey(category.id, level);
-        merged.cells[key] = Object.assign(defaultCell(), merged.cells[key] || {});
-      });
-    });
-    if (!getCategory(merged.manual.categoryId)) merged.manual.categoryId = CATEGORIES[0].id;
-    merged.manual.level = clamp(Number(merged.manual.level) || 1, 1, 5);
-    merged.settings.enabledCategories = merged.settings.enabledCategories.filter(function (id) {
-      return CATEGORIES.some(function (category) { return category.id === id; });
-    });
-    if (merged.settings.enabledCategories.length === 0) merged.settings.enabledCategories = [CATEGORIES[0].id];
-    return merged;
-  }
-
-  function loadProgress() {
-    try {
-      return ensureProgressShape(JSON.parse(localStorage.getItem(STORAGE_KEY) || "null"));
-    } catch (error) {
-      return defaultProgress();
-    }
-  }
-
-  function saveProgress() {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(progress));
-  }
-
-  function cellFor(categoryId, level) {
-    return progress.cells[cellKey(categoryId, level)];
-  }
-
-  function aggregateStats() {
-    var attempts = 0;
-    var correct = 0;
-    var totalMs = 0;
-    var masteryTotal = 0;
-    var cells = 0;
-    var activeCells = 0;
-    CATEGORIES.forEach(function (category) {
-      LEVELS.forEach(function (level) {
-        var cell = cellFor(category.id, level);
-        attempts += cell.attempts;
-        correct += cell.correct;
-        totalMs += cell.totalMs;
-        masteryTotal += cell.mastery;
-        cells += 1;
-        if (cell.attempts > 0) activeCells += 1;
-      });
-    });
-    return {
-      attempts: attempts,
-      correct: correct,
-      totalMs: totalMs,
-      activeCells: activeCells,
-      mastery: cells ? masteryTotal / cells : 0,
-      accuracy: attempts ? correct / attempts * 100 : 0
-    };
-  }
-
-  function chooseAdaptiveCell() {
-    var candidates = [];
-    var now = Date.now();
-    progress.settings.enabledCategories.forEach(function (categoryId) {
-      LEVELS.forEach(function (level) {
-        var cell = cellFor(categoryId, level);
-        var previous = level === 1 ? { mastery: 100, attempts: 1 } : cellFor(categoryId, level - 1);
-        var unlocked = level === 1 || previous.mastery >= 55 || previous.attempts >= 8 || cell.attempts > 0;
-        if (!unlocked && level > 2) return;
-        var levelBias = cell.attempts === 0 ? (level === 1 ? 40 : level === 2 ? 9 : 2) : 10;
-        var weakness = (100 - cell.mastery) / 8;
-        var missBoost = cell.missedAt ? Math.max(0, 12 - (now - cell.missedAt) / 60000) : 0;
-        var staleBoost = cell.lastAt ? Math.min(8, (now - cell.lastAt) / 86400000) : 6;
-        var lockedPenalty = unlocked ? 1 : 0.12;
-        candidates.push({ categoryId: categoryId, level: level, weight: Math.max(0.2, (levelBias + weakness + missBoost + staleBoost) * lockedPenalty) });
-      });
-    });
-    var total = candidates.reduce(function (sum, item) { return sum + item.weight; }, 0);
-    var roll = Math.random() * total;
-    for (var i = 0; i < candidates.length; i += 1) {
-      roll -= candidates[i].weight;
-      if (roll <= 0) return candidates[i];
-    }
-    return candidates[0];
-  }
-
-  function generateQuestion() {
-    var categoryId = progress.manual.categoryId;
-    var level = progress.manual.level;
-    if (progress.settings.adaptive) {
-      var picked = chooseAdaptiveCell();
-      categoryId = picked.categoryId;
-      level = picked.level;
-    }
-    var rng = makeRng((Date.now() ^ Math.floor(Math.random() * 0xffffffff)) >>> 0);
-    currentQuestion = getCategory(categoryId).generate(level, rng);
-    questionStartedAt = Date.now();
-    pauseStartedAt = 0;
-    answered = false;
-    renderAll();
-    elements.answerInput.value = "";
-    if (shouldAutoFocusAnswer()) elements.answerInput.focus();
-  }
-
-  function shouldAutoFocusAnswer() {
-    return !(window.matchMedia && window.matchMedia("(pointer: coarse)").matches);
-  }
-
-  function renderQuestion() {
-    if (!currentQuestion) return;
-    var cell = cellFor(currentQuestion.categoryId, currentQuestion.level);
-    elements.questionCategory.textContent = titleFor(currentQuestion.categoryId);
-    elements.questionLevel.textContent = t("practice.level", "Level") + " " + currentQuestion.level;
-    elements.questionMastery.textContent = formatPercent(cell.mastery) + " " + t("practice.masterySuffix", "mastery");
-    elements.questionPrompt.innerHTML =
-      '<div class="prompt-title">' + escapeHtml(currentQuestion.promptTitle) + '</div>' +
-      '<div class="prompt-expression">' + escapeHtml(currentQuestion.expression) + '</div>' +
-      '<div class="prompt-note">' + escapeHtml(currentQuestion.promptNote) + '</div>';
-  }
-
-  function updateCell(correct, elapsedMs) {
-    var cell = cellFor(currentQuestion.categoryId, currentQuestion.level);
-    cell.attempts += 1;
-    cell.correct += correct ? 1 : 0;
-    cell.streak = correct ? cell.streak + 1 : 0;
-    cell.recent.push(correct ? 1 : 0);
-    if (cell.recent.length > 12) cell.recent.shift();
-    cell.avgMs = cell.avgMs ? cell.avgMs * 0.75 + elapsedMs * 0.25 : elapsedMs;
-    cell.totalMs += elapsedMs;
-    cell.lastAt = Date.now();
-    if (!correct) cell.missedAt = Date.now();
-    var speedFactor = correct ? clamp(1.25 - elapsedMs / 18000, 0.35, 1.05) : 1;
-    cell.mastery = clamp(cell.mastery + (correct ? 9 * speedFactor : -15), 0, 100);
-  }
-
-  function submitAnswer() {
-    if (!currentQuestion || answered) {
-      generateQuestion();
-      return;
-    }
-    var correct = checkAnswer(elements.answerInput.value, currentQuestion);
-    var elapsedMs = Date.now() - questionStartedAt;
-    updateCell(correct, elapsedMs);
-    answered = true;
-    elements.feedback.className = "feedback " + (correct ? "correct" : "incorrect");
-    elements.feedback.innerHTML =
-      "<strong>" + escapeHtml(correct ? t("messages.correct", "Correct") : t("messages.notQuite", "Not quite")) + "</strong>" +
-      "<span>" + escapeHtml(t("messages.expected", "expected") + ": " + currentQuestion.expected + ". " + currentQuestion.explanation + " " + t("messages.time", "Time") + ": " + formatSeconds(elapsedMs)) + "</span>";
-    saveProgress();
-    renderAll();
-  }
-
-  function skipQuestion() {
-    generateQuestion();
-  }
-
-  function renderPracticeControls() {
-    if (elements.categorySelect.options.length !== CATEGORIES.length) {
-      elements.categorySelect.innerHTML = "";
-      CATEGORIES.forEach(function (category) {
-        var option = document.createElement("option");
-        option.value = category.id;
-        option.textContent = titleFor(category.id);
-        elements.categorySelect.appendChild(option);
-      });
-    }
-    elements.levelSelect.innerHTML = "";
-    LEVELS.forEach(function (level) {
-      var option = document.createElement("option");
-      option.value = String(level);
-      option.textContent = t("practice.level", "Level") + " " + level;
-      elements.levelSelect.appendChild(option);
-    });
-    var activeCategoryId = progress.settings.adaptive && currentQuestion ? currentQuestion.categoryId : progress.manual.categoryId;
-    var activeLevel = progress.settings.adaptive && currentQuestion ? currentQuestion.level : progress.manual.level;
-    elements.categorySelect.value = activeCategoryId;
-    elements.levelSelect.value = String(activeLevel);
-    elements.adaptiveModeBtn.classList.toggle("secondary-active", progress.settings.adaptive);
-    elements.manualModeBtn.classList.toggle("secondary-active", !progress.settings.adaptive);
-  }
-
-  function renderMetrics() {
-    if (!currentQuestion) return;
-    var cell = cellFor(currentQuestion.categoryId, currentQuestion.level);
-    var accuracy = cell.attempts ? cell.correct / cell.attempts * 100 : 0;
-    elements.metricMastery.textContent = formatPercent(cell.mastery);
-    elements.metricAccuracy.textContent = formatPercent(accuracy);
-    elements.metricStreak.textContent = String(cell.streak);
-    elements.metricAvgTime.textContent = formatSeconds(cell.avgMs);
-    var stats = aggregateStats();
-    elements.summaryMastery.textContent = formatPercent(stats.mastery);
-    elements.summaryAccuracy.textContent = formatPercent(stats.accuracy);
-    elements.summaryAttempts.textContent = String(stats.attempts);
-    elements.statTotalAttempts.textContent = String(stats.attempts);
-    elements.statTotalCorrect.textContent = String(stats.correct);
-    elements.statTotalTime.textContent = formatMinutes(stats.totalMs);
-    elements.statActiveCells.textContent = String(stats.activeCells);
-  }
-
-  function renderMatrix() {
-    var rows = CATEGORIES.map(function (category) {
-      var cells = LEVELS.map(function (level) {
-        var cell = cellFor(category.id, level);
-        var accuracy = cell.attempts ? Math.round(cell.correct / cell.attempts * 100) : 0;
-        var className = cell.attempts >= 3 && cell.mastery < 45 ? " weak" : cell.mastery >= 75 ? " ready" : "";
-        return '<td><button type="button" class="level-button' + className + '" data-matrix-category="' + category.id + '" data-matrix-level="' + level + '">' +
-          "<strong>L" + level + " " + formatPercent(cell.mastery) + "</strong>" +
-          '<div class="bar"><span style="width: ' + clamp(cell.mastery, 0, 100) + '%"></span></div>' +
-          "<span>" + cell.attempts + " " + t("stats.tries", "tries") + " · " + accuracy + "% " + t("stats.accuracy", "accuracy") + "</span>" +
-          "</button></td>";
-      }).join("");
-      return "<tr><th>" + escapeHtml(titleFor(category.id)) + "</th>" + cells + "</tr>";
-    }).join("");
-    elements.matrix.innerHTML = "<table><thead><tr><th>" + escapeHtml(t("practice.category", "Category")) + "</th>" + LEVELS.map(function (level) { return "<th>L" + level + "</th>"; }).join("") + "</tr></thead><tbody>" + rows + "</tbody></table>";
-  }
-
-  function cellSummaries() {
-    var items = [];
-    CATEGORIES.forEach(function (category) {
-      LEVELS.forEach(function (level) {
-        var cell = cellFor(category.id, level);
-        if (cell.attempts > 0) items.push({ categoryId: category.id, level: level, cell: cell });
-      });
-    });
-    return items;
-  }
-
-  function renderStatsLists() {
-    var items = cellSummaries();
-    function renderList(list) {
-      if (list.length === 0) {
-        return '<div class="list-item"><div><strong>' + escapeHtml(t("stats.noAttemptsYet", "No attempts yet")) + '</strong><span>' + escapeHtml(t("stats.noAttemptsHint", "Practice will fill this in.")) + "</span></div></div>";
-      }
-      return list.slice(0, 6).map(function (item) {
-        var accuracy = item.cell.attempts ? Math.round(item.cell.correct / item.cell.attempts * 100) : 0;
-        return '<div class="list-item"><div><strong>' + escapeHtml(titleFor(item.categoryId)) + " L" + item.level + '</strong><span>' + item.cell.attempts + " " + t("stats.tries", "tries") + " · " + accuracy + "% " + t("stats.accuracy", "accuracy") + "</span></div><strong>" + formatPercent(item.cell.mastery) + "</strong></div>";
-      }).join("");
-    }
-    elements.weakList.innerHTML = renderList(items.slice().sort(function (a, b) { return a.cell.mastery - b.cell.mastery; }));
-    elements.strongList.innerHTML = renderList(items.slice().sort(function (a, b) { return b.cell.mastery - a.cell.mastery; }));
-  }
-
-  function renderSettings() {
-    elements.enabledCategories.innerHTML = CATEGORIES.map(function (category) {
-      var checked = progress.settings.enabledCategories.indexOf(category.id) !== -1 ? " checked" : "";
-      return '<label class="check-row"><input type="checkbox" data-enabled-category="' + category.id + '"' + checked + '><span>' + escapeHtml(titleFor(category.id)) + "</span></label>";
-    }).join("");
-  }
-
-  function renderLearn() {
-    elements.learnGrid.innerHTML = LEARN_CARDS.map(function (card) {
-      var prefix = "learnCards." + card.id + ".";
-      var spotlight = currentQuestion && currentQuestion.categoryId === card.id ? " spotlight" : "";
-      return '<article class="learn-card' + spotlight + '" id="learn-' + card.id + '">' +
-        "<h3>" + escapeHtml(titleFor(card.id)) + "</h3>" +
-        "<p><strong>" + escapeHtml(t("learn.concept", "Concept")) + ":</strong> " + escapeHtml(t(prefix + "concept", "")) + "</p>" +
-        "<p><strong>" + escapeHtml(t("learn.rules", "Rule of thumb")) + ":</strong> " + escapeHtml(t(prefix + "rules", "")) + "</p>" +
-        "<code>" + escapeHtml(t(prefix + "example", "")) + "</code>" +
-        "<p><strong>" + escapeHtml(t("learn.format", "Answer format")) + ":</strong> " + escapeHtml(t(prefix + "format", "")) + "</p>" +
-        "</article>";
-    }).join("");
-  }
-
-  function renderAll() {
-    renderQuestion();
-    renderPracticeControls();
-    renderMetrics();
-    renderMatrix();
-    renderStatsLists();
-    renderSettings();
-    renderLearn();
-    elements.feedback.classList.toggle("hidden", !answered);
-  }
-
-  function setView(view) {
-    progress.activeView = view;
-    document.querySelectorAll(".view").forEach(function (node) {
-      node.classList.toggle("active", node.id === "view-" + view);
-    });
-    document.querySelectorAll(".nav button").forEach(function (button) {
-      button.classList.toggle("active", button.dataset.view === view);
-    });
-    saveProgress();
-  }
-
-  function setManualSelection(categoryId, level) {
-    progress.settings.adaptive = false;
-    progress.manual.categoryId = categoryId;
-    progress.manual.level = clamp(Number(level) || 1, 1, 5);
-    saveProgress();
-    generateQuestion();
-  }
-
-  function pause() {
-    if (pauseStartedAt || !currentQuestion) return;
-    pauseStartedAt = Date.now();
-    elements.practiceMain.classList.add("paused");
-  }
-
-  function resume() {
-    if (!pauseStartedAt) return;
-    questionStartedAt += Date.now() - pauseStartedAt;
-    pauseStartedAt = 0;
-    elements.practiceMain.classList.remove("paused");
-    if (shouldAutoFocusAnswer()) elements.answerInput.focus();
-  }
-
-  function insertAtCursor(text) {
-    var input = elements.answerInput;
-    var focused = document.activeElement === input && typeof input.selectionStart === "number";
-    var start = focused ? input.selectionStart : input.value.length;
-    var end = focused ? input.selectionEnd : input.value.length;
-    input.value = input.value.slice(0, start) + text + input.value.slice(end);
-    if (focused) input.setSelectionRange(start + text.length, start + text.length);
-  }
-
-  function bindEvents() {
-    document.querySelectorAll(".nav button").forEach(function (button) {
-      button.addEventListener("click", function () {
-        setView(button.dataset.view);
-      });
-    });
-    elements.answerForm.addEventListener("submit", function (event) {
-      event.preventDefault();
-      submitAnswer();
-    });
-    elements.nextBtn.addEventListener("click", generateQuestion);
-    elements.skipBtn.addEventListener("click", skipQuestion);
-    elements.adaptiveModeBtn.addEventListener("click", function () {
-      progress.settings.adaptive = true;
-      saveProgress();
-      generateQuestion();
-    });
-    elements.manualModeBtn.addEventListener("click", function () {
-      progress.settings.adaptive = false;
-      saveProgress();
-      generateQuestion();
-    });
-    elements.categorySelect.addEventListener("change", function () {
-      setManualSelection(elements.categorySelect.value, Number(elements.levelSelect.value));
-    });
-    elements.levelSelect.addEventListener("change", function () {
-      setManualSelection(elements.categorySelect.value, Number(elements.levelSelect.value));
-    });
-    elements.matrix.addEventListener("click", function (event) {
-      var button = event.target.closest("[data-matrix-category]");
-      if (!button) return;
-      setManualSelection(button.dataset.matrixCategory, Number(button.dataset.matrixLevel));
-      setView("practice");
-    });
-    elements.enabledCategories.addEventListener("change", function (event) {
-      var input = event.target.closest("[data-enabled-category]");
-      if (!input) return;
-      var id = input.dataset.enabledCategory;
-      if (input.checked && progress.settings.enabledCategories.indexOf(id) === -1) progress.settings.enabledCategories.push(id);
-      if (!input.checked) progress.settings.enabledCategories = progress.settings.enabledCategories.filter(function (categoryId) { return categoryId !== id; });
-      if (progress.settings.enabledCategories.length === 0) progress.settings.enabledCategories = [id];
-      saveProgress();
-      renderAll();
-    });
-    elements.exportBtn.addEventListener("click", function () {
-      elements.dataBox.value = JSON.stringify(progress, null, 2);
-    });
-    elements.copyBtn.addEventListener("click", function () {
-      elements.dataBox.select();
-      document.execCommand("copy");
-    });
-    elements.importBtn.addEventListener("click", function () {
-      try {
-        progress = ensureProgressShape(JSON.parse(elements.dataBox.value));
-        saveProgress();
-        generateQuestion();
-      } catch (error) {
-        alert(t("messages.invalidJson", "Invalid JSON"));
-      }
-    });
-    elements.resetBtn.addEventListener("click", function () {
-      if (!confirm(t("messages.resetConfirm", "Reset all local progress?"))) return;
-      progress = defaultProgress();
-      saveProgress();
-      generateQuestion();
-    });
-    elements.pauseBtn.addEventListener("click", pause);
-    elements.resumeBtn.addEventListener("click", resume);
-    elements.learnCurrentBtn.addEventListener("click", function () {
-      setView("learn");
-      renderLearn();
-      var node = document.getElementById("learn-" + currentQuestion.categoryId);
-      if (node) node.scrollIntoView({ behavior: "smooth", block: "center" });
-    });
-    elements.answerKeypad.addEventListener("click", function (event) {
-      var button = event.target.closest("button");
-      if (!button) return;
-      if (button.dataset.keypadInsert) insertAtCursor(button.dataset.keypadInsert);
-      if (button.dataset.keypadAction === "backspace") {
-        var value = elements.answerInput.value;
-        elements.answerInput.value = value.slice(0, -1);
-      }
-      if (button.dataset.keypadAction === "clear") elements.answerInput.value = "";
-      if (button.dataset.keypadAction === "submit") submitAnswer();
-      if (button.dataset.keypadAction === "next") {
-        if (answered) generateQuestion();
-        else submitAnswer();
-      }
-    });
-  }
-
-  function collectElements() {
-    [
-      "summaryMastery", "summaryAccuracy", "summaryAttempts", "adaptiveModeBtn", "manualModeBtn", "pauseBtn", "learnCurrentBtn",
-      "questionCategory", "questionLevel", "questionMastery", "questionPrompt", "answerForm", "answerInput", "submitBtn", "nextBtn",
-      "skipBtn", "answerKeypad", "feedback", "pauseOverlay", "resumeBtn", "categorySelect", "levelSelect", "metricMastery",
-      "metricAccuracy", "metricStreak", "metricAvgTime", "matrix", "statTotalAttempts", "statTotalCorrect", "statTotalTime",
-      "statActiveCells", "weakList", "strongList", "enabledCategories", "dataBox", "exportBtn", "copyBtn", "importBtn", "resetBtn",
-      "learnGrid"
-    ].forEach(function (id) {
-      elements[id] = document.getElementById(id);
-    });
-    elements.practiceMain = document.querySelector(".practice-main");
-  }
-
-  function init() {
-    collectElements();
-    progress = loadProgress();
-    bindEvents();
-    generateQuestion();
-    setView(progress.activeView || "practice");
-  }
-
-  function runSelfTests() {
-    var failures = [];
-    function assert(name, condition) {
-      if (!condition) failures.push(name);
-    }
-    assert("normalize romaji spaces", normalizeText("san byaku") === normalizeText("sanbyaku"));
-    assert("normalize macron", normalizeText("kyō") === normalizeText("kyou"));
-    assert("date slash", parseDateAnswer("04/01") === "4/1");
-    assert("date space", parseDateAnswer("4 1") === "4/1");
-    assert("number 0", kanaNumber(0) === "ゼロ");
-    assert("number 300", kanaNumber(300) === "さんびゃく");
-    assert("number 600", kanaNumber(600) === "ろっぴゃく");
-    assert("number 8000", kanaNumber(8000) === "はっせん");
-    assert("number 10000", kanaNumber(10000) === "いちまん");
-    assert("romaji 345", normalizeText(romajiNumber(345)) === "sanbyakuyonjuugo");
-    var q = makeQuestion("numberReading", 1, "numberReading", "3", "さん", ["san"], { n: 3, answer: "さん" });
-    assert("kana answer", checkAnswer("さん", q));
-    assert("romaji answer", checkAnswer("san", q));
-    assert("romaji spaced answer", checkAnswer("s a n", q));
-    var date = makeQuestion("dates", 5, "dateValue", "しがつ ついたち", "4/1", [], { answer: "4/1" }, "date");
-    assert("date answer dash", checkAnswer("04-01", date));
-    CATEGORIES.forEach(function (category) {
-      LEVELS.forEach(function (level) {
-        var generated = category.generate(level, makeRng(level * 100 + category.id.length));
-        assert(category.id + " L" + level + " prompt", generated.promptTitle.indexOf("{") === -1);
-        assert(category.id + " L" + level + " self check", checkAnswer(String(generated.expected), generated));
-      });
-    });
-    return { ok: failures.length === 0, failures: failures };
-  }
-
-  window.runSelfTests = runSelfTests;
-  window.PracticeLabJapaneseNumbersDates = {
-    categories: CATEGORIES,
-    kanaNumber: kanaNumber,
-    romajiNumber: romajiNumber,
-    runSelfTests: runSelfTests
+  function forms(values){var out=[""];values.forEach(function(v){out.push(v);});return out;}
+  var COUNTERS={
+    tsu:{symbol:"つ",label:["general things","allmänna saker"],forms:forms(["ひとつ","ふたつ","みっつ","よっつ","いつつ","むっつ","ななつ","やっつ","ここのつ","とお"]),compound:null,tags:["irregular"]},
+    people:{symbol:"人",label:["people","personer"],forms:forms(["ひとり","ふたり","さんにん","よにん","ごにん","ろくにん","ななにん","はちにん","きゅうにん","じゅうにん"]),compound:forms(["いちにん","ににん","さんにん","よにん","ごにん","ろくにん","ななにん","はちにん","きゅうにん","じゅうにん"]),tags:["irregular"]},
+    ko:{symbol:"個",label:["small objects","små föremål"],forms:forms(["いっこ","にこ","さんこ","よんこ","ごこ","ろっこ","ななこ","はっこ","きゅうこ","じゅっこ"]),tags:["sokuon"]},
+    hon:{symbol:"本",label:["long objects","långa föremål"],forms:forms(["いっぽん","にほん","さんぼん","よんほん","ごほん","ろっぽん","ななほん","はっぽん","きゅうほん","じゅっぽん"]),tags:["sokuon","rendaku"]},
+    mai:{symbol:"枚",label:["flat objects","platta föremål"],forms:forms(["いちまい","にまい","さんまい","よんまい","ごまい","ろくまい","ななまい","はちまい","きゅうまい","じゅうまい"]),tags:["regular"]},
+    satsu:{symbol:"冊",label:["bound books","inbundna böcker"],forms:forms(["いっさつ","にさつ","さんさつ","よんさつ","ごさつ","ろくさつ","ななさつ","はっさつ","きゅうさつ","じゅっさつ"]),tags:["sokuon"]},
+    hiki:{symbol:"匹",label:["small animals","små djur"],forms:forms(["いっぴき","にひき","さんびき","よんひき","ごひき","ろっぴき","ななひき","はっぴき","きゅうひき","じゅっぴき"]),tags:["sokuon","rendaku"]},
+    dai:{symbol:"台",label:["machines or vehicles","maskiner eller fordon"],forms:forms(["いちだい","にだい","さんだい","よんだい","ごだい","ろくだい","ななだい","はちだい","きゅうだい","じゅうだい"]),tags:["regular"]},
+    hai:{symbol:"杯",label:["cupfuls","koppar/glas"],forms:forms(["いっぱい","にはい","さんばい","よんはい","ごはい","ろっぱい","ななはい","はっぱい","きゅうはい","じゅっぱい"]),tags:["sokuon","rendaku"]},
+    kai:{symbol:"回",label:["occurrences","gånger"],forms:forms(["いっかい","にかい","さんかい","よんかい","ごかい","ろっかい","ななかい","はっかい","きゅうかい","じゅっかい"]),tags:["sokuon"]}
   };
+  var COUNTER_IDS=Object.keys(COUNTERS);
+  function counterReading(id,n){var c=COUNTERS[id];if(n<=10)return c.forms[n];var base=c.compound||c.forms;if(n<20)return"じゅう"+base[n-10];return"に"+base[10];}
+  var OBJECTS=[
+    ["people","person","person"],["mai","sheet of paper","pappersark"],["mai","ticket","biljett"],["hon","pen","penna"],["hon","umbrella","paraply"],["hon","bottle","flaska"],["satsu","book","bok"],["hiki","cat","katt"],["hiki","rabbit","kanin"],["dai","car","bil"],["dai","computer","dator"],["ko","apple","äpple"]
+  ];
 
-  if (typeof document !== "undefined" && document.addEventListener) {
-    document.addEventListener("DOMContentLoaded", init);
+  var RELATIVE=[
+    ["day",-2,"the day before yesterday","i förrgår","おととい"],
+    ["day",-1,"yesterday","igår","きのう"],["day",0,"today","idag","きょう"],["day",1,"tomorrow","imorgon","あした"],["day",2,"the day after tomorrow","i övermorgon","あさって"],
+    ["week",-1,"last week","förra veckan","せんしゅう"],["week",0,"this week","denna vecka","こんしゅう"],["week",1,"next week","nästa vecka","らいしゅう"],
+    ["month",-1,"last month","förra månaden","せんげつ"],["month",0,"this month","denna månad","こんげつ"],["month",1,"next month","nästa månad","らいげつ"],["month",2,"the month after next","månaden efter nästa","さらいげつ"],
+    ["year",-1,"last year","förra året","きょねん"],["year",0,"this year","i år","ことし"],["year",1,"next year","nästa år","らいねん"]
+  ];
+
+  var CATEGORIES=[
+    {id:"numbers",title:L("Numbers & 万","Tal och 万")},
+    {id:"counters",title:L("Counting Objects","Räkna föremål")},
+    {id:"telephone",title:L("Telephone Numbers","Telefonnummer")},
+    {id:"time",title:L("Clock & Duration","Klocka och varaktighet")},
+    {id:"calendar",title:L("Dates & Calendar","Datum och kalender")},
+    {id:"money",title:L("Money","Pengar")}
+  ];
+  var FAMILY_DATA=[
+    ["cardinal_to_reading","numbers","Full cardinal","Fullständigt tal"],["reading_to_cardinal","numbers","Reading to number","Läsning till tal"],["man_group_partition","numbers","万 grouping","万-gruppering"],["scaled_man_conversion","numbers","Scaled 万","Skalad 万"],
+    ["choose_object_counter","counters","Choose a counter","Välj räknare"],["counter_phrase_reading","counters","Counter reading","Räknarläsning"],["counter_phrase_to_quantity","counters","Interpret a counter","Tolka en räknare"],["counter_sound_change_contrast","counters","Sound-change contrast","Ljudförändringskontrast"],
+    ["telephone_digits_to_reading","telephone","Digits to reading","Siffror till läsning"],["telephone_reading_to_digits","telephone","Reading to digits","Läsning till siffror"],["telephone_group_reconstruction","telephone","Rebuild groups","Återskapa grupper"],
+    ["clock_time_to_reading","time","Clock to reading","Klockslag till läsning"],["clock_reading_to_time","time","Reading to clock","Läsning till klockslag"],["time_unit_pronunciation","time","時・分・秒","時・分・秒"],["duration_to_reading","time","Duration reading","Varaktighetsläsning"],["duration_reading_to_quantity","time","Interpret duration","Tolka varaktighet"],["clock_plus_duration","time","Clock arithmetic","Klockaritmetik"],
+    ["calendar_month_reading","calendar","Calendar month","Kalendermånad"],["day_of_month_reading","calendar","Day of month","Datumdag"],["full_date_to_reading","calendar","Full date","Fullständigt datum"],["japanese_date_to_numeric","calendar","Read a date","Läs ett datum"],["weekday_bidirectional","calendar","Weekday","Veckodag"],["calendar_period_duration","calendar","Calendar duration","Kalendervaraktighet"],["relative_calendar_expression","calendar","Relative calendar","Relativ kalender"],["date_shift","calendar","Date arithmetic","Datumaritmetik"],
+    ["yen_amount_to_reading","money","Yen reading","Yenläsning"],["yen_reading_to_amount","money","Read a yen amount","Läs yenbelopp"],["yen_man_decomposition","money","万円 decomposition","万円-uppdelning"],["money_scaled_unit_conversion","money","円・千円・万円","円・千円・万円"],["simple_purchase_total","money","Purchase total","Köpesumma"]
+  ];
+  var FAMILY_LEARN={
+    numbers:L("Split at 万 into a coefficient and a four-place remainder; omit zero positions.","Dela vid 万 i koefficient och en fyrsiffrig rest; utelämna nollpositioner."),
+    counters:L("The counter is chosen by the object, and each count comes from a reviewed pronunciation table.","Räknaren väljs av föremålet och varje antal kommer från en granskad uttalstabell."),
+    telephone:L("Telephone numbers are identifiers: read every digit and preserve leading zeroes.","Telefonnummer är identifierare: läs varje siffra och behåll inledande nollor."),
+    time:L("Keep clock 時 and elapsed 時間 separate; minute pronunciation alternates ふん and ぷん.","Håll klockans 時 och varaktighetens 時間 åtskilda; minututtal växlar mellan ふん och ぷん."),
+    calendar:L("Calendar months and days use fixed readings; durations are a separate grammar.","Kalendermånader och datumdagar har fasta läsningar; varaktigheter har separat grammatik."),
+    money:L("万円 means units of ¥10,000, while 千円 means units of ¥1,000.","万円 betyder enheter om ¥10 000 medan 千円 betyder enheter om ¥1 000.")
+  };
+  var FAMILIES=FAMILY_DATA.map(function(r){return{id:r[0],categoryId:r[1],title:L(r[2],r[3]),subcategory:L(r[2],r[3]),levels:LEVELS.slice(),learn:FAMILY_LEARN[r[1]]};});
+  function categoryById(id){return CATEGORIES.find(function(c){return c.id===id;})||CATEGORIES[0];}
+  function familyById(id){return FAMILIES.find(function(f){return f.id===id;})||FAMILIES[0];}
+  function familiesForCategory(id){return FAMILIES.filter(function(f){return f.categoryId===id;});}
+
+  function optionField(id,label,value,values){return{id:id,label:label,kind:"choice",value:String(value),options:values.map(function(v){return typeof v==="string"?{value:v,label:v}:v;}),aliases:[]};}
+  function textField(id,label,value,kind,aliases){return{id:id,label:label,kind:kind||"reading",value:String(value),aliases:aliases||[]};}
+  function readingField(value,level,label,extra){var aliases=(extra||[]).slice();if(level<=2)aliases.push(romanize(value));return textField("reading",label||L("Reading","Läsning"),value,"reading",aliases);}
+  function integerField(id,label,value){return textField(id,label,String(value),"integer");}
+  function decimalField(id,label,value){return textField(id,label,String(value),"decimal");}
+  function makeQuestion(familyId,level,data){
+    var family=familyById(familyId),canonical={};data.fields.forEach(function(f){canonical[f.id]=f.value;});
+    return{
+      categoryId:family.categoryId,subcategoryId:family.subcategory.toLowerCase().replace(/\s+/g,"-"),familyId:familyId,level:level,
+      semanticQuantity:data.quantity,responseMode:data.fields.map(function(f){return f.kind;}).join("+"),canonicalReadingTokens:data.tokens||null,acceptedVariantTokenSequences:data.fields.map(function(f){return f.aliases||[];}),
+      readingRuleTags:data.tags||[],acceptedScriptPolicy:data.script||(data.fields.some(function(f){return f.kind==="reading";})?"kana; romaji only where level declares it; entry-specific aliases":"structured numeric or exact choice"),misconceptionTarget:data.misconception||"context distinction",
+      difficultyDimensions:data.difficulty||["level:"+level].concat(data.tags||[]),structuralSignature:familyId+"|"+(data.signature||"base"),derivationSteps:data.steps||[],
+      expression:data.expression,title:data.title||family.title,note:data.note||L("Enter the requested answer.","Ange det efterfrågade svaret."),
+      fields:data.fields,canonicalAnswer:canonical,parameters:data.parameters||{},rule:data.rule||family.learn
+    };
   }
-})();
+  var G={};
+  function numberReadingQuestion(id,level,n,title,suffix){
+    var read=cardinal(n)+(suffix||"");return makeQuestion(id,level,{quantity:n,expression:title,fields:[readingField(read,level)],tokens:[read],tags:[n>=10000?"man_boundary":"cardinal"],signature:(n>=10000?groupText(n):String(Math.floor(n/100))),steps:[n>=10000?groupText(n):String(n),cardinal(n)+(suffix||"")]});
+  }
+
+  G.cardinal_to_reading=function(level,rng){var n=cardinalForLevel(level,rng);return numberReadingQuestion("cardinal_to_reading",level,n,n.toLocaleString("en-US"),"");};
+  G.reading_to_cardinal=function(level,rng){var n=cardinalForLevel(level,rng);return makeQuestion("reading_to_cardinal",level,{quantity:n,expression:cardinal(n),fields:[integerField("number",L("Number","Tal"),n)],tokens:[cardinal(n)],tags:[n>=10000?"man_boundary":"cardinal"],signature:groupText(n),steps:[n>=10000?groupText(n):cardinal(n),String(n)]});};
+  G.man_group_partition=function(level,rng){var high=rng.int(1,level<3?9:999),rem=level===1?0:rng.pick([rng.int(1,999),rng.int(1000,9999)]),n=high*10000+rem,inverse=level>=4&&rng.int(0,1);return inverse?makeQuestion("man_group_partition",level,{quantity:n,expression:high+"万 + "+rem,fields:[integerField("number",L("Integer","Heltal"),n)],tags:["man_boundary"],signature:"join-"+(rem<1000?"small":"large"),steps:[high+" × 10,000 + "+rem,String(n)]}):makeQuestion("man_group_partition",level,{quantity:n,expression:n.toLocaleString("en-US"),fields:[integerField("man",L("Whole 万","Hela 万"),high),integerField("remainder",L("Remainder","Rest"),rem)],tags:["man_boundary"],signature:"split-"+(rem<1000?"small":"large"),steps:[groupText(n),high+"万 + "+rem]});};
+  G.scaled_man_conversion=function(level,rng){var scaled=rng.pick([8,32,125,68,350]),scale=rng.pick([0,1]),coefficient=scale?String(Math.floor(scaled/10))+"."+String(scaled%10):String(scaled),n=scale?scaled*1000:scaled*10000,inverse=rng.int(0,1);return inverse?makeQuestion("scaled_man_conversion",level,{quantity:n,expression:coefficient+"万",fields:[integerField("units",L("Base units","Basenheter"),n)],tags:["man_boundary","scaled_unit"],signature:"man-to-unit-"+scale,steps:[coefficient+" × 10,000",String(n)]}):makeQuestion("scaled_man_conversion",level,{quantity:n,expression:n.toLocaleString("en-US"),fields:[decimalField("man",L("Amount in 万","Belopp i 万"),coefficient)],tags:["man_boundary","scaled_unit"],signature:"unit-to-man-"+scale,steps:[String(n)+" ÷ 10,000",coefficient+"万"]});};
+
+  G.choose_object_counter=function(level,rng){var item=rng.pick(OBJECTS.slice(0,Math.min(OBJECTS.length,2+level*2))),count=rng.int(1,5),values=COUNTER_IDS.filter(function(id){return id!=="tsu";}).map(function(id){return{value:id,label:COUNTERS[id].symbol};});return makeQuestion("choose_object_counter",level,{quantity:{count:count,object:item[1]},expression:count+" "+L(item[1],item[2]),fields:[optionField("counter",L("Counter","Räknare"),item[0],values)],tags:["counter_choice"],signature:item[0],steps:[L(item[1],item[2])+" → "+COUNTERS[item[0]].label[TEXT.code==="sv"?1:0],COUNTERS[item[0]].symbol]});};
+  G.counter_phrase_reading=function(level,rng){var ids=COUNTER_IDS.slice(0,Math.min(COUNTER_IDS.length,2+level*2)),id=rng.pick(ids),max=id==="tsu"?10:level>=4?20:10,n=rng.int(1,max),read=counterReading(id,n);return makeQuestion("counter_phrase_reading",level,{quantity:{count:n,counter:id},expression:String(n)+COUNTERS[id].symbol,fields:[readingField(read,level)],tokens:[read],tags:COUNTERS[id].tags,signature:id+"-"+(n%10),steps:[id+" table, row "+n,read]});};
+  G.counter_phrase_to_quantity=function(level,rng){var id=rng.pick(COUNTER_IDS.slice(0,Math.min(COUNTER_IDS.length,2+level*2))),n=rng.int(1,id==="tsu"?10:level>=4?20:10),read=counterReading(id,n),choices=COUNTER_IDS.map(function(x){return{value:x,label:COUNTERS[x].symbol+" · "+COUNTERS[x].label[TEXT.code==="sv"?1:0]};});return makeQuestion("counter_phrase_to_quantity",level,{quantity:{count:n,counter:id},expression:read,fields:[integerField("count",L("Count","Antal"),n),optionField("counter",L("Counter","Räknare"),id,choices)],tokens:[read],tags:COUNTERS[id].tags,signature:id+"-"+n%10,steps:[read,n+" + "+COUNTERS[id].symbol]});};
+  G.counter_sound_change_contrast=function(level,rng){var ids=["ko","hon","satsu","hiki","hai","kai"],id=rng.pick(ids),n=rng.pick([1,3,6,8,10]),correct=counterReading(id,n),naive=cardinal(n)+({ko:"こ",hon:"ほん",satsu:"さつ",hiki:"ひき",hai:"はい",kai:"かい"}[id]),values=[correct,naive];if(correct===naive)values=[correct,counterReading(id,n===3?6:3)];return makeQuestion("counter_sound_change_contrast",level,{quantity:{count:n,counter:id},expression:n+COUNTERS[id].symbol,fields:[optionField("reading",L("Correct reading","Rätt läsning"),correct,values)],tokens:[correct],tags:COUNTERS[id].tags,signature:id+"-"+n,steps:[cardinal(n)+" + "+COUNTERS[id].symbol,"sound-change table → "+correct],misconception:"naive concatenation"});};
+
+  function phone(rng,level){var shapes=[[3,4],[3,3,4],[2,4,4]],shape=shapes[Math.min(2,level-1)],groups=shape.map(function(size,index){var s="";for(var i=0;i<size;i++)s+=String(index===0&&i===0?0:rng.int(0,9));return s;});return groups;}
+  function phoneReading(groups){return groups.map(function(g){return g.split("").map(function(d){return DIGIT_KANA[Number(d)];}).join("・");}).join("　");}
+  G.telephone_digits_to_reading=function(level,rng){var groups=phone(rng,level),digits=groups.join("-"),read=phoneReading(groups);return makeQuestion("telephone_digits_to_reading",level,{quantity:groups,expression:digits,fields:[readingField(read,level)],tokens:groups.flatMap(function(g){return g.split("").map(function(d){return DIGIT_KANA[+d];});}),tags:["digit_string","leading_zero"],signature:groups.map(function(g){return g.length;}).join("-"),steps:[groups.join(" | "),read],misconception:"cardinal instead of digits"});};
+  G.telephone_reading_to_digits=function(level,rng){var groups=phone(rng,level);return makeQuestion("telephone_reading_to_digits",level,{quantity:groups,expression:phoneReading(groups),fields:[textField("digits",L("Telephone digits","Telefonsiffror"),groups.join("-"),"phone",[groups.join("")])],tags:["digit_string","leading_zero"],signature:groups.map(function(g){return g.length;}).join("-"),steps:[phoneReading(groups),groups.join("-")],misconception:"dropped leading zero"});};
+  G.telephone_group_reconstruction=function(level,rng){var groups=phone(rng,Math.max(2,level)),flat=groups.join(""),sizes=groups.map(function(g){return g.length;}).join("-");return makeQuestion("telephone_group_reconstruction",level,{quantity:groups,expression:flat+"\n"+L("Group pattern: ","Gruppmönster: ")+sizes,fields:[textField("digits",L("Grouped number","Grupperat nummer"),groups.join("-"),"phone")],tags:["digit_string","grouping"],signature:sizes,steps:[flat,sizes+" → "+groups.join("-")]});};
+
+  G.clock_time_to_reading=function(level,rng){var h=rng.int(1,level>=4?23:12),m=level===1?0:rng.pick([5,10,15,30,40,48,55]),period=level>=3?(h<12?"am":"pm"):null,read=clockReading(h,m,period,0);return makeQuestion("clock_time_to_reading",level,{quantity:{hour:h,minute:m},expression:String(h).padStart(2,"0")+":"+String(m).padStart(2,"0"),fields:[readingField(read,level)],tokens:[read],tags:["clock_not_duration",([4,7,9].includes(((h-1)%12)+1)?"irregular_hour":"hour"),"minute"],signature:(period||"none")+"-"+m%10,steps:[period?period==="am"?"午前":"午後":"",HOUR[((h-1)%12)+1],m===30?"はん":minuteReading(m)]});};
+  G.clock_reading_to_time=function(level,rng){var h=rng.int(1,level>=4?23:12),m=level===1?0:rng.pick([5,10,20,30,45,58]),period=level>=4?(h<12?"am":"pm"):null,read=clockReading(h,m,period,0),time=h+":"+String(m).padStart(2,"0");return makeQuestion("clock_reading_to_time",level,{quantity:{hour:h,minute:m},expression:read,fields:[textField("time",L("Clock time","Klockslag"),time,"time")],tokens:[read],tags:["clock_not_duration"],signature:(period||"none")+"-"+m%10,steps:[read,time]});};
+  G.time_unit_pronunciation=function(level,rng){var unit=rng.pick(level===1?["hour"]:["hour","minute","second"]),n=unit==="hour"?rng.int(1,12):rng.int(1,59),read=unit==="hour"?HOUR[n]:unit==="minute"?minuteReading(n):secondReading(n),symbol={hour:"時",minute:"分",second:"秒"}[unit];return makeQuestion("time_unit_pronunciation",level,{quantity:{value:n,unit:unit},expression:n+symbol,fields:[readingField(read,level)],tokens:[read],tags:[unit,unit==="minute"?"fun_pun":""],signature:unit+"-"+n%10,steps:[n+" "+symbol,read]});};
+  function durationReading(n,unit){if(unit==="seconds")return secondReading(n);if(unit==="minutes")return minuteReading(n);if(unit==="hours")return(n<=12?HOUR[n]:cardinal(n)+"じ")+"かん";return"";}
+  G.duration_to_reading=function(level,rng){var unit=rng.pick(["seconds","minutes","hours"]),n=rng.int(1,unit==="hours"?12:59),read=durationReading(n,unit);return makeQuestion("duration_to_reading",level,{quantity:{value:n,unit:unit},expression:n+" "+L(unit,{seconds:"sekunder",minutes:"minuter",hours:"timmar"}[unit]),fields:[readingField(read,level)],tokens:[read],tags:["duration_not_clock",unit],signature:unit+"-"+n%10,steps:[L("duration","varaktighet"),read]});};
+  G.duration_reading_to_quantity=function(level,rng){var unit=rng.pick(["seconds","minutes","hours"]),n=rng.int(1,unit==="hours"?12:59),read=durationReading(n,unit);return makeQuestion("duration_reading_to_quantity",level,{quantity:{value:n,unit:unit},expression:read,fields:[integerField("quantity",L("Quantity","Antal"),n),optionField("unit",L("Unit","Enhet"),unit,["seconds","minutes","hours"])],tokens:[read],tags:["duration_not_clock",unit],signature:unit+"-"+n%10,steps:[read,n+" "+unit]});};
+  G.clock_plus_duration=function(level,rng){var h=rng.int(0,23),m=rng.pick([0,10,20,30,45]),add=rng.pick([15,30,45,90,120]),total=(h*60+m+add)%1440,out=Math.floor(total/60)+":"+String(total%60).padStart(2,"0");return makeQuestion("clock_plus_duration",level,{quantity:{start:h*60+m,duration:add},expression:String(h).padStart(2,"0")+":"+String(m).padStart(2,"0")+" + "+add+L(" minutes"," minuter"),fields:[textField("time",L("Resulting time","Resulterande tid"),out,"time")],tags:["clock_arithmetic"],signature:add+"-"+(total<h*60+m?"midnight":"same-day"),steps:[h*60+m+" + "+add+" = "+(h*60+m+add)+" minutes",out]});};
+
+  G.calendar_month_reading=function(level,rng){var m=level>=2?rng.pick([4,7,9,rng.int(1,12)]):rng.int(1,12);return makeQuestion("calendar_month_reading",level,{quantity:m,expression:m+"月",fields:[readingField(MONTH[m],level)],tokens:[MONTH[m]],tags:[[4,7,9].includes(m)?"irregular_month":"month"],signature:"month-"+m,steps:[m+"月",MONTH[m]]});};
+  G.day_of_month_reading=function(level,rng){var irregular=[1,2,3,4,5,6,7,8,9,10,14,20,24],d=level<=3?rng.pick(irregular):rng.int(1,31);return makeQuestion("day_of_month_reading",level,{quantity:d,expression:d+"日",fields:[readingField(DAY[d],level)],tokens:[DAY[d]],tags:[irregular.includes(d)?"irregular_day":"day"],signature:"day-"+d,steps:[d+"日",DAY[d]]});};
+  function randomDate(rng){var y=rng.int(1900,2099),m=rng.int(1,12),d=rng.int(1,28);return[y,m,d];}
+  function dateReading(y,m,d){return cardinal(y)+"ねん"+MONTH[m]+DAY[d];}
+  G.full_date_to_reading=function(level,rng){var a=randomDate(rng),read=dateReading(a[0],a[1],a[2]);return makeQuestion("full_date_to_reading",level,{quantity:a,expression:iso(a[0],a[1],a[2]),fields:[readingField(read,level)],tokens:[cardinal(a[0])+"ねん",MONTH[a[1]],DAY[a[2]]],tags:["full_date"],signature:a[1]+"-"+a[2],steps:[a[0]+"年 | "+a[1]+"月 | "+a[2]+"日",read]});};
+  G.japanese_date_to_numeric=function(level,rng){var a=randomDate(rng),read=dateReading(a[0],a[1],a[2]);return makeQuestion("japanese_date_to_numeric",level,{quantity:a,expression:read,fields:[textField("date",L("ISO date","ISO-datum"),iso(a[0],a[1],a[2]),"date")],tokens:[read],tags:["full_date"],signature:a[1]+"-"+a[2],steps:[read,iso(a[0],a[1],a[2])]});};
+  G.weekday_bidirectional=function(level,rng){var idx=rng.int(0,6),inverse=level>=2&&rng.int(0,1),namesEn=["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"],namesSv=["måndag","tisdag","onsdag","torsdag","fredag","lördag","söndag"];if(level===5){var a=randomDate(rng);idx=weekday(a[0],a[1],a[2]);return makeQuestion("weekday_bidirectional",level,{quantity:idx,expression:iso(a[0],a[1],a[2]),fields:[optionField("weekday",L("Weekday","Veckodag"),String(idx+1),WEEKDAY.map(function(w,i){return{value:String(i+1),label:w[0]+" · "+w[1]};}))],tags:["weekday","date_arithmetic"],signature:"date-weekday",steps:[iso(a[0],a[1],a[2]),WEEKDAY[idx][0]+"（"+WEEKDAY[idx][1]+"）"]});}return inverse?makeQuestion("weekday_bidirectional",level,{quantity:idx,expression:WEEKDAY[idx][1],fields:[optionField("weekday",L("Weekday","Veckodag"),String(idx+1),(TEXT.code==="sv"?namesSv:namesEn).map(function(n,i){return{value:String(i+1),label:n};}))],tags:["weekday"],signature:"recognize",steps:[WEEKDAY[idx][1],L(namesEn[idx],namesSv[idx])]}):makeQuestion("weekday_bidirectional",level,{quantity:idx,expression:L(namesEn[idx],namesSv[idx]),fields:[readingField(WEEKDAY[idx][1],level,L("Kana reading","Kana-läsning"),[WEEKDAY[idx][0]])],tokens:[WEEKDAY[idx][1]],tags:["weekday"],signature:"produce",steps:[L(namesEn[idx],namesSv[idx]),WEEKDAY[idx][0]+"（"+WEEKDAY[idx][1]+"）"]});};
+  function weekReading(n){var last=n%10,prefix=n<10?"":n===20?"にじゅう":cardinal(n-last);if([1,8].includes(last))return prefix+(last===1?"いっ":"はっ")+"しゅうかん";if(last===0)return(n===10?"じゅっ":"にじゅっ")+"しゅうかん";return prefix+cardinal(last)+"しゅうかん";}
+  function periodReading(n,unit){if(unit==="days")return n===1?"いちにち":DAY[n];if(unit==="weeks")return weekReading(n);if(unit==="months")return counterReading("kai",n).replace(/かい$/,"かげつ");return cardinal(n)+"ねんかん";}
+  G.calendar_period_duration=function(level,rng){var unit=rng.pick(["days","weeks","months","years"]),max=unit==="days"?24:unit==="years"?10:20,n=rng.int(1,max),read=periodReading(n,unit);return makeQuestion("calendar_period_duration",level,{quantity:{value:n,unit:unit},expression:n+" "+L(unit,{days:"dagar",weeks:"veckor",months:"månader",years:"år"}[unit])+" ("+L("duration","varaktighet")+")",fields:[readingField(read,level)],tokens:[read],tags:["calendar_duration",unit],signature:unit+"-"+n%10,steps:[L("duration, not calendar label","varaktighet, inte kalenderetikett"),read]});};
+  G.relative_calendar_expression=function(level,rng){var pool=RELATIVE.filter(function(r){return level===1?r[0]==="day":level===2?r[0]!=="year":true;}),row=rng.pick(pool),inverse=level>=3&&rng.int(0,1);return inverse?makeQuestion("relative_calendar_expression",level,{quantity:{unit:row[0],offset:row[1]},expression:row[4],fields:[optionField("meaning",L("Meaning","Betydelse"),row[2],pool.map(function(x){return{value:x[2],label:L(x[2],x[3])};}))],tokens:[row[4]],tags:["relative_"+row[0]],signature:"recognize-"+row[0],steps:[row[4],L(row[2],row[3])]}):makeQuestion("relative_calendar_expression",level,{quantity:{unit:row[0],offset:row[1]},expression:L(row[2],row[3]),fields:[readingField(row[4],level)],tokens:[row[4]],tags:["relative_"+row[0]],signature:"produce-"+row[0],steps:[L(row[2],row[3]),row[4]]});};
+  G.date_shift=function(level,rng){var cases=[[2026,5,10,1],[2026,3,2,-7],[2024,2,28,2],[2026,12,31,1]],row=cases[progressive(level,rng,cases.length)],source=iso(row[0],row[1],row[2]),result=shiftDate(row[0],row[1],row[2],row[3]),offset=row[3]===1?"あした":row[3]===-7?"一週間前":row[3]===2?"二日後":"あした";return makeQuestion("date_shift",level,{quantity:{source:source,offset:row[3]},expression:dateReading(row[0],row[1],row[2])+" の "+offset,fields:[textField("date",L("Resulting ISO date","Resulterande ISO-datum"),result,"date")],tags:["date_arithmetic"],signature:String(row[3])+"-"+source.slice(5,7),steps:[source+" "+(row[3]>=0?"+":"")+row[3]+" days",result]});};
+
+  G.yen_amount_to_reading=function(level,rng){var n=cardinalForLevel(level,rng)||rng.int(1,99);return numberReadingQuestion("yen_amount_to_reading",level,n,"¥"+n.toLocaleString("en-US"),"えん");};
+  G.yen_reading_to_amount=function(level,rng){var n=cardinalForLevel(level,rng)||100;return makeQuestion("yen_reading_to_amount",level,{quantity:n,expression:cardinal(n)+"えん",fields:[integerField("yen",L("Yen","Yen"),n)],tokens:[cardinal(n),"えん"],tags:["yen","man_boundary"],signature:groupText(n),steps:[cardinal(n)+" + えん","¥"+n.toLocaleString("en-US")]});};
+  G.yen_man_decomposition=function(level,rng){var high=rng.int(1,level<3?9:999),rem=level===1?0:rng.pick([rng.int(1,999),rng.int(1000,9999)]),n=high*10000+rem,inverse=level>=4&&rng.int(0,1);return inverse?makeQuestion("yen_man_decomposition",level,{quantity:n,expression:high+"万円 + "+rem+"円",fields:[integerField("yen",L("Total yen","Yen totalt"),n)],tags:["yen","man_boundary"],signature:"join-"+(rem<1000?"small":"large"),steps:[high+" × ¥10,000 + ¥"+rem,"¥"+n]}):makeQuestion("yen_man_decomposition",level,{quantity:n,expression:"¥"+n.toLocaleString("en-US"),fields:[integerField("man_yen",L("Whole 万円","Hela 万円"),high),integerField("remainder_yen",L("Remaining 円","Återstående 円"),rem)],tags:["yen","man_boundary"],signature:"split-"+(rem<1000?"small":"large"),steps:[groupText(n),high+"万円 + "+rem+"円"]});};
+  G.money_scaled_unit_conversion=function(level,rng){var yen=rng.pick([68000,125000,350000,32000,80500]),targets=["円","千円","万円"],target=rng.pick(targets),factor=target==="円"?1:target==="千円"?1000:10000,value=scaledString(yen,factor),source=target==="円"?scaledString(yen,10000)+"万円":"¥"+yen.toLocaleString("en-US");return makeQuestion("money_scaled_unit_conversion",level,{quantity:yen,expression:L("Convert ","Konvertera ")+source+" → "+target,fields:[decimalField("amount",L("Amount in ","Belopp i ")+target,value)],tags:["yen","scaled_unit",target],signature:"to-"+target,steps:["千円 = ¥1,000; 万円 = ¥10,000",value+target]});};
+  G.simple_purchase_total=function(level,rng){var change=level>=4&&rng.int(0,1);if(change){var price=rng.pick([12500,6800,3200]),payment=Math.ceil(price/10000)*10000;return makeQuestion("simple_purchase_total",level,{quantity:{price:price,payment:payment},expression:cardinal(price)+"えん に "+cardinal(payment)+"えん を出します",fields:[integerField("change",L("Change in yen","Växel i yen"),payment-price)],tags:["yen","purchase","change"],signature:"change",steps:["¥"+payment+" − ¥"+price,"¥"+(payment-price)]});}var unit=rng.pick([120,280,320,450]),count=rng.pick([3,6,8]),total=unit*count,id=rng.pick(["ko","hon"]);return makeQuestion("simple_purchase_total",level,{quantity:{unitPrice:unit,count:count},expression:unit+"円 × "+counterReading(id,count),fields:[integerField("total",L("Total yen","Yen totalt"),total)],tags:["yen","purchase"].concat(COUNTERS[id].tags),signature:"total-"+id,steps:[counterReading(id,count)+" = "+count,unit+" × "+count+" = ¥"+total]});};
+
+  function generateQuestion(familyId,level,seed,bypass){var family=familyById(familyId),attempt=0,q,key;do{var actual=(seed+Math.imul(attempt,2654435761))>>>0;q=G[family.id](level,new Rng(actual));q.parameters.seed=actual;key=q.expression+"|"+JSON.stringify(q.canonicalAnswer);attempt++;}while(!bypass&&attempt<60&&(recentSignatures.includes(q.structuralSignature)||recentPrompts.includes(key)));q.promptKey=key;return q;}
+  function normalizeByKind(value,kind){if(kind==="integer")return normInteger(value);if(kind==="decimal")return normDecimal(value);if(kind==="phone")return normPhone(value);if(kind==="time")return normTime(value);if(kind==="date")return normDate(value);return normText(value);}
+  function checkQuestion(answers,q){var results=q.fields.map(function(f){var given=normalizeByKind(answers[f.id],f.kind),accepted=[f.value].concat(f.aliases||[]).map(function(v){return normalizeByKind(v,f.kind);});return{field:f,correct:accepted.includes(given)};});return{correct:results.every(function(r){return r.correct;}),fields:results,expected:results.map(function(r){return r.field.label+" = "+r.field.value;}).join("; "),diagnosis:results.filter(function(r){return!r.correct;}).map(function(r){return r.field.label;}).join(", ")};}
+
+  function emptyCell(){return{attempts:0,correct:0,totalMs:0,streak:0,recent:[],mastery:0,lastAt:0,tags:{}};}
+  function defaults(){var enabled={};CATEGORIES.forEach(function(c){enabled[c.id]=true;});return{version:2,activeView:"practice",settings:{adaptive:true,enabledCategories:enabled},manual:{familyId:FAMILIES[0].id,level:1},cells:{},history:[],legacyCategoryTotals:{}};}
+  function migrate(old){var fresh=defaults(),totals={};if(old&&old.cells)Object.keys(old.cells).forEach(function(key){var id=key.split(":")[0],c=old.cells[key];if(!totals[id])totals[id]={attempts:0,correct:0,totalMs:0};totals[id].attempts+=c.attempts||0;totals[id].correct+=c.correct||0;totals[id].totalMs+=c.totalMs||0;});fresh.legacyCategoryTotals=totals;return fresh;}
+  function ensure(v){if(!v||v.version!==2)return defaults();var b=defaults(),m=Object.assign(b,v);m.settings=Object.assign(b.settings,v.settings||{});m.manual=Object.assign(b.manual,v.manual||{});m.cells=v.cells||{};m.history=Array.isArray(v.history)?v.history:[];m.legacyCategoryTotals=v.legacyCategoryTotals||{};if(!FAMILIES.some(function(f){return f.id===m.manual.familyId;}))m.manual=b.manual;return m;}
+  function load(){try{var saved=localStorage.getItem(STORAGE_KEY);if(saved)return ensure(JSON.parse(saved));var old=localStorage.getItem(LEGACY_KEY);if(old){var m=migrate(JSON.parse(old));localStorage.setItem(STORAGE_KEY,JSON.stringify(m));return m;}}catch(e){}return defaults();}
+  function save(){try{localStorage.setItem(STORAGE_KEY,JSON.stringify(progress));}catch(e){}}
+  function cell(id,l){var key=id+":"+l;if(!progress.cells[key])progress.cells[key]=emptyCell();return progress.cells[key];}
+  function recentAccuracy(c){return c.recent.length?c.recent.filter(Boolean).length/c.recent.length:0;}
+  function aggregate(){var r={attempts:0,correct:0,totalMs:0,mastery:0,count:0,active:0};FAMILIES.forEach(function(f){f.levels.forEach(function(l){var c=cell(f.id,l);r.attempts+=c.attempts;r.correct+=c.correct;r.totalMs+=c.totalMs;r.mastery+=c.mastery;r.count++;if(c.attempts)r.active++;});});r.accuracy=r.attempts?r.correct/r.attempts*100:0;r.mastery=r.count?r.mastery/r.count:0;return r;}
+  function chooseAdaptive(){var candidates=[];FAMILIES.filter(function(f){return progress.settings.enabledCategories[f.categoryId]!==false;}).forEach(function(f){var levels=f.levels.filter(function(l,i){return!i||(cell(f.id,f.levels[i-1]).attempts>=5&&recentAccuracy(cell(f.id,f.levels[i-1]))>=.8);}),l=levels[levels.length-1],c=cell(f.id,l);candidates.push({family:f,level:l,cell:c});});if(!candidates.length)candidates=[{family:FAMILIES[0],level:1,cell:cell(FAMILIES[0].id,1)}];candidates.sort(function(a,b){return a.cell.mastery-b.cell.mastery||a.cell.attempts-b.cell.attempts;});var roll=Math.random();if(roll<.4)return candidates[Math.floor(Math.random()*Math.min(8,candidates.length))];if(roll<.65){var practiced=candidates.filter(function(x){return x.cell.attempts>=5;});return practiced.length?practiced[Math.floor(Math.random()*practiced.length)]:candidates[0];}if(roll<.85){var missed=candidates.filter(function(x){return x.cell.recent.length&&recentAccuracy(x.cell)<.8;});return missed.length?missed[Math.floor(Math.random()*missed.length)]:candidates[0];}return candidates[Math.floor(Math.random()*candidates.length)];}
+  function start(){resume();var selected=progress.settings.adaptive?chooseAdaptive():{family:familyById(progress.manual.familyId),level:progress.manual.level};currentQuestion=generateQuestion(selected.family.id,selected.level,(Date.now()^Math.floor(Math.random()*0xffffffff))>>>0,false);recentSignatures.push(currentQuestion.structuralSignature);recentPrompts.push(currentQuestion.promptKey);recentSignatures=recentSignatures.slice(-20);recentPrompts=recentPrompts.slice(-100);startedAt=Date.now();pausedMs=0;answered=false;renderAll();if(activeInput&&window.matchMedia&&window.matchMedia("(pointer: fine)").matches)activeInput.focus();}
+  function renderPrompt(){elements.questionPrompt.innerHTML='<div class="prompt-title">'+esc(currentQuestion.title)+'</div><div class="prompt-expression">'+esc(currentQuestion.expression).replaceAll("\n","<br>")+'</div><div class="prompt-note">'+esc(currentQuestion.note)+'</div>';}
+  function renderControls(){elements.answerControls.innerHTML="";activeInput=null;currentQuestion.fields.forEach(function(f,i){var w=document.createElement("div");w.className="answer-control";var label=document.createElement("label");label.htmlFor="answer-"+f.id;label.textContent=f.label;w.appendChild(label);var control;if(f.kind==="choice"){control=document.createElement("select");var blank=document.createElement("option");blank.value="";blank.textContent=t("practice.choose","Choose…");control.appendChild(blank);f.options.forEach(function(o){var n=document.createElement("option");n.value=o.value;n.textContent=o.label;control.appendChild(n);});}else{control=document.createElement("input");control.type="text";control.autocomplete="off";control.spellcheck=false;control.inputMode=["integer","decimal"].includes(f.kind)?"decimal":"text";control.addEventListener("focus",function(){activeInput=control;});if(!activeInput)activeInput=control;}control.id="answer-"+f.id;control.dataset.answerField=f.id;w.appendChild(control);elements.answerControls.appendChild(w);});}
+  function renderQuestion(){if(!currentQuestion)return;var f=familyById(currentQuestion.familyId),c=cell(f.id,currentQuestion.level);elements.questionCategory.textContent=categoryById(f.categoryId).title;elements.questionFamily.textContent=f.title;elements.questionLevel.textContent=t("practice.level","Level")+" "+currentQuestion.level;elements.questionMastery.textContent=Math.round(c.mastery)+"% "+t("practice.masterySuffix","mastery");renderPrompt();renderControls();elements.feedback.className="feedback hidden";elements.submitBtn.disabled=false;elements.nextBtn.classList.add("hidden");elements.skipBtn.classList.remove("hidden");elements.answerKeypad.classList.toggle("hidden",!currentQuestion.fields.some(function(x){return["integer","decimal","phone","time","date"].includes(x.kind);}));}
+  function renderSelectors(){elements.categorySelect.innerHTML="";CATEGORIES.forEach(function(c){var o=document.createElement("option");o.value=c.id;o.textContent=c.title;elements.categorySelect.appendChild(o);});var f=progress.settings.adaptive&&currentQuestion?familyById(currentQuestion.familyId):familyById(progress.manual.familyId),l=progress.settings.adaptive&&currentQuestion?currentQuestion.level:progress.manual.level;elements.categorySelect.value=f.categoryId;elements.familySelect.innerHTML="";familiesForCategory(f.categoryId).forEach(function(x){var o=document.createElement("option");o.value=x.id;o.textContent=x.title;elements.familySelect.appendChild(o);});elements.familySelect.value=f.id;elements.levelSelect.innerHTML="";f.levels.forEach(function(x){var o=document.createElement("option");o.value=x;o.textContent=t("practice.level","Level")+" "+x;elements.levelSelect.appendChild(o);});elements.levelSelect.value=l;elements.categorySelect.disabled=progress.settings.adaptive;elements.familySelect.disabled=progress.settings.adaptive;elements.levelSelect.disabled=progress.settings.adaptive;elements.adaptiveModeBtn.classList.toggle("secondary-active",progress.settings.adaptive);elements.manualModeBtn.classList.toggle("secondary-active",!progress.settings.adaptive);}
+  function renderSummary(){var a=aggregate();elements.summaryMastery.textContent=Math.round(a.mastery)+"%";elements.summaryAccuracy.textContent=Math.round(a.accuracy)+"%";elements.summaryAttempts.textContent=a.attempts;if(currentQuestion){var c=cell(currentQuestion.familyId,currentQuestion.level);elements.metricMastery.textContent=Math.round(c.mastery)+"%";elements.metricAccuracy.textContent=(c.attempts?Math.round(c.correct/c.attempts*100):0)+"%";elements.metricStreak.textContent=c.streak;elements.metricAvgTime.textContent=c.attempts?seconds(c.totalMs/c.attempts):"0s";}}
+  function renderMatrix(){var html='<table><thead><tr><th>'+L("Family","Familj")+'</th>'+LEVELS.map(function(l){return"<th>L"+l+"</th>";}).join("")+"</tr></thead><tbody>";CATEGORIES.forEach(function(cat){html+='<tr class="matrix-heading"><td colspan="6">'+esc(cat.title)+"</td></tr>";familiesForCategory(cat.id).forEach(function(f){html+="<tr><td>"+esc(f.title)+'<span class="subcategory-label">'+esc(f.id)+"</span></td>";LEVELS.forEach(function(l){var c=cell(f.id,l);html+='<td><button class="level-button '+(c.mastery>=70?"ready":c.attempts?"weak":"")+'" data-family="'+f.id+'" data-level="'+l+'"><strong>'+Math.round(c.mastery)+"%</strong><span>"+c.attempts+" "+t("stats.tries","tries")+"</span></button></td>";});html+="</tr>";});});elements.matrix.innerHTML=html+"</tbody></table>";}
+  function renderStats(){var a=aggregate();elements.statTotalAttempts.textContent=a.attempts;elements.statTotalCorrect.textContent=a.correct;elements.statTotalTime.textContent=minutes(a.totalMs);elements.statActiveCells.textContent=a.active;var list=[];FAMILIES.forEach(function(f){f.levels.forEach(function(l){var c=cell(f.id,l);if(c.attempts)list.push({f:f,l:l,c:c});});});list.sort(function(a,b){return a.c.mastery-b.c.mastery;});function html(items){return items.length?items.map(function(x){return'<button class="list-item" data-family="'+x.f.id+'" data-level="'+x.l+'"><strong>'+esc(x.f.title)+" · L"+x.l+"</strong><span>"+Math.round(x.c.mastery)+"% · "+x.c.attempts+" "+t("stats.tries","tries")+"</span></button>";}).join(""):'<div class="list-item"><strong>'+t("stats.noAttemptsYet","No attempts yet")+"</strong></div>";}elements.weakList.innerHTML=html(list.slice(0,5));elements.strongList.innerHTML=html(list.slice().reverse().slice(0,5));}
+  function renderLearn(){elements.learnGrid.innerHTML=CATEGORIES.map(function(cat){return'<section><div class="section-head"><h2>'+esc(cat.title)+'</h2></div><div class="learn-category-grid">'+familiesForCategory(cat.id).map(function(f){return'<article class="learn-card" id="learn-'+f.id+'"><h3>'+esc(f.title)+'</h3><p>'+esc(f.learn)+'</p><code>'+esc(f.id)+"</code></article>";}).join("")+"</div></section>";}).join("");}
+  function renderSettings(){elements.enabledCategories.innerHTML=CATEGORIES.map(function(c){return'<label class="check-row"><input type="checkbox" data-enabled="'+c.id+'" '+(progress.settings.enabledCategories[c.id]!==false?"checked":"")+'><span>'+esc(c.title)+"</span></label>";}).join("");}
+  function renderAll(){renderQuestion();renderSelectors();renderSummary();renderMatrix();renderStats();renderLearn();renderSettings();}
+  function collect(){var r={};document.querySelectorAll("[data-answer-field]").forEach(function(c){r[c.dataset.answerField]=c.value;});return r;}
+  function submit(e){if(e)e.preventDefault();if(answered||pauseStartedAt)return;var result=checkQuestion(collect(),currentQuestion),duration=Date.now()-startedAt-pausedMs,c=cell(currentQuestion.familyId,currentQuestion.level);c.attempts++;c.correct+=result.correct?1:0;c.streak=result.correct?c.streak+1:0;c.recent=c.recent.concat([result.correct]).slice(-10);c.totalMs+=duration;c.lastAt=Date.now();c.mastery=Math.round(Math.min(1,c.attempts/5)*recentAccuracy(c)*100);if(!result.correct)currentQuestion.readingRuleTags.forEach(function(tag){if(tag)c.tags[tag]=(c.tags[tag]||0)+1;});progress.history.push({at:Date.now(),familyId:currentQuestion.familyId,level:currentQuestion.level,seed:currentQuestion.parameters.seed,correct:result.correct,elapsedMs:duration,tags:currentQuestion.readingRuleTags,signature:currentQuestion.structuralSignature});progress.history=progress.history.slice(-400);save();answered=true;elements.feedback.className="feedback "+(result.correct?"correct":"incorrect");elements.feedback.innerHTML="<strong>"+(result.correct?t("messages.correct","Correct"):t("messages.notQuite","Not quite"))+"</strong>"+(!result.correct?'<div>'+esc(L("Check: ","Kontrollera: ")+result.diagnosis)+'</div><div>'+esc(t("messages.expected","Expected")+": "+result.expected)+"</div>":"")+'<div class="worked-trace">'+currentQuestion.derivationSteps.map(esc).join("<br>")+'</div><div class="rule-note">'+esc(currentQuestion.rule)+'</div><span class="feedback-time">'+esc(t("messages.time","Time")+": "+seconds(duration))+"</span>";elements.submitBtn.disabled=true;elements.skipBtn.classList.add("hidden");elements.nextBtn.classList.remove("hidden");renderSummary();renderMatrix();renderStats();}
+  function setManual(id,l){var f=familyById(id);progress.settings.adaptive=false;progress.manual={familyId:f.id,level:f.levels.includes(l)?l:1};save();start();}
+  function setView(name){progress.activeView=name;save();document.querySelectorAll(".view").forEach(function(v){v.classList.toggle("active",v.id==="view-"+name);});document.querySelectorAll("[data-view]").forEach(function(b){b.classList.toggle("active",b.dataset.view===name);});}
+  function pause(){if(pauseStartedAt||answered)return;pauseStartedAt=Date.now();elements.practiceMain.classList.add("paused");}
+  function resume(){if(!pauseStartedAt)return;pausedMs+=Date.now()-pauseStartedAt;pauseStartedAt=0;elements.practiceMain.classList.remove("paused");}
+  function keypad(e){var b=e.target.closest("button");if(!b)return;if(b.dataset.keypadAction==="submit"){submit();return;}if(b.dataset.keypadAction==="next"){answered?start():submit();return;}if(!activeInput)return;if(b.dataset.keypadAction==="clear")activeInput.value="";else if(b.dataset.keypadAction==="backspace")activeInput.value=activeInput.value.slice(0,-1);else if(b.dataset.keypadInsert)activeInput.value+=b.dataset.keypadInsert;}
+  function cache(){["summaryMastery","summaryAccuracy","summaryAttempts","adaptiveModeBtn","manualModeBtn","pauseBtn","learnCurrentBtn","questionCategory","questionFamily","questionLevel","questionMastery","questionPrompt","answerForm","answerControls","submitBtn","nextBtn","skipBtn","answerKeypad","feedback","resumeBtn","categorySelect","familySelect","levelSelect","metricMastery","metricAccuracy","metricStreak","metricAvgTime","matrix","statTotalAttempts","statTotalCorrect","statTotalTime","statActiveCells","weakList","strongList","enabledCategories","dataBox","exportBtn","copyBtn","importBtn","resetBtn","learnGrid"].forEach(function(id){elements[id]=document.getElementById(id);});elements.practiceMain=document.querySelector(".practice-main");}
+  function bind(){document.querySelectorAll("[data-view]").forEach(function(b){b.addEventListener("click",function(){setView(b.dataset.view);});});elements.answerForm.addEventListener("submit",submit);elements.nextBtn.addEventListener("click",start);elements.skipBtn.addEventListener("click",start);elements.adaptiveModeBtn.addEventListener("click",function(){progress.settings.adaptive=true;save();start();});elements.manualModeBtn.addEventListener("click",function(){progress.settings.adaptive=false;save();start();});elements.pauseBtn.addEventListener("click",pause);elements.resumeBtn.addEventListener("click",resume);elements.categorySelect.addEventListener("change",function(){var f=familiesForCategory(elements.categorySelect.value)[0];setManual(f.id,1);});elements.familySelect.addEventListener("change",function(){setManual(elements.familySelect.value,1);});elements.levelSelect.addEventListener("change",function(){setManual(elements.familySelect.value,+elements.levelSelect.value);});elements.matrix.addEventListener("click",function(e){var b=e.target.closest("[data-family]");if(b){setView("practice");setManual(b.dataset.family,+b.dataset.level);}});["weakList","strongList"].forEach(function(id){elements[id].addEventListener("click",function(e){var b=e.target.closest("[data-family]");if(b){setView("practice");setManual(b.dataset.family,+b.dataset.level);}});});elements.enabledCategories.addEventListener("change",function(e){if(e.target.dataset.enabled){progress.settings.enabledCategories[e.target.dataset.enabled]=e.target.checked;save();}});elements.answerKeypad.addEventListener("click",keypad);elements.learnCurrentBtn.addEventListener("click",function(){setView("learn");var n=document.getElementById("learn-"+currentQuestion.familyId);if(n)n.scrollIntoView({behavior:"smooth",block:"center"});});elements.exportBtn.addEventListener("click",function(){elements.dataBox.value=JSON.stringify(progress,null,2);});elements.copyBtn.addEventListener("click",function(){elements.dataBox.select();document.execCommand("copy");});elements.importBtn.addEventListener("click",function(){try{progress=ensure(JSON.parse(elements.dataBox.value));save();start();}catch(e){alert(t("messages.invalidJson","Invalid JSON"));}});elements.resetBtn.addEventListener("click",function(){if(confirm(t("messages.resetConfirm","Reset all local progress?"))){progress=defaults();save();start();}});}
+  function init(){cache();progress=load();bind();start();setView(progress.activeView||"practice");}
+
+  function runSelfTests(){var failures=[];function assert(name,ok){if(!ok)failures.push(name);}assert("30 families",FAMILIES.length===30);assert("30 generators",Object.keys(G).length===30);
+    for(var n=0;n<=999999;n++){var read=cardinal(n);assert("cardinal "+n,Boolean(read)&&!read.includes("いちひゃく")&&!read.includes("いちせん"));assert("cardinal roundtrip "+n,parseCardinal(read)===n);}
+    assert("600",cardinal(600)==="ろっぴゃく");assert("8000",cardinal(8000)==="はっせん");assert("18400",cardinal(18400)==="いちまんはっせんよんひゃく");assert("30608020",cardinal(30608020)==="さんぜんろくじゅうまんはっせんにじゅう");
+    COUNTER_IDS.forEach(function(id){var max=id==="tsu"?10:20;for(var i=1;i<=max;i++)assert("counter "+id+" "+i,Boolean(counterReading(id,i)));});
+    assert("one week",weekReading(1)==="いっしゅうかん");assert("six weeks",weekReading(6)==="ろくしゅうかん");assert("eight weeks",weekReading(8)==="はっしゅうかん");
+    for(var h=1;h<=12;h++)assert("hour "+h,Boolean(HOUR[h]));for(var mi=1;mi<60;mi++)assert("minute "+mi,Boolean(minuteReading(mi)));for(var d=1;d<=31;d++)assert("day "+d,Boolean(DAY[d]));for(var mo=1;mo<=12;mo++)assert("month "+mo,Boolean(MONTH[mo]));
+    for(var y=1900;y<=2099;y++)for(var m=1;m<=12;m++){var last=new Date(Date.UTC(y,m,0)).getUTCDate();for(var day=1;day<=last;day++){assert("valid date",validDay(y,m,day));assert("date shift",shiftDate(y,m,day,0)===iso(y,m,day));assert("weekday",weekday(y,m,day)>=0&&weekday(y,m,day)<7);}}
+    assert("invalid nonleap",!validDay(2023,2,29));assert("valid leap",validDay(2024,2,29));assert("leap shift",shiftDate(2024,2,28,2)==="2024-03-01");
+    FAMILIES.forEach(function(f,index){
+      f.levels.forEach(function(level){
+        for(var sample=0;sample<80;sample++){
+          try{
+            var q=generateQuestion(f.id,level,(index+1)*100000+level*1000+sample,true),a={};
+            q.fields.forEach(function(field){a[field.id]=field.value;});
+            assert("canonical "+f.id+":"+level+":"+sample,checkQuestion(a,q).correct);
+            ["semanticQuantity","canonicalReadingTokens","acceptedVariantTokenSequences","readingRuleTags","responseMode","acceptedScriptPolicy","misconceptionTarget","difficultyDimensions","structuralSignature","derivationSteps"].forEach(function(key){assert("metadata "+f.id+" "+key,q[key]!==undefined);});
+          }catch(e){failures.push("generator "+f.id+":"+level+":"+sample+" "+e.message);}
+        }
+      });
+    });
+    for(var seed=0;seed<10000;seed++){var p=phone(new Rng(seed),5),flat=p.join("");assert("phone leading zero "+seed,flat[0]==="0");assert("phone length "+seed,flat.length===10);}
+    var migrated=migrate({cells:{"numberReading:1":{attempts:2,correct:1,totalMs:30}}});assert("migration",migrated.legacyCategoryTotals.numberReading.attempts===2);
+    if(failures.length){console.error("Japanese numbers/dates self-tests failed",failures.slice(0,80),"total",failures.length);return{ok:false,failures:failures.slice(0,120)};}console.info("Japanese numbers/dates self-tests passed: 30 families, 1,000,000 cardinal values, counters, clock/calendar tables, 10,000 telephone seeds");return{ok:true,failures:[]};}
+  window.runSelfTests=runSelfTests;window.PracticeLabJapaneseNumbersDates={categories:CATEGORIES,families:FAMILIES,generateQuestion:generateQuestion,checkQuestion:checkQuestion,cardinal:cardinal,counterReading:counterReading,runSelfTests:runSelfTests};
+  if(typeof document!=="undefined"&&document.addEventListener)document.addEventListener("DOMContentLoaded",init);
+}());
