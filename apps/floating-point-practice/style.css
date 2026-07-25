@@ -355,6 +355,58 @@ label {
   margin-top: 18px;
 }
 
+.answer-controls {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(185px, 1fr));
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.answer-control {
+  min-width: 0;
+}
+
+.answer-control input,
+.answer-control select {
+  margin-top: 8px;
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 1.05rem;
+}
+
+.prompt-row {
+  padding: 8px 10px;
+  border-left: 3px solid var(--teal);
+  background: var(--surface-soft);
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: clamp(0.94rem, 2vw, 1.1rem);
+  overflow-wrap: anywhere;
+}
+
+.worked-route,
+.interpretation {
+  margin-top: 8px;
+}
+
+.interpretation {
+  color: var(--muted);
+}
+
+.matrix-heading td {
+  background: var(--surface-soft);
+  font-weight: 800;
+}
+
+.subcategory-label {
+  display: block;
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
+.unavailable-cell {
+  color: var(--muted);
+  text-align: center;
+}
+
 .answer-form label {
   margin-bottom: 8px;
 }
@@ -558,10 +610,16 @@ tr:last-child td {
 
 .split-grid,
 .settings-grid,
-.learn-grid {
+.learn-category-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 16px;
+}
+
+.learn-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 22px;
 }
 
 .settings-grid {
@@ -649,7 +707,7 @@ tr:last-child td {
   .practice-layout,
   .settings-grid,
   .split-grid,
-  .learn-grid {
+  .learn-category-grid {
     grid-template-columns: 1fr;
   }
 

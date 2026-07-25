@@ -27,6 +27,8 @@ export default {
       paused: "Paused",
       learnThis: "Learn this",
       category: "Category",
+      family: "Question family",
+      choose: "Choose…",
       level: "Level",
       mastery: "0% mastery",
       masterySuffix: "mastery",

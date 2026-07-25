@@ -27,6 +27,8 @@ export default {
       paused: "Pausat",
       learnThis: "Lär detta",
       category: "Kategori",
+      family: "Frågetyp",
+      choose: "Välj…",
       level: "Nivå",
       mastery: "0% styrka",
       masterySuffix: "styrka",
