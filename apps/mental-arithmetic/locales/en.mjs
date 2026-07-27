@@ -3,6 +3,7 @@ export default {
   lang: "en",
   suffix: "",
   text: {
+    localeCode: "en",
     locale: "en-US",
     appTitle: "Mental Arithmetic",
     brandSubtitle: "Build fast, flexible head-calculation strategies—not tolerance for written algorithms.",

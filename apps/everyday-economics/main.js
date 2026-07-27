@@ -25,12 +25,48 @@
   var recentPrompts = [];
   var learnSpotlightId = null;
   var elements = {};
+  var generatedTranslationPairs = null;
 
   function t(path, fallback) {
     var value = path.split(".").reduce(function (current, part) {
       return current && Object.prototype.hasOwnProperty.call(current, part) ? current[part] : undefined;
     }, TEXT);
     return value === undefined ? fallback : value;
+  }
+
+  function localizeGeneratedString(value) {
+    if (TEXT.localeCode === "en" || value === null || value === undefined) return String(value || "");
+    if (generatedTranslationPairs === null) {
+      generatedTranslationPairs = t("generatedReplacements", []).slice().sort(function (a, b) {
+        return b[0].length - a[0].length;
+      });
+    }
+    var output = String(value);
+    generatedTranslationPairs.forEach(function (pair, index) {
+      output = output.split(pair[0]).join("\uE000" + index + "\uE001");
+    });
+    generatedTranslationPairs.forEach(function (pair, index) {
+      output = output.split("\uE000" + index + "\uE001").join(pair[1]);
+    });
+    return output;
+  }
+
+  function localizeQuestion(question) {
+    if (TEXT.localeCode === "en") return question;
+    question.prompt.title = localizeGeneratedString(question.prompt.title);
+    question.prompt.rows = question.prompt.rows.map(localizeGeneratedString);
+    question.prompt.note = localizeGeneratedString(question.prompt.note);
+    question.answer.fields.forEach(function (answerField) {
+      answerField.label = localizeGeneratedString(answerField.label);
+      if (answerField.options) {
+        answerField.options.forEach(function (option) {
+          option.label = localizeGeneratedString(option.label);
+        });
+      }
+    });
+    question.workedSteps = question.workedSteps.map(localizeGeneratedString);
+    question.interpretation = localizeGeneratedString(question.interpretation);
+    return question;
   }
 
   function clamp(value, min, max) {
@@ -167,8 +203,10 @@
   };
 
   function browserLocale() {
+    var builtLocale = t("locale", null);
+    if (builtLocale) return builtLocale;
     if (typeof navigator !== "undefined" && navigator.language) return navigator.language;
-    return t("locale", "en-US");
+    return "en-US";
   }
 
   function configuredLocale() {
@@ -319,6 +357,7 @@
     return {
       id: entry[0],
       categoryId: entry[1],
+      subcategoryId: entry[2].toLowerCase().replace(/[^a-z0-9]+/g, "-"),
       subcategory: entry[2],
       title: entry[3],
       levels: entry[4],
@@ -387,7 +426,12 @@
     });
     FAMILIES.forEach(function (family) {
       var localized = t("families." + family.id, null);
-      if (localized) family.title = localized.title || family.title;
+      if (localized) {
+        family.subcategory = localized.subcategory || family.subcategory;
+        family.title = localized.title || family.title;
+        family.learn.rule = localized.rule || family.learn.rule;
+        family.learn.formula = localized.formula || family.learn.formula;
+      }
     });
   }
 
@@ -407,7 +451,7 @@
     });
     var question = {
       categoryId: family.categoryId,
-      subcategoryId: family.subcategory.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
+      subcategoryId: family.subcategoryId,
       familyId: familyId,
       level: level,
       answerKind: answerKind,
@@ -1055,6 +1099,7 @@
     var attempts = 0;
     do {
       candidate = GENERATORS[familyId](level, rng);
+      candidate = localizeQuestion(candidate);
       candidate.parameters.seed = seed >>> 0;
       candidate.parameters.generationAttempt = attempts;
       attempts += 1;
@@ -1143,7 +1188,9 @@
     return {
       correct: correct,
       parts: parts,
-      expectedText: question.answer.fields.map(function (answerField) { return answerField.label + " = " + expectedFieldDisplay(answerField); }).join("; "),
+      expectedText: question.answer.fields.map(function (answerField) {
+        return answerField.label + " = " + localizeGeneratedString(expectedFieldDisplay(answerField));
+      }).join("; "),
       diagnosis: diagnose(question, parts)
     };
   }
@@ -1151,18 +1198,18 @@
   function diagnose(question, parts) {
     var wrong = Object.keys(parts).filter(function (id) { return !parts[id].correct; });
     var correct = Object.keys(parts).filter(function (id) { return parts[id].correct; });
-    if (correct.length && wrong.length) return "The " + correct.map(function (id) { return parts[id].label; }).join(", ") + " stage is correct. Recheck " + wrong.map(function (id) { return parts[id].label; }).join(", ") + " using its named base and unit.";
+    if (correct.length && wrong.length) return localizeGeneratedString("The " + correct.map(function (id) { return parts[id].label; }).join(", ") + " stage is correct. Recheck " + wrong.map(function (id) { return parts[id].label; }).join(", ") + " using its named base and unit.");
     var family = question.familyId;
-    if (family.indexOf("unit_price") === 0) return "Normalize quantity to the comparison unit, then divide price by quantity—not the reverse.";
-    if (["discount_single", "tax_single"].includes(family)) return "Identify whether the prompt asks for the percentage amount or the final total.";
-    if (["discount_then_tax", "successive_discounts", "successive_percent_changes"].includes(family)) return "Each stage uses its updated base; multiply stage factors instead of adding signed rates.";
-    if (family.indexOf("percent_change") >= 0 || family === "reverse_change_comparison") return "Percent change divides by the original value for that direction.";
-    if (family.indexOf("interest") >= 0 || family === "simple_vs_compound") return "Keep principal, interest, balance, annual basis, and model distinct.";
-    if (["inflated_future_price", "cumulative_inflation_rate"].includes(family)) return "Constant annual inflation compounds through the stated horizon.";
-    if (["purchasing_power", "real_change_from_nominal"].includes(family)) return "Nominal and real values move in opposite calculation directions: deflate by division.";
-    if (family.indexOf("subscription") === 0) return "Use the identical access horizon and include every explicitly stated fixed and recurring charge.";
-    if (family.indexOf("expected_value") === 0) return "Weight every outcome by its probability; subtract a certain cost once.";
-    return "Recheck the exact relationship, units, and final-only rounding.";
+    if (family.indexOf("unit_price") === 0) return localizeGeneratedString("Normalize quantity to the comparison unit, then divide price by quantity—not the reverse.");
+    if (["discount_single", "tax_single"].includes(family)) return localizeGeneratedString("Identify whether the prompt asks for the percentage amount or the final total.");
+    if (["discount_then_tax", "successive_discounts", "successive_percent_changes"].includes(family)) return localizeGeneratedString("Each stage uses its updated base; multiply stage factors instead of adding signed rates.");
+    if (family.indexOf("percent_change") >= 0 || family === "reverse_change_comparison") return localizeGeneratedString("Percent change divides by the original value for that direction.");
+    if (family.indexOf("interest") >= 0 || family === "simple_vs_compound") return localizeGeneratedString("Keep principal, interest, balance, annual basis, and model distinct.");
+    if (["inflated_future_price", "cumulative_inflation_rate"].includes(family)) return localizeGeneratedString("Constant annual inflation compounds through the stated horizon.");
+    if (["purchasing_power", "real_change_from_nominal"].includes(family)) return localizeGeneratedString("Nominal and real values move in opposite calculation directions: deflate by division.");
+    if (family.indexOf("subscription") === 0) return localizeGeneratedString("Use the identical access horizon and include every explicitly stated fixed and recurring charge.");
+    if (family.indexOf("expected_value") === 0) return localizeGeneratedString("Weight every outcome by its probability; subtract a certain cost once.");
+    return localizeGeneratedString("Recheck the exact relationship, units, and final-only rounding.");
   }
 
   function defaultCell() {
@@ -1394,7 +1441,8 @@
     });
     var note = document.createElement("div");
     note.className = "prompt-note";
-    note.textContent = promptData.note + " Decimal convention: " + (decimalSeparator() === "," ? "comma" : "point") + ".";
+    note.textContent = promptData.note + " " + t("practice.decimalConvention", "Decimal convention") + ": " +
+      (decimalSeparator() === "," ? t("practice.decimalComma", "comma") : t("practice.decimalPoint", "point")) + ".";
     elements.questionPrompt.appendChild(note);
   }
 

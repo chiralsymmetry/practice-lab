@@ -17,8 +17,7 @@
       var submitted = false;
       var learnSpotlightId = null;
       var activeAnswerInput = null;
-      var generatedTranslationExpression = null;
-      var generatedTranslations = null;
+      var generatedTranslationPairs = null;
 
       function t(path, fallback) {
         var value = path.split(".").reduce(function (current, part) {
@@ -29,20 +28,19 @@
 
       function localizeGeneratedString(value) {
         if (TEXT.localeCode === "en" || value === null || value === undefined) return String(value || "");
-        if (generatedTranslationExpression === null) {
-          var pairs = t("generatedReplacements", []).slice().sort(function (a, b) {
+        if (generatedTranslationPairs === null) {
+          generatedTranslationPairs = t("generatedReplacements", []).slice().sort(function (a, b) {
             return b[0].length - a[0].length;
           });
-          generatedTranslations = {};
-          pairs.forEach(function (pair) { generatedTranslations[pair[0]] = pair[1]; });
-          var expression = pairs.map(function (pair) {
-            return pair[0].replace(/[.*+?^${}()|[\]\\]/g, function (character) { return "\\" + character; });
-          }).join("|");
-          generatedTranslationExpression = expression ? new RegExp(expression, "g") : false;
         }
-        return generatedTranslationExpression ? String(value).replace(generatedTranslationExpression, function (match) {
-          return generatedTranslations[match];
-        }) : String(value);
+        var output = String(value);
+        generatedTranslationPairs.forEach(function (pair, index) {
+          output = output.split(pair[0]).join("\uE000" + index + "\uE001");
+        });
+        generatedTranslationPairs.forEach(function (pair, index) {
+          output = output.split("\uE000" + index + "\uE001").join(pair[1]);
+        });
+        return output;
       }
 
       function localizeQuestion(question) {

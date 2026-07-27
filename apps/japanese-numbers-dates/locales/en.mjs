@@ -3,6 +3,7 @@ export default {
   lang: "en",
   suffix: "",
   text: {
+    localeCode: "en",
     appTitle: "Japanese Numbers, Time & Money",
     brandSubtitle: "Practice numbers, counters, phones, clock time, dates, durations, and yen.",
     summary: {

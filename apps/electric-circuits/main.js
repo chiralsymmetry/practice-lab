@@ -1,9 +1,37 @@
 (function(){
   "use strict";
-  var TEXT=__LOCALE_TEXT__,STORAGE_KEY="practiceLab.electricCircuits.v2",LEGACY_KEY="practiceLab.electricCircuitsBasics.v1",LEVELS=[1,2,3,4,5];
+  var TEXT=__LOCALE_TEXT__,generatedTranslationPairs=null,STORAGE_KEY="practiceLab.electricCircuits.v2",LEGACY_KEY="practiceLab.electricCircuitsBasics.v1",LEVELS=[1,2,3,4,5];
   var progress,currentQuestion,startedAt=0,pauseStartedAt=0,pausedMs=0,answered=false,activeInput=null,lastCalculatorValue=null,recentSignatures=[],recentInstances=[],elements={};
   function t(path,fallback){var v=path.split(".").reduce(function(n,k){return n&&Object.prototype.hasOwnProperty.call(n,k)?n[k]:undefined;},TEXT);return v===undefined?fallback:v;}
   function L(en,sv){return TEXT.localeCode==="sv"?sv:en;}
+  function localizeGeneratedString(value){
+    if(value===undefined||value===null||TEXT.localeCode!=="sv")return value===undefined||value===null?"":String(value);
+    if(!generatedTranslationPairs)generatedTranslationPairs=(t("generatedReplacements",[])||[]).slice().sort(function(a,b){return b[0].length-a[0].length;});
+    var output=String(value);
+    generatedTranslationPairs.forEach(function(pair,index){output=output.split(pair[0]).join("\uE000"+index+"\uE001");});
+    generatedTranslationPairs.forEach(function(pair,index){output=output.split("\uE000"+index+"\uE001").join(pair[1]);});
+    return output;
+  }
+  function localizeQuestion(question){
+    question.title=localizeGeneratedString(question.title);
+    question.body=localizeGeneratedString(question.body);
+    question.analysisDomain=localizeGeneratedString(question.analysisDomain);
+    question.componentModel=localizeGeneratedString(question.componentModel);
+    question.fields.forEach(function(field){
+      field.label=localizeGeneratedString(field.label);
+      if(field.kind==="choice")field.options.forEach(function(option){option.label=localizeGeneratedString(option.label);});
+    });
+    question.workedSolution=question.workedSolution.map(localizeGeneratedString);
+    question.rule=localizeGeneratedString(question.rule);
+    question.circuitGraph.description=localizeGeneratedString(question.circuitGraph.description);
+    question.circuitGraph.labels=question.circuitGraph.labels.map(localizeGeneratedString);
+    question.circuitGraph.branches.forEach(function(branch){
+      branch.kind=localizeGeneratedString(branch.kind);
+      branch.label=localizeGeneratedString(branch.label);
+    });
+    question.svg=schematic(question.circuitGraph);
+    return question;
+  }
   function esc(v){return String(v).replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;");}
   function clamp(v,a,b){return Math.max(a,Math.min(b,v));}
   function round(v,d){var p=Math.pow(10,d);return Math.round((v+Number.EPSILON)*p)/p;}
@@ -38,7 +66,7 @@
     "adequate":L("adequate","tillräcklig"),"underspecified":L("underspecified","otillräckligt specificerad")
   };return map[value]||value;}
   function choiceField(id,label,value,values){return{id:id,label:label,kind:"choice",value:String(value),options:values.map(function(x){return typeof x==="string"?{value:x,label:choiceLabel(x)}:x;})};}
-  function checkQuestion(answers,q){var parts=q.fields.map(function(f){if(f.kind==="choice")return{field:f,correct:String(answers[f.id]||"").trim().toLowerCase()===f.value.toLowerCase()};var got=parseMeasurement(answers[f.id],f);return{field:f,correct:got!==null&&Math.abs(got-f.expectedSI)<=f.tolerance};});return{correct:parts.every(function(x){return x.correct;}),fields:parts,expected:parts.map(function(x){var f=x.field;return f.label+" = "+(f.kind==="choice"?f.value:f.value+" "+f.unit);}).join("; "),diagnosis:parts.filter(function(x){return!x.correct;}).map(function(x){return x.field.label;}).join(", ")};}
+  function checkQuestion(answers,q){var parts=q.fields.map(function(f){if(f.kind==="choice")return{field:f,correct:String(answers[f.id]||"").trim().toLowerCase()===f.value.toLowerCase()};var got=parseMeasurement(answers[f.id],f);return{field:f,correct:got!==null&&Math.abs(got-f.expectedSI)<=f.tolerance};});return{correct:parts.every(function(x){return x.correct;}),fields:parts,expected:parts.map(function(x){var f=x.field,option=f.kind==="choice"&&f.options.find(function(candidate){return candidate.value===f.value;});return f.label+" = "+(option?option.label:f.kind==="choice"?f.value:f.value+" "+f.unit);}).join("; "),diagnosis:parts.filter(function(x){return!x.correct;}).map(function(x){return x.field.label;}).join(", ")};}
 
   var CATEGORIES=[
     {id:"dc",title:L("DC Foundations","DC-grunder")},
@@ -67,7 +95,7 @@
     opamps:L("The virtual-short rule applies only with negative feedback while the computed output remains inside the stated limits.","Virtuell kortslutning gäller bara med negativ återkoppling när beräknad utgång ligger inom angivna gränser."),
     practical:L("Digital thresholds, instrument impedance, tolerance corners, and ratings are explicit circuit elements—not afterthoughts.","Digitala trösklar, instrumentimpedans, toleranshörn och märkdata är explicita kretsdelar.")
   };
-  var FAMILIES=FAMILY_DATA.map(function(r){return{id:r[0],categoryId:r[1],title:L(r[2],r[3]),subcategory:L(r[2],r[3]),levels:LEVELS.slice(),learn:LEARN[r[1]]};});
+  var FAMILIES=FAMILY_DATA.map(function(r){return{id:r[0],categoryId:r[1],subcategoryId:r[2].toLowerCase().replace(/[^a-z0-9]+/g,"-"),title:L(r[2],r[3]),subcategory:L(r[2],r[3]),levels:LEVELS.slice(),learn:LEARN[r[1]]};});
   function categoryById(id){return CATEGORIES.find(function(c){return c.id===id;})||CATEGORIES[0];}
   function familyById(id){return FAMILIES.find(function(f){return f.id===id;})||FAMILIES[0];}
   function familiesForCategory(id){return FAMILIES.filter(function(f){return f.categoryId===id;});}
@@ -116,16 +144,16 @@
       text=lab(L("same physical dimension","samma fysikaliska dimension"),190,62);
     }else if(top==="node"){
       shape='<path d="M38 70 H186 M38 190 H186 M342 130 H194"/><path d="M158 61 L186 70 L158 79 M158 181 L186 190 L158 199 M222 121 L194 130 L222 139"/><circle cx="190" cy="130" r="6" fill="currentColor"/>';
-      text=lab(labels[0],85,58)+lab(labels[1],85,216)+lab(labels[2],296,116)+lab("node n",190,112);
+      text=lab(labels[0],85,58)+lab(labels[1],85,216)+lab(labels[2],296,116)+lab(L("node n","nod n"),190,112);
     }else if(top.includes("opamp")){
       shape='<path d="M135 65 L135 195 L270 130 Z M42 92 H135 M42 168 H135 M270 130 H345"/>'+(!top.includes("comparator")?'<path d="M305 130 V225 H105 V168 H135"/>':"");
-      text=lab("+",152,96)+lab("−",152,172)+lab(labels[0]||"input",78,80)+lab(labels[1]||"feedback",205,242)+lab(labels[2]||"Vout",316,116);
+      text=lab("+",152,96)+lab("−",152,172)+lab(labels[0]||L("input","ingång"),78,80)+lab(labels[1]||L("feedback","återkoppling"),205,242)+lab(labels[2]||"Vout",316,116);
     }else if(top.includes("divider")||top.includes("thevenin")){
       shape='<path d="M68 35 H190 V55 M190 105 V130 M190 130 V155 M190 205 V226"/>'+box(166,55,48,50,labels[0]||"R1")+box(166,155,48,50,labels[1]||"R2")+'<circle cx="190" cy="130" r="5" fill="currentColor"/><path d="M190 130 H328"/>';
-      if(top.includes("parallel"))shape+='<path d="M272 130 V155 M272 205 V226 H190"/>'+box(248,155,48,50,labels[2]||"load");
-      text=lab("+Vs",68,28)+lab("out",328,116)+lab("0 V",190,248);
+      if(top.includes("parallel"))shape+='<path d="M272 130 V155 M272 205 V226 H190"/>'+box(248,155,48,50,labels[2]||L("load","last"));
+      text=lab("+Vs",68,28)+lab(L("out","ut"),328,116)+lab("0 V",190,248);
     }else if(top.includes("parallel")&&!top.includes("meter")){
-      shape='<path d="M55 130 H105 V65 H155 M105 130 V195 H155 M235 65 H285 V130 H330 M235 195 H285"/>'+box(155,42,80,46,labels[0]||"branch 1")+box(155,172,80,46,labels[1]||"branch 2")+'<circle cx="105" cy="130" r="5" fill="currentColor"/><circle cx="285" cy="130" r="5" fill="currentColor"/>';
+      shape='<path d="M55 130 H105 V65 H155 M105 130 V195 H155 M235 65 H285 V130 H330 M235 195 H285"/>'+box(155,42,80,46,labels[0]||L("branch 1","gren 1"))+box(155,172,80,46,labels[1]||L("branch 2","gren 2"))+'<circle cx="105" cy="130" r="5" fill="currentColor"/><circle cx="285" cy="130" r="5" fill="currentColor"/>';
       text=lab("a",105,118)+lab("b",285,118)+(labels[2]?lab(labels[2],190,140):"");
     }else if(top.includes("rc-")||top==="capacitor-switch"){
       shape='<circle cx="58" cy="130" r="28"/><path d="M86 130 H145"/>'+box(145,106,72,48,labels[0]||"R")+'<path d="M217 130 H278 M278 92 V118 M278 142 V168 M278 168 V218 H58 V158 M58 102 V42 H278 V92"/>';
@@ -140,16 +168,16 @@
       shape='<circle cx="58" cy="130" r="28"/><path d="M86 130 H170 c0-20 28-20 28 0 c0-20 28-20 28 0 c0-20 28-20 28 0 H290 V218 H58 V158 M58 102 V42 H290 V130"/>';
       text=lab(labels[0]||"L",230,166)+lab(labels[1]||"",190,78);
     }else if(top.includes("device")){
-      shape='<circle cx="55" cy="130" r="27"/><path d="M82 130 H125"/>'+box(125,106,72,48,labels[0]||"load")+'<path d="M197 130 H226"/>'+box(226,92,96,76,labels[1]||top.replace("device-",""))+'<path d="M322 130 H344 V220 H55 V157 M55 103 V40 H344 V130"/>';
+      shape='<circle cx="55" cy="130" r="27"/><path d="M82 130 H125"/>'+box(125,106,72,48,labels[0]||L("load","last"))+'<path d="M197 130 H226"/>'+box(226,92,96,76,labels[1]||top.replace("device-",""))+'<path d="M322 130 H344 V220 H55 V157 M55 103 V40 H344 V130"/>';
       text=lab("+",55,125)+lab("−",55,145);
     }else if(top.includes("digital")){
-      shape='<path d="M75 35 V66"/>'+box(51,66,48,62,labels[0]||"pull")+'<path d="M75 128 V150 H272 M190 150 V172"/>'+box(150,172,80,52,labels[1]||"switch")+'<path d="M190 224 V240"/><circle cx="190" cy="150" r="5" fill="currentColor"/>';
-      text=lab("supply",75,25)+lab("out",292,155)+lab("0 V",190,258);
+      shape='<path d="M75 35 V66"/>'+box(51,66,48,62,labels[0]||"pull")+'<path d="M75 128 V150 H272 M190 150 V172"/>'+box(150,172,80,52,labels[1]||L("switch","brytare"))+'<path d="M190 224 V240"/><circle cx="190" cy="150" r="5" fill="currentColor"/>';
+      text=lab(L("supply","matning"),75,25)+lab(L("out","ut"),292,155)+lab("0 V",190,258);
     }else if(top.includes("meter")){
       shape='<circle cx="55" cy="130" r="27"/><path d="M82 130 H135"/>'+box(135,106,70,48,labels[0]||"R");
       if(top.includes("parallel"))shape+='<path d="M135 130 V72 H215 M205 130 V72 H265"/><circle cx="240" cy="72" r="25"/><path d="M205 130 H325 V220 H55 V157 M55 103 V40 H325 V130"/>';
       else shape+='<path d="M205 130 H238"/><circle cx="265" cy="130" r="27"/><path d="M292 130 H325 V220 H55 V157 M55 103 V40 H325 V130"/>';
-      text=lab("source",55,135)+lab(labels[1]||"meter",top.includes("parallel")?240:265,top.includes("parallel")?77:135);
+      text=lab(L("source","källa"),55,135)+lab(labels[1]||L("meter","mätare"),top.includes("parallel")?240:265,top.includes("parallel")?77:135);
     }else{
       var seriesLabels=labels.length?labels.slice(0,3):[top],count=seriesLabels.length,start=count===1?125:count===2?95:78,width=count===1?170:count===2?105:76,gap=count===1?0:20,end=start;
       shape='<circle cx="48" cy="130" r="27"/><path d="M75 130 H'+start+'"/>';
@@ -166,7 +194,7 @@
     return Boolean(valid&&g.description&&g.topology&&g.nodes.every(function(n){return incidents[n]>0;}));
   }
   function make(id,level,data){var f=familyById(id),g=data.graph||graph(data.topology||"network",data.description||data.body,data.labels);return{
-    categoryId:f.categoryId,subcategoryId:f.subcategory.toLowerCase().replace(/\s+/g,"-"),familyId:id,level:level,
+    categoryId:f.categoryId,subcategoryId:f.subcategoryId,familyId:id,level:level,
     analysisDomain:data.domain||"DC steady state",componentModel:data.model||"ideal linear components",circuitGraph:g,schematicLayout:{template:g.topology,viewBox:"0 0 380 260"},
     givensSI:data.givens||{},requestedQuantity:data.requested||data.fields[0].id,expectedDimension:data.fields.map(function(x){return x.dimension||"choice";}),exactAnswer:data.fields.map(function(x){return x.expectedSI===undefined?x.value:x.expectedSI;}),
     displayAnswer:data.fields.map(function(x){return x.kind==="choice"?x.value:x.value+" "+x.unit;}),tolerance:data.fields.map(function(x){return x.tolerance||0;}),
@@ -186,11 +214,11 @@
   G.kvl_loop=function(level,rng){var vs=V(level,rng),v1=round(vs*rng.pick([.25,.4,.6]),3),v2=vs-v1;return make("kvl_loop",level,{body:body(["Vs="+vs+" V","drop V₁="+v1+" V","drop V₂=?"]),fields:[nfield("voltage","V₂",v2,"V",3)],topology:"series-loop",description:"One voltage source and two clockwise voltage drops",labels:["+"+vs+" V","−"+v1+" V","−V₂"],givens:{Vs:vs,V1:v1},steps:["+Vs − V₁ − V₂ = 0","V₂ = "+fmt(v2)+" V","KVL sum = 0."],signature:"two-drops"});};
   G.power_and_energy=function(level,rng){var v=V(level,rng),i=rng.pick([.01,.02,.05,.1]),p=v*i,time=rng.pick([2,10,60]),ask=level>=2&&rng.int(0,1);return make("power_and_energy",level,{body:body(["V="+v+" V","I="+i*1000+" mA",ask?"t="+time+" s":""]),fields:[ask?nfield("energy","Energy",p*time,"J",3):nfield("power","Power",p,p<1?"mW":"W",3)],topology:"load",description:"An isolated low-voltage source supplies one passive load; current enters the load terminal labeled positive",labels:["load: "+v+" V, "+i*1000+" mA"],givens:{V:v,I:i,t:time},steps:["P = VI = "+fmt(p)+" W",ask?"E = Pt = "+fmt(p*time)+" J":"Passive power is positive (absorbed)."],signature:ask?"energy":"power"});};
 
-  G.series_parallel_equivalent=function(level,rng){var r1=R(level,rng),r2=R(level,rng),parallel=rng.int(0,1),req=parallel?r1*r2/(r1+r2):r1+r2;return make("series_parallel_equivalent",level,{body:body(["R₁="+r1+" Ω","R₂="+r2+" Ω",parallel?"parallel":"series"]),fields:[nfield("resistance","Req",req,"Ω",2)],topology:parallel?"parallel-resistors":"series-resistors",description:(parallel?"Parallel":"Series")+" pair between source and return",labels:["R₁ "+r1+" Ω","R₂ "+r2+" Ω"],givens:{R1:r1,R2:r2},steps:[parallel?"1/Req = 1/R₁ + 1/R₂":"Req = R₁ + R₂","Req = "+fmt(req,2)+" Ω",parallel?"Check: Req is below the smaller resistor.":"Check: Req exceeds either resistor."],signature:parallel?"parallel":"series"});};
+  G.series_parallel_equivalent=function(level,rng){var r1=R(level,rng),r2=R(level,rng),parallel=rng.int(0,1),req=parallel?r1*r2/(r1+r2):r1+r2;return make("series_parallel_equivalent",level,{body:body(["R₁="+r1+" Ω","R₂="+r2+" Ω",parallel?L("parallel","parallellkoppling"):L("series","seriekoppling")]),fields:[nfield("resistance","Req",req,"Ω",2)],topology:parallel?"parallel-resistors":"series-resistors",description:(parallel?"Parallel":"Series")+" pair between source and return",labels:["R₁ "+r1+" Ω","R₂ "+r2+" Ω"],givens:{R1:r1,R2:r2},steps:[parallel?"1/Req = 1/R₁ + 1/R₂":"Req = R₁ + R₂","Req = "+fmt(req,2)+" Ω",parallel?"Check: Req is below the smaller resistor.":"Check: Req exceeds either resistor."],signature:parallel?"parallel":"series"});};
   G.mixed_resistive_reduction=function(level,rng){var r1=R(level,rng),r2=R(level,rng),r3=R(level,rng),p=r1*r2/(r1+r2),req=p+r3;return make("mixed_resistive_reduction",level,{body:body(["R₁="+r1+" Ω ∥ R₂="+r2+" Ω","then series R₃="+r3+" Ω"]),fields:[nfield("resistance","Req",req,"Ω",2)],topology:"parallel-then-series",description:"R1 and R2 share both nodes; their equivalent is in series with R3",labels:["R₁","R₂","R₃"],givens:{R1:r1,R2:r2,R3:r3},steps:["R₁∥R₂ = "+fmt(p,2)+" Ω","Req = (R₁∥R₂)+R₃ = "+fmt(req,2)+" Ω"],signature:"parallel-plus-series"});};
   G.voltage_divider=function(level,rng){var r1=R(level,rng),r2=R(level,rng),vs=V(level,rng),out=nodalDivider(vs,r1,r2);return make("voltage_divider",level,{body:body(["Vin="+vs+" V","R₁="+r1+" Ω","R₂="+r2+" Ω","Vout across R₂"]),fields:[nfield("voltage","Vout",out,"V",3)],topology:"divider",description:"R1 from source to out; R2 from out to ground",labels:["R₁ "+r1+" Ω","R₂ "+r2+" Ω"],givens:{Vin:vs,R1:r1,R2:r2},steps:["Vout = Vin·R₂/(R₁+R₂)","Vout = "+fmt(out,3)+" V","Check: 0 < Vout < Vin."],signature:"unloaded"});};
   G.loaded_voltage_divider=function(level,rng){var r1=R(level,rng),r2=R(level,rng),rl=rng.pick([1000,2200,4700,10000]),vs=V(level,rng),lower=r2*rl/(r2+rl),out=nodalDivider(vs,r1,r2,rl);return make("loaded_voltage_divider",level,{body:body(["Vin="+vs+" V","R₁="+r1+" Ω","R₂="+r2+" Ω","RL="+rl+" Ω"]),fields:[nfield("voltage","Loaded Vout",out,"V",3)],topology:"parallel-load-divider",description:"R1 feeds out; R2 and load RL both connect out to ground",labels:["R₁ "+r1+" Ω","R₂ "+r2+" Ω","RL "+rl+" Ω"],givens:{Vin:vs,R1:r1,R2:r2,RL:rl},steps:["Rlower = R₂∥RL = "+fmt(lower,2)+" Ω","Vout = Vin·Rlower/(R₁+Rlower) = "+fmt(out,3)+" V","Check: loaded output is below unloaded output."],signature:"loaded"});};
-  G.thevenin_equivalent=function(level,rng){var r1=R(level,rng),r2=R(level,rng),vs=V(level,rng),vth=nodalDivider(vs,r1,r2),rth=r1*r2/(r1+r2);return make("thevenin_equivalent",level,{body:body(["Vin="+vs+" V","R₁="+r1+" Ω","R₂="+r2+" Ω","find equivalent seen at out"]),fields:[nfield("vth","Vth",vth,"V",3),nfield("rth","Rth",rth,"Ω",2)],topology:"divider-thevenin",description:"Divider viewed from output to ground with source deactivated for Rth",labels:["R₁","R₂","out"],givens:{Vin:vs,R1:r1,R2:r2},steps:["Open-circuit Vth = "+fmt(vth,3)+" V","Deactivate ideal voltage source: Rth=R₁∥R₂="+fmt(rth,2)+" Ω"],signature:"divider"});};
+  G.thevenin_equivalent=function(level,rng){var r1=R(level,rng),r2=R(level,rng),vs=V(level,rng),vth=nodalDivider(vs,r1,r2),rth=r1*r2/(r1+r2);return make("thevenin_equivalent",level,{body:body(["Vin="+vs+" V","R₁="+r1+" Ω","R₂="+r2+" Ω","find equivalent seen at out"]),fields:[nfield("vth","Vth",vth,"V",3),nfield("rth","Rth",rth,"Ω",2)],topology:"divider-thevenin",description:"Divider viewed from output to ground with source deactivated for Rth",labels:["R₁","R₂",L("out","ut")],givens:{Vin:vs,R1:r1,R2:r2},steps:["Open-circuit Vth = "+fmt(vth,3)+" V","Deactivate ideal voltage source: Rth=R₁∥R₂="+fmt(rth,2)+" Ω"],signature:"divider"});};
   G.source_internal_resistance=function(level,rng){var voc=V(level,rng),rs=R(level,rng),rl=rng.pick([220,470,1000,2200]),i=voc/(rs+rl),vt=i*rl;return make("source_internal_resistance",level,{body:body(["Voc="+voc+" V","Rs="+rs+" Ω","RL="+rl+" Ω"]),fields:[nfield("terminal","Terminal voltage",vt,"V",3)],topology:"source-series-load",description:"Ideal voltage source in series with internal resistance Rs and load RL",labels:["Rs","RL"],givens:{Voc:voc,Rs:rs,RL:rl},steps:["I = Voc/(Rs+RL) = "+fmt(i*1000,3)+" mA","Vterminal = I·RL = "+fmt(vt,3)+" V","Check: terminal voltage is below Voc."],signature:"loaded-source"});};
 
   G.capacitor_charge_energy=function(level,rng){var c=rng.pick([1,4.7,10,22,100])*1e-6,v=V(level,rng),ask=rng.int(0,1),q=c*v,e=.5*c*v*v;return make("capacitor_charge_energy",level,{body:body(["C="+fmt(c*1e6)+" µF","V="+v+" V"]),fields:[ask?nfield("energy","Stored energy",e,"mJ",4):nfield("charge","Charge",q,"uC",3)],topology:"capacitor",description:"Capacitor connected across a DC voltage",labels:["C",v+" V"],givens:{C:c,V:v},steps:["Q=CV = "+fmt(q*1e6)+" µC","E=½CV² = "+fmt(e*1000,4)+" mJ"],signature:ask?"energy":"charge"});};
@@ -225,7 +253,7 @@
   G.tolerance_worst_case=function(level,rng){var nominal=R(level,rng),tol=rng.pick([.01,.05,.1]),min=nominal*(1-tol),max=nominal*(1+tol);return make("tolerance_worst_case",level,{body:body(["Rnom="+nominal+" Ω","tolerance ±"+tol*100+"%"]),fields:[nfield("minimum","Rmin",min,"Ω",2),nfield("maximum","Rmax",max,"Ω",2)],topology:"tolerance",description:"Single resistor with declared symmetric tolerance",labels:["R ±"+tol*100+"%"],givens:{R:nominal,tolerance:tol},steps:["Rmin=Rnom(1−tol)="+fmt(min,2)+" Ω","Rmax=Rnom(1+tol)="+fmt(max,2)+" Ω","Both tolerance corners enumerated."],signature:String(tol)});};
   G.component_rating_check=function(level,rng){var v=rng.pick([5,9,12]),r=R(level,rng),p=v*v/r,rating=rng.pick([.125,.25,.5,1]),adequate=rating>=p*1.25;return make("component_rating_check",level,{body:body(["resistor across "+v+" V","R="+r+" Ω","rated "+rating+" W","required margin 25%"]),fields:[choiceField("judgment",L("Rating judgment","Märkningsbedömning"),adequate?"adequate":"underspecified",["adequate","underspecified"])],topology:"rated-load",description:"Resistor connected directly across an isolated low-voltage source",labels:["R",rating+" W"],givens:{V:v,R:r,rating:rating},steps:["Pdiss=V²/R="+fmt(p,4)+" W","Required rating ≥1.25·P="+fmt(1.25*p,4)+" W",rating+" W is "+(adequate?"adequate":"underspecified")+" under stated assumptions."],signature:adequate?"pass":"fail"});};
 
-  function generateQuestion(id,level,seed,bypass){var f=familyById(id),attempt=0,q,key;do{var actual=(seed+Math.imul(attempt,2654435761))>>>0;q=G[f.id](level,new Rng(actual));q.parameters.seed=actual;key=q.body+"|"+JSON.stringify(q.exactAnswer);attempt++;}while(!bypass&&attempt<60&&(recentSignatures.includes(q.structuralSignature)||recentInstances.includes(key)));q.instanceKey=key;return q;}
+  function generateQuestion(id,level,seed,bypass){var f=familyById(id),attempt=0,q,key;do{var actual=(seed+Math.imul(attempt,2654435761))>>>0;q=localizeQuestion(G[f.id](level,new Rng(actual)));q.parameters.seed=actual;key=q.body+"|"+JSON.stringify(q.exactAnswer);attempt++;}while(!bypass&&attempt<60&&(recentSignatures.includes(q.structuralSignature)||recentInstances.includes(key)));q.instanceKey=key;return q;}
   function emptyCell(){return{attempts:0,correct:0,totalMs:0,streak:0,recent:[],mastery:0,lastAt:0,misconceptions:{}};}
   function defaults(){var enabled={};CATEGORIES.forEach(function(c){enabled[c.id]=true;});return{version:2,activeView:"practice",settings:{adaptive:true,enabledCategories:enabled},manual:{familyId:FAMILIES[0].id,level:1},cells:{},history:[],legacyFoundationTotals:{}};}
   function migrate(old){var p=defaults(),map={ohmsLaw:"ohms_law",power:"power_and_energy",seriesResistance:"series_parallel_equivalent",parallelResistance:"series_parallel_equivalent",voltageDivider:"voltage_divider",ledResistor:"led_resistor_design"};if(old&&old.cells)Object.keys(old.cells).forEach(function(key){var parts=key.split(":"),target=map[parts[0]];if(!target)return;var c=old.cells[key];if(!p.legacyFoundationTotals[target])p.legacyFoundationTotals[target]={attempts:0,correct:0,totalMs:0};p.legacyFoundationTotals[target].attempts+=c.attempts||0;p.legacyFoundationTotals[target].correct+=c.correct||0;p.legacyFoundationTotals[target].totalMs+=c.totalMs||0;});return p;}

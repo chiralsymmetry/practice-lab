@@ -3,6 +3,7 @@ export default {
   lang: "en",
   suffix: "",
   text: {
+    localeCode: "en",
     appTitle: "Floating Point Practice",
     brandSubtitle: "Toy formats, IEEE-style fields, exact fractions, and the strange little rules of floats.",
     summary: {

@@ -17,12 +17,39 @@
   var recentExpressions = [];
   var learnSpotlightId = null;
   var elements = {};
+  var generatedTranslationPairs = null;
 
   function t(path, fallback) {
     var value = path.split(".").reduce(function (current, part) {
       return current && Object.prototype.hasOwnProperty.call(current, part) ? current[part] : undefined;
     }, TEXT);
     return value === undefined ? fallback : value;
+  }
+
+  function localizeGeneratedString(value) {
+    if (TEXT.localeCode === "en" || value === null || value === undefined) return String(value || "");
+    if (generatedTranslationPairs === null) {
+      generatedTranslationPairs = t("generatedReplacements", []).slice().sort(function (a, b) {
+        return b[0].length - a[0].length;
+      });
+    }
+    var output = String(value);
+    generatedTranslationPairs.forEach(function (pair, index) {
+      output = output.split(pair[0]).join("\uE000" + index + "\uE001");
+    });
+    generatedTranslationPairs.forEach(function (pair, index) {
+      output = output.split("\uE000" + index + "\uE001").join(pair[1]);
+    });
+    return output;
+  }
+
+  function localizeQuestion(question) {
+    if (TEXT.localeCode === "en") return question;
+    question.prompt.title = localizeGeneratedString(question.prompt.title);
+    question.prompt.expression = localizeGeneratedString(question.prompt.expression);
+    question.prompt.note = localizeGeneratedString(question.prompt.note);
+    question.workedSteps = question.workedSteps.map(localizeGeneratedString);
+    return question;
   }
 
   function clamp(value, min, max) {
@@ -142,6 +169,7 @@
     return {
       id: entry[0],
       categoryId: entry[1],
+      subcategoryId: entry[2].toLowerCase().replace(/[^a-z0-9]+/g, "-"),
       subcategory: entry[2],
       title: entry[3],
       levels: entry[4],
@@ -196,7 +224,13 @@
     });
     FAMILIES.forEach(function (family) {
       var localized = t("families." + family.id, null);
-      if (localized) family.title = localized.title || family.title;
+      if (localized) {
+        family.subcategory = localized.subcategory || family.subcategory;
+        family.title = localized.title || family.title;
+        family.strategy = localized.strategy || family.strategy;
+        family.learn.rules = localized.rules || family.learn.rules;
+        family.learn.example = localized.example || family.learn.example;
+      }
     });
   }
 
@@ -208,7 +242,7 @@
     var mentalCost = Object.assign({ recalledFacts: 0, decompositions: 0, boundaryJumps: 0, intermediateTotals: workedSteps.length }, cost || {});
     var question = {
       categoryId: family.categoryId,
-      subcategoryId: family.subcategory.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
+      subcategoryId: family.subcategoryId,
       familyId: familyId,
       level: level,
       strategy: strategy,
@@ -721,6 +755,7 @@
     var attempts = 0;
     do {
       candidate = GENERATORS[familyId](level, rng);
+      candidate = localizeQuestion(candidate);
       candidate.parameters.seed = seed >>> 0;
       candidate.parameters.generationAttempt = attempts;
       attempts += 1;

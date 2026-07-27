@@ -3,6 +3,7 @@ export default {
   lang: "en",
   suffix: "",
   text: {
+    localeCode: "en",
     appTitle: "C++ Code Reading",
     brandSubtitle: "Trace, bind, infer, resolve, and judge small C++ snippets.",
     summary: {

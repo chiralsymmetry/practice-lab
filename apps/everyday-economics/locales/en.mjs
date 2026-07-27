@@ -3,6 +3,8 @@ export default {
   lang: "en",
   suffix: "",
   text: {
+    localeCode: "en",
+    locale: "en-US",
     appTitle: "Everyday Economics",
     brandSubtitle: "Applied math drills for prices, percentages, interest, inflation, and simple risk.",
     educationalNote: "Educational practice only — not financial, tax, legal, investment, or purchasing advice.",
@@ -42,6 +44,9 @@ export default {
       clear: "Clear",
       pauseText: "The timer is stopped for this question.",
       resume: "Resume",
+      decimalConvention: "Decimal convention",
+      decimalComma: "comma",
+      decimalPoint: "point",
       controlsAria: "Practice controls",
       masteryMetric: "Mastery",
       accuracyMetric: "Accuracy",

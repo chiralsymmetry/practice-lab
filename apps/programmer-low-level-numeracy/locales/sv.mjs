@@ -112,7 +112,8 @@ export default {
     choiceLabels: {
       none: "inget",
       above: "över maxgränsen",
-      below: "under mingränsen"
+      below: "under mingränsen",
+      left: "vänster"
     },
     generatedReplacements: [
       ["Convert this unsigned decimal value to binary.", "Konvertera detta decimalvärde utan tecken till binärt."],
@@ -196,6 +197,9 @@ export default {
       ["Apply the named predicate literally: “any” needs one selected bit; “all” needs every selected bit.", "Tillämpa det namngivna predikatet bokstavligt: ”någon” kräver en vald bit; ”alla” kräver varje vald bit."],
       ["Clear the destination field before OR-ing the aligned replacement; bits outside the field stay unchanged.", "Nollställ målfältet innan den justerade ersättningen kombineras med OR; bitar utanför fältet förblir oförändrade."],
       ["Keep the bytes intact. Endianness changes byte significance, not bit order inside each byte.", "Håll varje byte intakt. Endianordning ändrar byternas betydelse, inte bitordningen inom varje byte."],
+      ["Carry-out?", "Utgående carry?"],
+      ["Carry-out", "Utgående carry"],
+      ["Borrow?", "Lån?"],
       ["What decimal value does this bit contribute?", "Vilket decimalvärde bidrar den här biten med?"],
       ["Which bit position is set?", "Vilken bitposition är satt?"],
       ["Find the smallest power of two at least this large.", "Hitta den minsta tvåpotensen som är minst så här stor."],

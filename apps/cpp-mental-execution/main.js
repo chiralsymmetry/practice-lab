@@ -2,6 +2,7 @@
   "use strict";
 
   var TEXT = __LOCALE_TEXT__;
+  var generatedTranslationPairs = null;
   var STORAGE_KEY = "practiceLab.cppMentalExecution.v3";
   var LEGACY_KEY = "practiceLab.cppMentalExecution.v2";
   var CPP_STANDARD = "c++17";
@@ -24,7 +25,46 @@
     return value === undefined ? fallback : value;
   }
 
-  function L(en, sv) { return TEXT.code === "sv" ? sv : en; }
+  function L(en, sv) { return t("localeCode", "en") === "sv" ? sv : en; }
+  function localizeGeneratedString(value) {
+    if (value === undefined || value === null || t("localeCode", "en") === "en") return value === undefined || value === null ? "" : String(value);
+    if (!generatedTranslationPairs) {
+      generatedTranslationPairs = (t("generatedReplacements", []) || []).slice().sort(function (a, b) {
+        return b[0].length - a[0].length;
+      });
+    }
+    var output = String(value);
+    generatedTranslationPairs.forEach(function (pair, index) {
+      output = output.split(pair[0]).join("\uE000" + index + "\uE001");
+    });
+    generatedTranslationPairs.forEach(function (pair, index) {
+      output = output.split("\uE000" + index + "\uE001").join(pair[1]);
+    });
+    return output;
+  }
+  function localizeQuestion(question) {
+    question.prompt.title = localizeGeneratedString(question.prompt.title);
+    question.prompt.note = localizeGeneratedString(question.prompt.note);
+    question.answer.fields.forEach(function (field) {
+      field.label = localizeGeneratedString(field.label);
+      if (t("localeCode", "en") === "sv" && field.id === "value" && field.label === "value") field.label = "Värde";
+      if (field.kind === "choice") {
+        field.options.forEach(function (option) { option.label = localizeGeneratedString(option.label); });
+      }
+    });
+    question.workedTrace = question.workedTrace.map(localizeGeneratedString);
+    question.rule = localizeGeneratedString(question.rule);
+    if (question.allowedOutcomes) question.allowedOutcomes = question.allowedOutcomes.map(localizeGeneratedString);
+    if (t("localeCode", "en") === "sv") {
+      question.code = question.code
+        .replace("// What are s and r now?", "// Vilka värden har s och r nu?")
+        .replace("// p is not dereferenced", "// p derefereras inte")
+        .replaceAll("// scope ends", "// scopet avslutas")
+        .replace("// outer scope ends", "// det yttre scopet avslutas")
+        .replace("// expression:", "// uttryck:");
+    }
+    return question;
+  }
   function clamp(value, low, high) { return Math.max(low, Math.min(high, value)); }
   function escapeHtml(value) {
     return String(value).replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;");
@@ -69,7 +109,7 @@
     ["loop_trace", "runtime", "Loops", "Loopar", [2,3,4,5], "Loop trace", "Loopspårning", "Record the loop-head state; break and continue decide whether the update runs.", "Notera tillståndet vid loophuvudet; break och continue avgör om uppdateringen körs."],
     ["expression_behavior_classification", "runtime", "Behavior judgment", "Beteendebedömning", [1,2,3,4,5], "Behavior class", "Beteendeklass", "A nonportable program has a behavior class, not a guessed compiler output.", "Ett icke-portabelt program har en beteendeklass, inte en gissad kompilatorutdata."],
 
-    ["reference_alias_trace", "aliasing", "References", "Referenser", [1,2,3,4,5], "Reference aliases", "Referensalias", "A reference binding is fixed; assignment through it changes its object.", "En referens bindning är fast; tilldelning genom den ändrar objektet."],
+    ["reference_alias_trace", "aliasing", "References", "Referenser", [1,2,3,4,5], "Reference aliases", "Referensalias", "A reference binding is fixed; assignment through it changes its object.", "En referensbindning är fast; tilldelning genom den ändrar objektet."],
     ["pointer_reseat_trace", "aliasing", "Pointer reseating", "Ompakning av pekare", [1,2,3,4,5], "Pointer reseating", "Pekarompekning", "Pointer assignment changes the target; existing references do not follow.", "Pekartilldelning ändrar målet; befintliga referenser följer inte med."],
     ["parameter_passing_trace", "aliasing", "Parameter passing", "Parameteröverföring", [1,2,3,4,5], "Parameter modes", "Parameterlägen", "Values are copied, references alias, and pointer values are themselves copied.", "Värden kopieras, referenser är alias och pekarvärden kopieras i sin tur."],
     ["pointer_reference_parameter", "aliasing", "Pointer reference parameters", "Pekarreferensparametrar", [3,4,5], "int* versus int*&", "int* kontra int*&", "int*& aliases the caller's pointer object and can reseat it.", "int*& är ett alias till anroparens pekarobjekt och kan peka om det."],
@@ -84,7 +124,7 @@
     ["const_pointer_type", "types", "Pointer qualification", "Pekarkvalificering", [2,3,4,5], "Pointer constness", "Pekarkonstans", "Read from the identifier outward: const may qualify the pointer or pointee.", "Läs utåt från identifieraren: const kan kvalificera pekaren eller det utpekade."],
 
     ["overload_conversion_rank", "resolution", "Conversion ranking", "Konverteringsrang", [1,2,3,4,5], "Overload ranking", "Overload-rangordning", "Determine viability, then rank exact match, promotion, and conversion.", "Avgör användbarhet och rangordna sedan exakt träff, promotion och konvertering."],
-    ["reference_overload_resolution", "resolution", "Reference overloads", "Referensoverloads", [1,2,3,4,5], "Reference overload", "Referensoverload", "Classify argument cv and value category before choosing a binding.", "Klassificera argumentets cv och värdekategori före bindningen väljs."],
+    ["reference_overload_resolution", "resolution", "Reference overloads", "Referensoverloads", [1,2,3,4,5], "Reference overload", "Referensoverload", "Classify argument cv and value category before choosing a binding.", "Klassificera argumentets cv och värdekategori innan bindningen väljs."],
     ["template_argument_deduction", "resolution", "Template deduction", "Templatededuktion", [2,3,4,5], "Template argument", "Templateargument", "Adjust parameter and argument types, then substitute.", "Justera parameter- och argumenttyper och substituera sedan."],
     ["forwarding_reference_deduction", "resolution", "Forwarding references", "Forwarding-referenser", [3,4,5], "Forwarding deduction", "Forwarding-deduktion", "For an lvalue U, T becomes U& and T&& collapses to U&.", "För en lvalue U blir T U& och T&& kollapsar till U&."],
     ["perfect_forwarding_call", "resolution", "Perfect forwarding", "Perfect forwarding", [3,4,5], "Forwarded call", "Vidarebefordrat anrop", "std::forward restores the caller's value category.", "std::forward återställer anroparens värdekategori."],
@@ -110,7 +150,7 @@
 
   var FAMILIES = FAMILY_DATA.map(function (row) {
     return {
-      id: row[0], categoryId: row[1], subcategory: L(row[2], row[3]),
+      id: row[0], categoryId: row[1], subcategoryId: row[2].toLowerCase().replace(/[^a-z0-9]+/g, "-"), subcategory: L(row[2], row[3]),
       title: L(row[5], row[6]), levels: row[4], learn: L(row[7], row[8])
     };
   });
@@ -169,7 +209,7 @@
     fields.forEach(function (field) { answerObject[field.id] = field.value; });
     return {
       categoryId: family.categoryId,
-      subcategoryId: family.subcategory.toLowerCase().replace(/[^a-z0-9åäö]+/g, "-"),
+      subcategoryId: family.subcategoryId,
       familyId: familyId,
       level: level,
       cppStandard: CPP_STANDARD,
@@ -574,7 +614,7 @@
     var attempt=0,question,key;
     do{
       var actualSeed=(seed+attempt*2654435761)>>>0;
-      question=generator(level,new Rng(actualSeed));
+      question=localizeQuestion(generator(level,new Rng(actualSeed)));
       question.parameters.seed=actualSeed;
       key=question.code+"|"+JSON.stringify(question.canonicalAnswer);
       attempt+=1;
@@ -601,7 +641,10 @@
     return {
       correct:results.every(function(item){return item.correct;}),
       fields:results,
-      expected:results.map(function(item){return item.field.label+" = "+(item.field.kind==="choice"&&BEHAVIORS.includes(item.field.value)?behaviorLabel(item.field.value):item.field.value);}).join("; "),
+      expected:results.map(function(item){
+        var option=item.field.kind==="choice"&&item.field.options.find(function(candidate){return candidate.value===item.field.value;});
+        return item.field.label+" = "+(option?option.label:item.field.value);
+      }).join("; "),
       diagnosis:results.filter(function(item){return !item.correct;}).map(function(item){return item.field.label;}).join(", ")
     };
   }

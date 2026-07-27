@@ -3,6 +3,7 @@ export default {
   lang: "sv",
   suffix: ".sv",
   text: {
+    localeCode: "sv",
     appTitle: "Japanska tal, tid och pengar",
     brandSubtitle: "Öva tal, räknare, telefonnummer, klockslag, datum, varaktighet och yen.",
     summary: {
@@ -172,6 +173,13 @@ export default {
       expected: "förväntat",
       time: "Tid"
     },
+    generatedReplacements: [
+      ["sound-change table → ", "tabellen över ljudförändringar → "],
+      ["minutes", "minuter"],
+      ["seconds", "sekunder"],
+      ["hours", "timmar"],
+      ["days", "dagar"]
+    ],
     prompts: {
       numberReading: {
         title: "Skriv talet på japanska.",

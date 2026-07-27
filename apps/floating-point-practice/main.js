@@ -2,6 +2,7 @@
   "use strict";
 
   var TEXT = __LOCALE_TEXT__;
+  var generatedTranslationPairs = null;
   var STORAGE_KEY = "practiceLab.floatingPointPractice.v2";
   var LEGACY_KEY = "practiceLab.floatingPointPractice.v1";
   var LEVELS = [1, 2, 3, 4, 5];
@@ -21,6 +22,38 @@
       return node && Object.prototype.hasOwnProperty.call(node, key) ? node[key] : undefined;
     }, TEXT);
     return value === undefined ? fallback : value;
+  }
+
+  function localizeGeneratedString(value) {
+    if (value === undefined || value === null || t("localeCode", "en") === "en") return value === undefined || value === null ? "" : String(value);
+    if (!generatedTranslationPairs) {
+      generatedTranslationPairs = (t("generatedReplacements", []) || []).slice().sort(function (a, b) {
+        return b[0].length - a[0].length;
+      });
+    }
+    var output = String(value);
+    generatedTranslationPairs.forEach(function (pair, index) {
+      output = output.split(pair[0]).join("\uE000" + index + "\uE001");
+    });
+    generatedTranslationPairs.forEach(function (pair, index) {
+      output = output.split("\uE000" + index + "\uE001").join(pair[1]);
+    });
+    return output;
+  }
+
+  function localizeQuestion(question) {
+    question.prompt.title = localizeGeneratedString(question.prompt.title);
+    question.prompt.rows = question.prompt.rows.map(localizeGeneratedString);
+    question.prompt.note = localizeGeneratedString(question.prompt.note);
+    question.answer.fields.forEach(function (field) {
+      field.label = localizeGeneratedString(field.label);
+      if (field.kind === "choice") {
+        field.options.forEach(function (option) { option.label = localizeGeneratedString(option.label); });
+      }
+    });
+    question.workedSteps = question.workedSteps.map(localizeGeneratedString);
+    question.interpretation = localizeGeneratedString(question.interpretation);
+    return question;
   }
 
   function clamp(value, low, high) { return Math.max(low, Math.min(high, value)); }
@@ -259,12 +292,17 @@
     ["special_arithmetic_result", "will-change", "Special results", "Special arithmetic result", [3,4,5], "Use the declared IEEE-style special-result rule rather than ordinary algebra."]
   ];
   var FAMILIES = FAMILY_DATA.map(function (row) {
-    return { id: row[0], categoryId: row[1], subcategory: row[2], title: row[3], levels: row[4], learn: row[5] };
+    return { id: row[0], categoryId: row[1], subcategoryId: row[2].toLowerCase().replace(/[^a-z0-9]+/g, "-"), subcategory: row[2], title: row[3], levels: row[4], learn: row[5] };
   });
   function categoryById(id) { return CATEGORIES.find(function (item) { return item.id === id; }) || CATEGORIES[0]; }
   function familyById(id) { return FAMILIES.find(function (item) { return item.id === id; }) || FAMILIES[0]; }
   function familiesForCategory(id) { return FAMILIES.filter(function (item) { return item.categoryId === id; }); }
   CATEGORIES.forEach(function (category) { category.title = t("categories." + category.id + ".title", category.title); });
+  FAMILIES.forEach(function (family) {
+    family.subcategory = t("families." + family.id + ".subcategory", family.subcategory);
+    family.title = t("families." + family.id + ".title", family.title);
+    family.learn = t("families." + family.id + ".learn", family.learn);
+  });
 
   function choiceField(id, label, value, options) {
     return { id: id, label: label, kind: "choice", value: value, options: options.map(function (option) { return typeof option === "string" ? { value: option, label: option } : option; }) };
@@ -278,7 +316,7 @@
     var family = familyById(familyId);
     return {
       categoryId: family.categoryId,
-      subcategoryId: family.subcategory.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
+      subcategoryId: family.subcategoryId,
       familyId: familyId,
       level: level,
       format: format.id,
@@ -550,7 +588,7 @@
   function generateQuestion(familyId,level,seed,ignoreHistory){
     var family=familyById(familyId);if(!family.levels.includes(level))level=family.levels.reduce(function(best,candidate){return Math.abs(candidate-level)<Math.abs(best-level)?candidate:best;},family.levels[0]);
     var rng=new Rng(seed),question,tries=0;
-    do{question=GENERATORS[family.id](level,rng);question.parameters.seed=seed>>>0;tries+=1;}while(!ignoreHistory&&tries<100&&(recentSignatures.includes(question.structuralSignature)||recentPrompts.includes(promptKey(question))));
+    do{question=localizeQuestion(GENERATORS[family.id](level,rng));question.parameters.seed=seed>>>0;tries+=1;}while(!ignoreHistory&&tries<100&&(recentSignatures.includes(question.structuralSignature)||recentPrompts.includes(promptKey(question))));
     validateQuestion(question);return question;
   }
   function promptKey(question){return[question.prompt.title].concat(question.prompt.rows,[question.prompt.note]).join("\n");}
@@ -561,17 +599,18 @@
   }
   function displayField(field){
     if(field.kind==="bits"){var format=formatById(field.formatId),raw=BigInt("0b"+field.value);return format.bits>=16?"0x"+hex(raw,format.bits):groupedBits(format,raw);}
+    if(field.kind==="choice"){var option=field.options.find(function(item){return item.value===field.value;});return option?option.label:field.value;}
     return field.value;
   }
   function diagnose(question,parts){
     var correct=Object.keys(parts).filter(function(id){return parts[id].correct;}),wrong=Object.keys(parts).filter(function(id){return!parts[id].correct;});
-    if(correct.length&&wrong.length)return correct.map(function(id){return parts[id].label;}).join(", ")+" is correct. Recheck "+wrong.map(function(id){return parts[id].label;}).join(", ")+".";
-    if(question.familyId.indexOf("classify")>=0)return"Inspect exponent and fraction reserved patterns; sign does not determine the class.";
-    if(question.familyId.indexOf("subnormal")>=0)return"Subnormals have no hidden one and use effective exponent 1−bias.";
-    if(question.familyId.indexOf("decode")>=0||question.familyId.indexOf("encode")>=0)return"Keep sign, biased exponent, hidden bit, and exact power-of-two scaling separate.";
-    if(question.familyId.indexOf("exactness")>=0)return"Check reduced denominator, local spacing alignment, and range.";
-    if(["round_to_format","rounding_boundary_result","addition_changes_value","rounded_addition_result","absorption_threshold"].includes(question.familyId))return"Compare exact neighbors and apply nearest-even; a half-ULP tie depends on retained parity.";
-    return"Recheck the exact field relationship and target-format rounding.";
+    if(correct.length&&wrong.length)return localizeGeneratedString(correct.map(function(id){return parts[id].label;}).join(", ")+" is correct. Recheck "+wrong.map(function(id){return parts[id].label;}).join(", ")+".");
+    if(question.familyId.indexOf("classify")>=0)return localizeGeneratedString("Inspect exponent and fraction reserved patterns; sign does not determine the class.");
+    if(question.familyId.indexOf("subnormal")>=0)return localizeGeneratedString("Subnormals have no hidden one and use effective exponent 1−bias.");
+    if(question.familyId.indexOf("decode")>=0||question.familyId.indexOf("encode")>=0)return localizeGeneratedString("Keep sign, biased exponent, hidden bit, and exact power-of-two scaling separate.");
+    if(question.familyId.indexOf("exactness")>=0)return localizeGeneratedString("Check reduced denominator, local spacing alignment, and range.");
+    if(["round_to_format","rounding_boundary_result","addition_changes_value","rounded_addition_result","absorption_threshold"].includes(question.familyId))return localizeGeneratedString("Compare exact neighbors and apply nearest-even; a half-ULP tie depends on retained parity.");
+    return localizeGeneratedString("Recheck the exact field relationship and target-format rounding.");
   }
 
   function defaultCell(){return{attempts:0,correct:0,streak:0,recent:[],totalMs:0,lastAt:0,mastery:0,dimensions:{},misconceptions:{}};}
