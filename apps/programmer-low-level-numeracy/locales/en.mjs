@@ -3,6 +3,7 @@ export default {
   lang: "en",
   suffix: "",
   text: {
+    localeCode: "en",
     appTitle: "Low-Level Numeracy",
     brandSubtitle: "Build fluency with fixed-width integers, bit patterns, fields, and byte-addressed memory.",
     summary: {
@@ -93,7 +94,8 @@ export default {
     },
     answers: {
       yes: "Yes",
-      no: "No"
+      no: "No",
+      none: "none"
     },
     learn: {
       title: "Learn",

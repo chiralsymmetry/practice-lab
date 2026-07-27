@@ -17,12 +17,52 @@
       var submitted = false;
       var learnSpotlightId = null;
       var activeAnswerInput = null;
+      var generatedTranslationExpression = null;
+      var generatedTranslations = null;
 
       function t(path, fallback) {
         var value = path.split(".").reduce(function (current, part) {
           return current && Object.prototype.hasOwnProperty.call(current, part) ? current[part] : undefined;
         }, TEXT);
         return value === undefined ? fallback : value;
+      }
+
+      function localizeGeneratedString(value) {
+        if (TEXT.localeCode === "en" || value === null || value === undefined) return String(value || "");
+        if (generatedTranslationExpression === null) {
+          var pairs = t("generatedReplacements", []).slice().sort(function (a, b) {
+            return b[0].length - a[0].length;
+          });
+          generatedTranslations = {};
+          pairs.forEach(function (pair) { generatedTranslations[pair[0]] = pair[1]; });
+          var expression = pairs.map(function (pair) {
+            return pair[0].replace(/[.*+?^${}()|[\]\\]/g, function (character) { return "\\" + character; });
+          }).join("|");
+          generatedTranslationExpression = expression ? new RegExp(expression, "g") : false;
+        }
+        return generatedTranslationExpression ? String(value).replace(generatedTranslationExpression, function (match) {
+          return generatedTranslations[match];
+        }) : String(value);
+      }
+
+      function localizeQuestion(question) {
+        if (TEXT.localeCode === "en") return question;
+        question.prompt.title = localizeGeneratedString(question.prompt.title);
+        question.prompt.rows = question.prompt.rows.map(function (row) {
+          return row === "none" ? t("answers.none", "none") : localizeGeneratedString(row);
+        });
+        question.prompt.note = localizeGeneratedString(question.prompt.note);
+        question.answer.fields.forEach(function (answerField) {
+          answerField.label = localizeGeneratedString(answerField.label);
+          if (answerField.options) {
+            answerField.options.forEach(function (option) {
+              option.label = t("choiceLabels." + option.value, localizeGeneratedString(option.label));
+            });
+          }
+        });
+        question.feedback.worked = localizeGeneratedString(question.feedback.worked);
+        if (question.familyId === "field_fit") question.feedback.worked = question.feedback.worked.replace(/^A /, "Ett ");
+        return question;
       }
 
       function Rng(seed) {
@@ -299,7 +339,13 @@
         });
         FAMILIES.forEach(function (family) {
           var labels = t("families." + family.id, null);
-          if (labels) family.title = labels.title || family.title;
+          if (labels) {
+            family.subcategory = labels.subcategory || family.subcategory;
+            family.title = labels.title || family.title;
+            family.learn.concept = labels.concept || family.learn.concept;
+            family.learn.rules = labels.rules || family.learn.rules;
+            family.learn.example = labels.example || family.learn.example;
+          }
         });
       }
 
@@ -387,7 +433,7 @@
 
       function choiceField(id, label, value, values) {
         return field(id, label, "choice", value, values.map(function (item) {
-          return typeof item === "string" ? { value: item, label: item } : item;
+          return typeof item === "string" ? { value: item, label: t("choiceLabels." + item, item) } : item;
         }));
       }
 
@@ -974,6 +1020,7 @@
         var localRng = new Rng(seed);
         do {
           candidate = generator(level, localRng);
+          candidate = localizeQuestion(candidate);
           candidate.parameters.seed = seed >>> 0;
           candidate.parameters.generationAttempt = attempts;
           attempts += 1;
@@ -1038,7 +1085,7 @@
 
       function normalizePositions(text) {
         var clean = String(text).trim().toLowerCase();
-        if (clean === "none") return "";
+        if (clean === "none" || clean === "inga") return "";
         if (!clean || !/^\d+(?:[\s,]+\d+)*$/.test(clean)) return null;
         var values = clean.split(/[\s,]+/).map(Number);
         values = Array.from(new Set(values)).sort(function (a, b) { return a - b; });
@@ -1081,7 +1128,11 @@
           if (answerField.kind === "binaryPattern") value = groupBinary(value);
           if (answerField.kind === "hexPattern") value = "0x" + value;
           if (answerField.kind === "octalPattern") value = "0o" + value;
-          if (answerField.kind === "positions" && !value) value = "none";
+          if (answerField.kind === "positions" && !value) value = t("answers.none", "none");
+          if (answerField.options) {
+            var selected = answerField.options.find(function (option) { return option.value === answerField.value; });
+            if (selected) value = selected.label;
+          }
           return answerField.label + " = " + value;
         }).join("; ");
       }
@@ -1413,13 +1464,13 @@
           var normalized = result.parts[answerField.id].normalized;
           return normalized && normalized.length !== answerField.value.length;
         });
-        if (wrongPattern) return "Keep exactly " + wrongPattern.value.length + " digits: this answer is a fixed-width pattern, not just a numeric value.";
+        if (wrongPattern) return localizeGeneratedString("Keep exactly " + wrongPattern.value.length + " digits: this answer is a fixed-width pattern, not just a numeric value.");
         var resultCorrect = result.parts.result && result.parts.result.correct;
         var statusWrong = ["carry", "borrow", "overflow", "status"].some(function (id) { return result.parts[id] && !result.parts[id].correct; });
-        if (resultCorrect && statusWrong) return "Your wrapped result is right. Classify carry, borrow, and signed overflow independently from the exact operation.";
-        if (question.familyId === "test_masked_flags") return "Apply the named predicate literally: “any” needs one selected bit; “all” needs every selected bit.";
-        if (question.familyId === "insert_field") return "Clear the destination field before OR-ing the aligned replacement; bits outside the field stay unchanged.";
-        if (question.familyId.indexOf("load") >= 0 || question.familyId === "store_integer_bytes") return "Keep the bytes intact. Endianness changes byte significance, not bit order inside each byte.";
+        if (resultCorrect && statusWrong) return localizeGeneratedString("Your wrapped result is right. Classify carry, borrow, and signed overflow independently from the exact operation.");
+        if (question.familyId === "test_masked_flags") return localizeGeneratedString("Apply the named predicate literally: “any” needs one selected bit; “all” needs every selected bit.");
+        if (question.familyId === "insert_field") return localizeGeneratedString("Clear the destination field before OR-ing the aligned replacement; bits outside the field stay unchanged.");
+        if (question.familyId.indexOf("load") >= 0 || question.familyId === "store_integer_bytes") return localizeGeneratedString("Keep the bytes intact. Endianness changes byte significance, not bit order inside each byte.");
         return t("messages.checkFields", "Check") + ": " + missed.join(", ") + ". " + question.feedback.correct;
       }
 
