@@ -2,7 +2,7 @@
 
 Practice Lab is a collection of small offline practice apps for programmer-adjacent skills and adjacent numeracy. Current apps:
 
-- **Programmer Low-Level Numeracy**: bits, bases, fixed-width integers, masks, shifts, rotations, and endian memory order.
+- **Programmer Low-Level Numeracy**: bits, bases, fixed-width integers, masks, shifts, abstract addresses, supplied layouts, alignment, boundaries, and endian memory order.
 - **Mental Arithmetic**: fast integer addition, subtraction, multiplication, division, complements, and percentages.
 - **Everyday Economics**: applied math for prices, percentages, interest, inflation, subscriptions, and expected value.
 - **Floating Point Practice**: FP4 through FP32 drills for classification, exact decoding/encoding, spacing, exactness, and small additions that disappear.

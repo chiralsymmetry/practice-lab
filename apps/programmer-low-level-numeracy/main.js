@@ -223,6 +223,7 @@
       }
 
       function widthBand(width) {
+        if (width === null || width === undefined) return "unbounded";
         if (width <= 4) return "1-4";
         if (width <= 8) return "5-8";
         if (width <= 16) return "9-16";
@@ -234,6 +235,7 @@
         { id: "representation", title: "Representation", short: "Represent" },
         { id: "fixed-width-arithmetic", title: "Fixed-Width Arithmetic", short: "Arithmetic" },
         { id: "bit-manipulation", title: "Bit Manipulation", short: "Bits" },
+        { id: "address-layout-reasoning", title: "Addresses & Layouts", short: "Addresses" },
         { id: "memory-representation", title: "Memory Representation", short: "Memory" }
       ];
 
@@ -272,6 +274,18 @@
         ["insert_field", "bit-manipulation", "Fields", "Insert a bit field", "Clear the destination field, then place the new field.", "Preserve every bit outside hi..lo.", "clear, shift, mask, then OR"],
         ["field_fit", "bit-manipulation", "Fields", "Field fit", "Decide whether a value fits an unsigned field.", "A w-bit field accepts 0..2^w-1.", "13 fits 4 bits; 16 does not"],
         ["field_expression", "bit-manipulation", "Fields", "Choose a field expression", "Recognize correct extraction or insertion structure.", "Extraction shifts then masks; insertion clears before OR.", "(x >>> lo) & mask"],
+        ["programmer_landmark", "address-layout-reasoning", "Landmarks", "Programmer landmarks", "Recognize exact powers of two and their one-less hexadecimal landmarks.", "A 1 followed by k hex zeroes is 2^(4k); one less is a run of F digits.", "0x1000 = 4096; 0x0FFF = 4095"],
+        ["base_address_offset", "address-layout-reasoning", "Address Arithmetic", "Base address + offset", "Add a supplied byte offset to an abstract base address.", "Address arithmetic is exact integer arithmetic and does not wrap.", "0x1000 + 0x34 = 0x1034"],
+        ["address_distance", "address-layout-reasoning", "Address Arithmetic", "Address distance", "Find the distance or signed displacement between two addresses.", "Subtract the starting address and verify by adding the displacement back.", "0x1200 − 0x1080 = 0x180 bytes"],
+        ["alignment_predicate", "address-layout-reasoning", "Alignment", "Alignment predicate", "Decide whether an address is a multiple of an explicitly supplied power of two.", "Aligned means address mod alignment = 0.", "0x1230 is aligned to 16 bytes"],
+        ["align_power_two", "address-layout-reasoning", "Alignment", "Align down / up", "Find the closest aligned address at or below or at or above an address.", "Subtract the remainder for down; add its complement for up, unless already aligned.", "0x1237 → down 0x1230, up 0x1240"],
+        ["alignment_padding", "address-layout-reasoning", "Alignment", "Alignment padding", "Calculate the smallest padding that makes the next address aligned.", "Padding is 0 when already aligned; otherwise alignment − remainder.", "0x1003 needs 1 byte for 4-byte alignment"],
+        ["unit_offset_boundary", "address-layout-reasoning", "Boundaries", "Unit offset & boundary", "Find offsets and containing boundaries under an explicitly supplied unit size.", "Offset = address mod size; base = address − offset.", "0x12D5 in a 64-byte unit: offset 0x15, base 0x12C0"],
+        ["range_crosses_boundary", "address-layout-reasoning", "Boundaries", "Range boundary crossing", "Decide whether a positive-length half-open byte range crosses a supplied boundary.", "Compare the containing bases of start and the last touched byte, end − 1.", "[0x1030, 0x1040) does not cross a 64-byte boundary"],
+        ["supplied_layout_offset", "address-layout-reasoning", "Layouts", "Supplied layout offsets", "Compute array and field offsets only from a completely supplied layout.", "Use zero-based index × stride plus the stated field offset; never infer hidden padding.", "0x1000 + 3×24 + 8 = 0x1050"],
+        ["population_count", "address-layout-reasoning", "Bit Counts & Shapes", "Population count", "Count the 1 bits in a bounded binary or hexadecimal pattern.", "For hexadecimal, count each nibble and add the subtotals.", "popcount(0xB4) = 4"],
+        ["mask_shape", "address-layout-reasoning", "Bit Counts & Shapes", "Mask shapes", "Recognize one-hot, contiguous, sparse, and complementary bounded masks.", "Apply the exact stated definition using set-bit count and positions.", "0x20 is one-hot; 0011 1100 is contiguous"],
+        ["power_two_remainder", "address-layout-reasoning", "Bit Counts & Shapes", "Power-of-two remainder", "Compute a remainder modulo a supplied power of two using low bits.", "For modulus 2^k, retain the low k bits with mask 2^k−1.", "77 mod 8 = 5; retain low bits 101"],
         ["store_integer_bytes", "memory-representation", "Store", "Store integer bytes", "Write an integer to increasing addresses in big- or little-endian order.", "Endianness reverses byte significance, never bits inside a byte.", "0x1234 little-endian → 34 12"],
         ["load_integer_bytes", "memory-representation", "Load", "Load integer bytes", "Reconstruct a raw value from addressed bytes.", "Select the stated bytes, then apply byte significance.", "34 12 little-endian → 0x1234"],
         ["load_subvalue", "memory-representation", "Subvalue", "Load a subvalue", "Select a byte window at an offset before decoding it.", "Bytes outside the window must not affect the result.", "AA 34 12 BB, offset 1, little 16 → 0x1234"],
@@ -311,6 +325,18 @@
         insert_field: ["extract_field", "apply_mask"],
         field_fit: ["representability"],
         field_expression: ["extract_field"],
+        programmer_landmark: ["power_relation", "power_landmark"],
+        base_address_offset: ["programmer_landmark"],
+        address_distance: ["base_address_offset"],
+        alignment_predicate: ["power_relation", "programmer_landmark"],
+        align_power_two: ["alignment_predicate"],
+        alignment_padding: ["align_power_two"],
+        unit_offset_boundary: ["alignment_predicate", "power_two_remainder"],
+        range_crosses_boundary: ["unit_offset_boundary"],
+        supplied_layout_offset: ["base_address_offset"],
+        population_count: ["binary_hex_grouping"],
+        mask_shape: ["population_count", "construct_mask"],
+        power_two_remainder: ["power_relation", "construct_mask"],
         store_integer_bytes: ["binary_hex_grouping"],
         load_integer_bytes: ["store_integer_bytes"],
         load_subvalue: ["load_integer_bytes"],
@@ -320,6 +346,7 @@
         return {
           id: entry[0],
           categoryId: entry[1],
+          subcategoryId: entry[2].toLowerCase().replace(/[^a-z0-9]+/g, "-"),
           subcategory: entry[2],
           title: entry[3],
           learn: { concept: entry[4], rules: entry[5], example: entry[6] },
@@ -375,7 +402,7 @@
         fields.forEach(function (answerField) { canonical[answerField.id] = answerField.value; });
         return {
           categoryId: family.categoryId,
-          subcategoryId: family.subcategory.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
+          subcategoryId: family.subcategoryId,
           familyId: familyId,
           level: level,
           width: width,
@@ -395,6 +422,7 @@
       }
 
       function operandShapeSignature(parameters, width) {
+        if (width === null || width === undefined) return "shape-na";
         var shapes = [];
         Object.keys(parameters).sort().forEach(function (key) {
           var value = parameters[key];
@@ -433,6 +461,39 @@
         return field(id, label, "choice", value, values.map(function (item) {
           return typeof item === "string" ? { value: item, label: t("choiceLabels." + item, item) } : item;
         }));
+      }
+
+      function numericText(value, representation) {
+        value = BigInt(value);
+        if (representation === "hex") {
+          var sign = value < 0n ? "-" : "";
+          var magnitude = value < 0n ? -value : value;
+          return sign + "0x" + magnitude.toString(16).toUpperCase();
+        }
+        return value.toString();
+      }
+
+      function numericField(id, label, value, representation) {
+        return field(id, label, representation === "hex" ? "hexInteger" : "integer", numericText(value, representation));
+      }
+
+      function addressRepresentations(level, rng) {
+        if (level === 1) {
+          var direct = rng.chance(0.5) ? "decimal" : "hex";
+          return { shown: direct, answer: direct };
+        }
+        var shown = rng.chance(level >= 3 ? 0.65 : 0.5) ? "hex" : "decimal";
+        return { shown: shown, answer: level >= 3 && rng.chance(0.35) ? (shown === "hex" ? "decimal" : "hex") : shown };
+      }
+
+      function integerLog2(value) {
+        var exponent = 0;
+        var current = BigInt(value);
+        while (current > 1n) {
+          current >>= 1n;
+          exponent += 1;
+        }
+        return exponent;
       }
 
       function randomNontrivial(rng, width) {
@@ -962,6 +1023,371 @@
         return makeQuestion("field_expression", level, 16, "symbolic", { variant: variant }, prompt("Choose the correct abstract expression for " + variant + "ing an inclusive field.", [], variant === "extract" ? "fieldMask is right-aligned after shifting." : "destMask marks the destination bits."), [choiceField("expression", "Expression", correct, options)], variant === "extract" ? "Right-align first, then mask the field width." : "Clear the destination, align and mask the new value, then combine.", [variant], ["rule-recognition"], ["or-without-clear", "wrong-shift-direction"]);
       };
 
+      FAMILY_GENERATORS.programmer_landmark = function (level, rng) {
+        var core = [4, 8, 10, 12, 16];
+        var exponent = level <= 2 ? rng.choice(core) : rng.choice([8, 10, 12, 16, 20, 24, 30, 32]);
+        var boundary = 1n << BigInt(exponent);
+        var oneLess = level >= 2 && rng.chance(0.35);
+        var value = oneLess ? boundary - 1n : boundary;
+        var shown = rng.chance(0.5) ? "decimal" : "hex";
+        var answerRepresentation = shown === "hex" ? "decimal" : "hex";
+        var boundaryVariant = oneLess && level >= 3 && rng.chance(0.65);
+        var answer = boundaryVariant ? boundary : value;
+        var title = boundaryVariant
+          ? numericText(value, shown) + " is one less than which power-of-two boundary?"
+          : "Write " + numericText(value, shown) + " in " + answerRepresentation + ".";
+        return makeQuestion("programmer_landmark", level, null, answerRepresentation, {
+          exponent: exponent,
+          value: value.toString(),
+          boundary: boundary.toString(),
+          addressRepresentation: shown,
+          answerRepresentation: answerRepresentation,
+          variant: boundaryVariant ? "adjacent-boundary" : oneLess ? "one-less-conversion" : "exact-conversion"
+        }, prompt(title, [], "Enter a numeric value; leading zeroes are optional."), [
+          numericField("answer", "Answer", answer, answerRepresentation)
+        ], "2^" + exponent + " = " + boundary + " = " + numericText(boundary, "hex") + (oneLess ? "; one less is " + numericText(value, "hex") + "." : "."), [boundaryVariant ? "boundary" : oneLess ? "one-less" : "exact", shown + "-to-" + answerRepresentation], ["base-direction", "landmark-adjustment"], ["boundary-vs-largest-lower-value", "decimal-looking-hex"]);
+      };
+
+      FAMILY_GENERATORS.base_address_offset = function (level, rng) {
+        var reps = addressRepresentations(level, rng);
+        var offsetMagnitude = BigInt(rng.int(1, level <= 1 ? 63 : level <= 3 ? 511 : 4095));
+        var negative = level >= 3 && rng.chance(0.35);
+        var offset = negative ? -offsetMagnitude : offsetMagnitude;
+        var base = BigInt(rng.int(2, level <= 2 ? 64 : 512)) * 256n + BigInt(rng.int(0, 255));
+        if (negative && base < offsetMagnitude) base += offsetMagnitude;
+        var answer = base + offset;
+        var directionText = negative ? "move " + numericText(offsetMagnitude, reps.shown) + " bytes back" : "add byte offset " + numericText(offset, reps.shown);
+        return makeQuestion("base_address_offset", level, null, reps.answer, {
+          base: base.toString(),
+          offset: offset.toString(),
+          addressRepresentation: reps.shown,
+          answerRepresentation: reps.answer,
+          direction: negative ? "backward" : "forward"
+        }, prompt("Starting at address " + numericText(base, reps.shown) + ", " + directionText + ". What address is reached?", [], "Answer in " + reps.answer + "."), [
+          numericField("address", "Address", answer, reps.answer)
+        ], numericText(base, reps.shown) + (negative ? " − " : " + ") + numericText(offsetMagnitude, reps.shown) + " = " + numericText(answer, reps.answer) + ".", [negative ? "backward" : "forward", reps.shown + "-to-" + reps.answer, Number(base & 0xFFn) + Number(offset & 0xFFn) > 255 ? "low-carry" : "ordinary"], ["direction", "mixed-representation"], ["omitting-base", "wrong-direction"]);
+      };
+
+      FAMILY_GENERATORS.address_distance = function (level, rng) {
+        var reps = addressRepresentations(level, rng);
+        var signed = level >= 3 && rng.chance(0.45);
+        var from = BigInt(rng.int(16, 512)) * 256n + BigInt(rng.int(0, 255));
+        var magnitude = BigInt(rng.int(1, level <= 2 ? 512 : 4096));
+        var backward = signed && rng.chance(0.5) && from >= magnitude;
+        var to = backward ? from - magnitude : from + magnitude;
+        var displacement = to - from;
+        var title = signed
+          ? "What signed byte displacement takes address " + numericText(from, reps.shown) + " to address " + numericText(to, reps.shown) + "?"
+          : "How many bytes from lower address " + numericText(from, reps.shown) + " to higher address " + numericText(to, reps.shown) + "?";
+        return makeQuestion("address_distance", level, null, reps.answer, {
+          from: from.toString(),
+          to: to.toString(),
+          addressRepresentation: reps.shown,
+          answerRepresentation: reps.answer,
+          variant: signed ? "signed-displacement" : "ordered-distance"
+        }, prompt(title, [], "Answer in " + reps.answer + "."), [
+          numericField("distance", signed ? "Displacement" : "Distance", signed ? displacement : magnitude, reps.answer)
+        ], numericText(to, reps.shown) + " − " + numericText(from, reps.shown) + " = " + numericText(signed ? displacement : magnitude, reps.answer) + "; adding it back reaches the endpoint.", [signed ? backward ? "signed-backward" : "signed-forward" : "ordered", reps.shown + "-to-" + reps.answer], ["inverse-address-arithmetic"], ["reversed-subtraction", "inclusive-plus-one"]);
+      };
+
+      FAMILY_GENERATORS.alignment_predicate = function (level, rng) {
+        var maxExponent = level <= 1 ? 4 : level === 2 ? 8 : 12;
+        var exponent = rng.int(1, maxExponent);
+        var alignment = 1n << BigInt(exponent);
+        var aligned = rng.chance(0.5);
+        var remainderClasses = [1n, alignment - 1n, BigInt(rng.int(1, Math.max(1, Number(alignment - 1n))))];
+        var remainder = aligned ? 0n : rng.choice(remainderClasses);
+        var address = BigInt(rng.int(1, 128)) * alignment + remainder;
+        var representation = level >= 3 && rng.chance(0.4) ? "decimal" : "hex";
+        return makeQuestion("alignment_predicate", level, null, "boolean", {
+          address: address.toString(),
+          alignment: alignment.toString(),
+          exponent: exponent,
+          remainder: remainder.toString(),
+          addressRepresentation: representation,
+          answerRepresentation: "boolean"
+        }, prompt("Is address " + numericText(address, representation) + " aligned to a " + alignment + "-byte boundary?", [], "Aligned means remainder zero."), [
+          boolField("aligned", "Aligned?", aligned)
+        ], numericText(address, representation) + " mod " + alignment + " = " + remainder + ", so the answer is " + (aligned ? "yes" : "no") + ".", [aligned ? "aligned" : remainder === 1n ? "remainder-one" : remainder === alignment - 1n ? "remainder-max" : "remainder-interior", "2^" + exponent], ["zero-remainder"], ["dividing-by-exponent", "digit-appearance"]);
+      };
+
+      FAMILY_GENERATORS.align_power_two = function (level, rng) {
+        var exponent = rng.int(2, level <= 1 ? 4 : level === 2 ? 6 : level === 3 ? 8 : 12);
+        var alignment = 1n << BigInt(exponent);
+        var alreadyAligned = rng.chance(0.25);
+        var remainder = alreadyAligned ? 0n : BigInt(rng.int(1, Number(alignment - 1n)));
+        var address = BigInt(rng.int(4, 128)) * alignment + remainder;
+        var down = address - remainder;
+        var up = remainder === 0n ? address : address + alignment - remainder;
+        var representation = level >= 4 && rng.chance(0.4) ? "decimal" : "hex";
+        var variant = level >= 3 ? "both" : level === 1 ? "down" : rng.choice(["down", "up"]);
+        var fields = variant === "both"
+          ? [numericField("down", "Down", down, representation), numericField("up", "Up", up, representation)]
+          : [numericField("address", variant === "down" ? "Aligned down" : "Aligned up", variant === "down" ? down : up, representation)];
+        var title = variant === "both"
+          ? "For address " + numericText(address, representation) + " and " + alignment + "-byte alignment, give down and up."
+          : "Align address " + numericText(address, representation) + " " + variant + " to a " + alignment + "-byte boundary.";
+        return makeQuestion("align_power_two", level, null, representation, {
+          address: address.toString(),
+          alignment: alignment.toString(),
+          remainder: remainder.toString(),
+          down: down.toString(),
+          up: up.toString(),
+          addressRepresentation: representation,
+          answerRepresentation: representation,
+          variant: variant
+        }, prompt(title, [], "Up means at or above, not strictly above."), fields, "The remainder is " + remainder + ". Down subtracts it to " + numericText(down, representation) + "; up is " + numericText(up, representation) + ".", [variant, alreadyAligned ? "already-aligned" : remainder === alignment - 1n ? "just-below" : "interior"], ["constructive-alignment"], ["always-add-full-alignment", "swapped-endpoints"]);
+      };
+
+      FAMILY_GENERATORS.alignment_padding = function (level, rng) {
+        var exponent = rng.int(2, level <= 1 ? 4 : level === 2 ? 6 : level === 3 ? 8 : 12);
+        var alignment = 1n << BigInt(exponent);
+        var paddingClass = rng.choice(["zero", "one", "max", "interior"]);
+        var remainder = paddingClass === "zero" ? 0n : paddingClass === "one" ? alignment - 1n : paddingClass === "max" ? 1n : BigInt(rng.int(1, Number(alignment - 1n)));
+        var address = BigInt(rng.int(4, 128)) * alignment + remainder;
+        var padding = remainder === 0n ? 0n : alignment - remainder;
+        var representation = level >= 2 && rng.chance(0.55) ? "hex" : "decimal";
+        var answerRepresentation = level >= 3 && rng.chance(0.35) ? (representation === "hex" ? "decimal" : "hex") : representation;
+        return makeQuestion("alignment_padding", level, null, answerRepresentation, {
+          address: address.toString(),
+          alignment: alignment.toString(),
+          remainder: remainder.toString(),
+          addressRepresentation: representation,
+          answerRepresentation: answerRepresentation
+        }, prompt("The next free address is " + numericText(address, representation) + ". How many padding bytes are required for " + alignment + "-byte alignment?", [], "Answer in " + answerRepresentation + "."), [
+          numericField("padding", "Padding bytes", padding, answerRepresentation)
+        ], "The current remainder is " + remainder + "; " + numericText(padding, answerRepresentation) + " more bytes reach " + numericText(address + padding, representation) + ".", [paddingClass, representation + "-to-" + answerRepresentation], ["distance-to-boundary"], ["returning-remainder", "padding-already-aligned"]);
+      };
+
+      FAMILY_GENERATORS.unit_offset_boundary = function (level, rng) {
+        var role = level === 1 ? "word" : rng.choice(["word", "cache line", "page"]);
+        var ranges = role === "word" ? [1, 4] : role === "cache line" ? [4, 8] : [8, 16];
+        var exponent = rng.int(ranges[0], Math.max(ranges[0], Math.min(ranges[1], level <= 1 ? 4 : level === 2 ? 8 : level === 3 ? 12 : 16)));
+        var size = 1n << BigInt(exponent);
+        var offset = rng.choice([0n, 1n, size - 1n, BigInt(rng.int(0, Number(size - 1n)))]);
+        var base = BigInt(rng.int(2, 64)) * size;
+        var address = base + offset;
+        var next = base + size;
+        var representation = level >= 2 && rng.chance(0.7) ? "hex" : "decimal";
+        var variant = level === 1 ? "offset" : level === 2 ? rng.choice(["offset", "base"]) : rng.choice(["base", "interval", "all"]);
+        var fields = variant === "offset" ? [numericField("offset", "Byte offset", offset, representation)]
+          : variant === "base" ? [numericField("base", "Containing base", base, representation)]
+          : variant === "interval" ? [numericField("base", "Base", base, representation), numericField("nextBoundary", "Next boundary", next, representation)]
+          : [numericField("offset", "Byte offset", offset, representation), numericField("base", "Base", base, representation), numericField("nextBoundary", "Next boundary", next, representation)];
+        var task = variant === "offset" ? "Give its byte offset within the containing " + role + "."
+          : variant === "base" ? "Give the base address of the containing " + role + "."
+          : variant === "interval" ? "Give the containing half-open interval [base, next boundary)."
+          : "Give its offset, containing base, and next boundary.";
+        return makeQuestion("unit_offset_boundary", level, null, representation, {
+          role: role,
+          unitSize: size.toString(),
+          address: address.toString(),
+          offset: offset.toString(),
+          base: base.toString(),
+          nextBoundary: next.toString(),
+          addressRepresentation: representation,
+          answerRepresentation: representation,
+          variant: variant
+        }, prompt("A " + role + " is explicitly " + size + " bytes. Address " + numericText(address, representation) + ": " + task, [], "Use the supplied size; no architecture default applies."), fields, numericText(address, representation) + " = " + numericText(base, representation) + " + " + numericText(offset, representation) + "; the next boundary is " + numericText(next, representation) + ".", [role, variant, offset === 0n ? "at-base" : offset === size - 1n ? "at-end" : "interior"], ["unit-decomposition"], ["unstated-standard-size", "absolute-address-as-offset"]);
+      };
+
+      FAMILY_GENERATORS.range_crosses_boundary = function (level, rng) {
+        var role = level === 1 ? "word" : level === 2 ? rng.choice(["word", "cache line"]) : rng.choice(["word", "cache line", "page"]);
+        var exponent = role === "word" ? rng.int(2, 4) : role === "cache line" ? rng.int(4, 8) : rng.int(8, level >= 3 ? 12 : 10);
+        var size = 1n << BigInt(exponent);
+        var crossing = rng.chance(0.5);
+        var base = BigInt(rng.int(2, 64)) * size;
+        var offset = rng.choice([0n, 1n, size - 1n, BigInt(rng.int(0, Number(size - 1n)))]);
+        var start = base + offset;
+        var room = size - offset;
+        var crossingExtra = level >= 4 && rng.chance(0.3) ? size + BigInt(rng.int(1, Number(size))) : BigInt(rng.chance(0.3) ? 1 : rng.int(1, Math.max(1, Number(size / 4n))));
+        var length = crossing ? room + crossingExtra : BigInt(rng.int(1, Number(room)));
+        if (!crossing && rng.chance(0.35)) length = room;
+        var end = start + length;
+        var last = end - 1n;
+        var boundaryCount = last / size - start / size;
+        var representation = level >= 2 && rng.chance(0.7) ? "hex" : "decimal";
+        var fields = [boolField("crosses", "Crosses?", crossing)];
+        if (level >= 4) fields.push(numericField("boundaryCount", "Boundaries crossed", boundaryCount, "decimal"));
+        return makeQuestion("range_crosses_boundary", level, null, "boolean", {
+          role: role,
+          unitSize: size.toString(),
+          start: start.toString(),
+          length: length.toString(),
+          endExclusive: end.toString(),
+          last: last.toString(),
+          addressRepresentation: representation,
+          answerRepresentation: level >= 4 ? "boolean-and-decimal" : "boolean"
+        }, prompt("A " + role + " is explicitly " + size + " bytes. Does byte range [" + numericText(start, representation) + ", " + numericText(end, representation) + ") cross a " + role + " boundary?", [], "The range is half-open and has length " + length + " bytes."), fields, "The first byte is " + numericText(start, representation) + " and the last touched byte is " + numericText(last, representation) + "; their containing bases are " + numericText((start / size) * size, representation) + " and " + numericText((last / size) * size, representation) + ".", [crossing ? boundaryCount > 1n ? "multi-cross" : "cross" : end % size === 0n ? "ends-at-boundary" : start % size === 0n ? "starts-at-boundary" : "contained", role], ["half-open-endpoint", "containing-bases"], ["testing-exclusive-end", "boundary-endpoint-always-crosses"]);
+      };
+
+      FAMILY_GENERATORS.supplied_layout_offset = function (level, rng) {
+        var representation = level >= 3 && rng.chance(0.65) ? "hex" : "decimal";
+        if (level === 1) {
+          var elementSize = rng.int(1, 16);
+          var index = rng.int(0, 12);
+          var elementOffset = BigInt(elementSize * index);
+          return makeQuestion("supplied_layout_offset", level, null, representation, {
+            variant: "array-offset",
+            elementSize: elementSize,
+            index: index,
+            addressRepresentation: representation,
+            answerRepresentation: representation,
+            zeroBased: true
+          }, prompt("A zero-indexed array has " + elementSize + "-byte elements. What is the byte offset of element index " + index + "?", [], "No base address is needed for an offset."), [
+            numericField("offset", "Element offset", elementOffset, representation)
+          ], index + " × " + elementSize + " = " + numericText(elementOffset, representation) + " bytes.", ["array", index === 0 ? "index-zero" : "index-nonzero"], ["zero-based-stride"], ["one-based-indexing", "returning-address"]);
+        }
+        if (level === 2) {
+          var sizes = [rng.int(1, 4), rng.int(1, 4), rng.int(2, 8), rng.int(2, 12)];
+          var names = ["tag", "padding", "count", "payload"];
+          var target = rng.int(2, 3);
+          var fieldOffset = sizes.slice(0, target).reduce(function (sum, size) { return sum + size; }, 0);
+          var layout = names.map(function (name, indexValue) { return name + " " + sizes[indexValue] + " byte" + (sizes[indexValue] === 1 ? "" : "s"); }).join(", ");
+          return makeQuestion("supplied_layout_offset", level, null, "decimal", {
+            variant: "record-field-offset",
+            layout: names.map(function (name, indexValue) { return { name: name, size: sizes[indexValue], padding: name === "padding" }; }),
+            field: names[target],
+            fieldOffset: fieldOffset,
+            addressRepresentation: "decimal",
+            answerRepresentation: "decimal",
+            implicitPadding: false
+          }, prompt("Record layout, sequential with no implicit padding: " + layout + ". What is " + names[target] + "'s byte offset?", [], "Every listed padding byte occupies space; add only preceding entries."), [
+            numericField("offset", "Field offset", fieldOffset, "decimal")
+          ], names.slice(0, target).map(function (name, indexValue) { return name + " " + sizes[indexValue]; }).join(" + ") + " = " + fieldOffset + ".", ["record", "explicit-padding", "target-" + target], ["supplied-layout-sum"], ["omitting-explicit-padding", "inventing-hidden-padding"]);
+        }
+        var recordSize = rng.choice([12, 16, 20, 24, 32]);
+        var fieldOffsetValue = rng.int(0, recordSize - 4);
+        var arrayIndex = rng.int(0, level >= 4 ? 15 : 7);
+        var arrayBase = BigInt(rng.int(4, 64)) * 256n;
+        var elementContribution = BigInt(arrayIndex * recordSize);
+        var address = arrayBase + elementContribution + BigInt(fieldOffsetValue);
+        return makeQuestion("supplied_layout_offset", level, null, representation, {
+          variant: "array-record-field-address",
+          base: arrayBase.toString(),
+          recordSize: recordSize,
+          index: arrayIndex,
+          field: "value",
+          fieldOffset: fieldOffsetValue,
+          addressRepresentation: representation,
+          answerRepresentation: representation,
+          zeroBased: true,
+          implicitPadding: false
+        }, prompt("A zero-indexed record array begins at " + numericText(arrayBase, representation) + ". Each record is explicitly " + recordSize + " bytes; field value has supplied offset " + fieldOffsetValue + ". What is value's address in element " + arrayIndex + "?", [], "Use only the supplied stride and field offset."), [
+          numericField("address", "Field address", address, representation)
+        ], numericText(arrayBase, representation) + " + " + arrayIndex + " × " + recordSize + " + " + fieldOffsetValue + " = " + numericText(address, representation) + ".", ["array-of-record", arrayIndex === 0 ? "index-zero" : "index-nonzero", fieldOffsetValue === 0 ? "field-zero" : "field-nonzero"], ["stride-plus-field-plus-base"], ["multiplying-field-offset", "omitting-base", "inventing-padding"]);
+      };
+
+      FAMILY_GENERATORS.population_count = function (level, rng) {
+        var representation = level === 1 ? "binary" : rng.chance(0.7) ? "hex" : "binary";
+        var width = level === 1 ? rng.choice([4, 8]) : level === 2 ? rng.choice([8, 12, 16]) : level === 3 ? rng.choice([16, 24, 32]) : rng.choice([32, 48, 64]);
+        if (representation === "hex") width = Math.ceil(width / 4) * 4;
+        var raw;
+        if (level >= 4) {
+          raw = 0n;
+          var targetCount = rng.int(2, Math.min(8, width - 1));
+          while (popcount(raw, width) < targetCount) raw |= 1n << BigInt(rng.int(0, width - 1));
+        } else {
+          raw = randomNontrivial(rng, width);
+        }
+        var count = popcount(raw, width);
+        var display = displayValue(raw, width, representation);
+        var groups = fixedDigits(raw, width, representation === "hex" ? 16 : 2).split("").map(function (digit) {
+          return digit + "→" + parseInt(digit, representation === "hex" ? 16 : 2).toString(2).split("").filter(function (bit) { return bit === "1"; }).length;
+        });
+        return makeQuestion("population_count", level, width, representation, {
+          raw: raw.toString(),
+          count: count,
+          patternRepresentation: representation
+        }, prompt("What is the population count (number of 1 bits) of this " + width + "-bit pattern?", [display], "Count set bits, not nonzero digits."), [
+          field("count", "Population count", "integer", count)
+        ], groups.join(", ") + "; total = " + count + ".", [representation, count <= Math.max(2, width / 4) ? "low" : count >= width * 0.75 ? "high" : "middle", "width-" + width], ["chunked-bit-count"], ["counting-nonzero-digits", "counting-positions"]);
+      };
+
+      FAMILY_GENERATORS.mask_shape = function (level, rng) {
+        var width = level <= 2 ? 8 : level <= 4 ? 16 : 24;
+        var representation = level >= 4 ? "hex" : "binary";
+        if (level === 1) {
+          var positive = rng.chance(0.5);
+          var oneHotMask = 1n << BigInt(rng.int(0, width - 1));
+          if (!positive) oneHotMask = rng.chance(0.3) ? 0n : oneHotMask | (1n << BigInt((rng.int(1, width - 1) + integerLog2(oneHotMask)) % width));
+          return makeQuestion("mask_shape", level, width, representation, { variant: "one-hot", mask: oneHotMask.toString() }, prompt("Is this " + width + "-bit mask one-hot (exactly one 1 bit)?", [displayValue(oneHotMask, width, representation)], "Zero is not one-hot."), [boolField("oneHot", "One-hot?", positive)], "Its population count is " + popcount(oneHotMask, width) + ", so the answer is " + (positive ? "yes" : "no") + ".", ["one-hot", positive ? "positive" : "negative"], ["popcount-shape"], ["one-nonzero-digit"]);
+        }
+        if (level === 2) {
+          var runLength = rng.int(3, 5);
+          var lo = rng.int(0, width - runLength);
+          var contiguousMask = widthMask(runLength) << BigInt(lo);
+          var contiguous = rng.chance(0.5);
+          var candidate = contiguous ? contiguousMask : contiguousMask ^ (1n << BigInt(lo + rng.int(1, runLength - 2)));
+          return makeQuestion("mask_shape", level, width, representation, { variant: "contiguous", mask: candidate.toString() }, prompt("Do all 1 bits in this nonzero mask form one contiguous run?", [displayValue(candidate, width, representation)], "A one-bit gap breaks the run."), [boolField("contiguous", "Contiguous?", contiguous)], "The set positions are " + Array.from({ length: width }, function (_, index) { return index; }).filter(function (index) { return (candidate & (1n << BigInt(index))) !== 0n; }).join(", ") + "; answer " + (contiguous ? "yes" : "no") + ".", ["contiguous", contiguous ? "positive" : "one-gap"], ["set-position-run"], ["ignoring-gaps"]);
+        }
+        if (level === 3) {
+          var sparseMax = Math.min(4, Math.floor(width / 4));
+          var sparse = rng.chance(0.5);
+          var sparseMask = sparse ? (1n | (1n << 3n) | (rng.chance(0.5) ? 0n : 1n << 7n)) : rng.chance(0.5) ? widthMask(sparseMax + 1) : widthMask(sparseMax + 1) << 2n;
+          var sparseCount = popcount(sparseMask, width);
+          return makeQuestion("mask_shape", level, width, "binary", { variant: "sparse", mask: sparseMask.toString(), sparseMax: sparseMax }, prompt("Here sparse means 2.." + sparseMax + " set bits with at least one zero gap. Is this mask sparse?", [bin(sparseMask, width)], "Apply both the count and gap requirements."), [boolField("sparse", "Sparse?", sparse)], "The population count is " + sparseCount + (sparse ? " and the set bits have a gap; yes." : " and the stated sparse rule is not satisfied; no."), ["sparse", sparse ? "positive" : sparseCount > sparseMax ? "too-many" : "contiguous"], ["explicit-sparse-definition"], ["low-count-without-gap", "ignoring-threshold"]);
+        }
+        if (level === 4) {
+          var left = randomNontrivial(rng, width);
+          var complementary = rng.chance(0.5);
+          var right = widthMask(width) ^ left;
+          if (!complementary) right ^= 1n << BigInt(rng.int(0, width - 1));
+          return makeQuestion("mask_shape", level, width, representation, { variant: "complementary", left: left.toString(), right: right.toString() }, prompt("Are these complementary " + width + "-bit masks?", [displayValue(left, width, representation), displayValue(right, width, representation)], "Every visible bit must be opposite."), [boolField("complementary", "Complementary?", complementary)], "Their XOR is " + displayValue(left ^ right, width, representation) + "; the full-width target is " + displayValue(widthMask(width), width, representation) + ".", ["complement", complementary ? "positive" : "one-bit-error"], ["width-bounded-complement"], ["unbounded-complement", "missing-complement-bit"]);
+        }
+        var maskClass = rng.choice(["one-hot", "contiguous", "sparse", "ordinary"]);
+        var rawMask;
+        if (maskClass === "one-hot") {
+          rawMask = 1n << BigInt(rng.int(0, width - 1));
+        } else if (maskClass === "contiguous") {
+          var multipleRunLength = rng.int(2, 8);
+          rawMask = widthMask(multipleRunLength) << BigInt(rng.int(0, width - multipleRunLength));
+        } else if (maskClass === "sparse") {
+          rawMask = 1n | (1n << 5n) | (rng.chance(0.5) ? 0n : 1n << 11n);
+        } else {
+          rawMask = randomNontrivial(rng, width);
+        }
+        var countValue = popcount(rawMask, width);
+        var positions = Array.from({ length: width }, function (_, index) { return index; }).filter(function (index) { return (rawMask & (1n << BigInt(index))) !== 0n; });
+        var contiguousValue = positions.length > 0 && positions[positions.length - 1] - positions[0] + 1 === positions.length;
+        var sparseLimit = Math.min(4, Math.floor(width / 4));
+        var sparseValue = countValue >= 2 && countValue <= sparseLimit && !contiguousValue;
+        return makeQuestion("mask_shape", level, width, "hex", { variant: "multiple", mask: rawMask.toString(), sparseMax: sparseLimit }, prompt("Classify this " + width + "-bit mask under the stated definitions.", [hex(rawMask, width)], "One-hot means exactly one set bit; contiguous means a nonzero uninterrupted run; sparse means 2.." + sparseLimit + " bits with a gap."), [boolField("oneHot", "One-hot?", countValue === 1), boolField("contiguous", "Contiguous?", contiguousValue), boolField("sparse", "Sparse?", sparseValue)], "Its population count is " + countValue + " and set positions are " + positions.join(", ") + ".", ["multiple-predicates", maskClass], ["overlapping-predicates"], ["assuming-taxonomy-exclusive"]);
+      };
+
+      FAMILY_GENERATORS.power_two_remainder = function (level, rng) {
+        var exponent = rng.int(1, level <= 1 ? 4 : level === 2 ? 8 : level === 3 ? 10 : 16);
+        var modulus = 1n << BigInt(exponent);
+        if (level >= 4 && rng.chance(0.45)) {
+          var patternWidth = rng.choice([16, 24, 32].filter(function (width) { return width >= exponent; }));
+          var mask = modulus - 1n;
+          return makeQuestion("power_two_remainder", level, patternWidth, "hex", {
+            variant: "mask",
+            modulus: modulus.toString(),
+            exponent: exponent,
+            patternWidth: patternWidth
+          }, prompt("Which " + patternWidth + "-bit mask computes x mod " + modulus + " for non-negative x?", [], "Return an exact-width hexadecimal pattern."), [
+            patternField("mask", "Remainder mask", mask, patternWidth, "hex")
+          ], modulus + " = 2^" + exponent + ", so the mask is 2^" + exponent + "−1 = " + hex(mask, patternWidth) + ".", ["mask", "2^" + exponent], ["mask-shortcut"], ["using-modulus-as-mask", "wrong-low-bit-count"]);
+        }
+        var remainderClass = rng.choice(["zero", "one", "max", "interior"]);
+        var remainder = remainderClass === "zero" ? 0n : remainderClass === "one" ? 1n : remainderClass === "max" ? modulus - 1n : BigInt(rng.int(1, Number(modulus - 1n)));
+        var quotient = BigInt(rng.int(1, level <= 2 ? 32 : 512));
+        var value = quotient * modulus + remainder;
+        var representation = level === 1 ? "decimal" : rng.chance(0.65) ? "hex" : "decimal";
+        return makeQuestion("power_two_remainder", level, null, representation, {
+          variant: "numeric",
+          value: value.toString(),
+          modulus: modulus.toString(),
+          exponent: exponent,
+          remainder: remainder.toString(),
+          addressRepresentation: representation,
+          answerRepresentation: representation
+        }, prompt("What is " + numericText(value, representation) + " mod " + numericText(modulus, representation) + "?", [], "The modulus is 2^" + exponent + "; answer in " + representation + "."), [
+          numericField("remainder", "Remainder", remainder, representation)
+        ], "Retain the low " + exponent + " bits using mask " + numericText(modulus - 1n, representation) + "; the remainder is " + numericText(remainder, representation) + ".", ["numeric", remainderClass, exponent % 4 === 0 ? "nibble-aligned" : "non-nibble"], ["low-bit-remainder"], ["modulus-instead-of-mask", "align-down-instead-of-remainder"]);
+      };
+
       FAMILY_GENERATORS.store_integer_bytes = function (level, rng) {
         var width = widthForLevel(level, rng, "memory");
         var raw = memoryPattern(width, rng);
@@ -1031,7 +1457,7 @@
       function validateQuestion(question) {
         var required = ["categoryId", "subcategoryId", "familyId", "level", "width", "representation", "difficultyDimensions", "misconceptionsTargeted", "parameters", "canonicalAnswer", "structuralSignature"];
         required.forEach(function (key) {
-          if (question[key] === undefined || question[key] === null) throw new Error("Missing question metadata: " + key);
+          if (question[key] === undefined || (question[key] === null && key !== "width")) throw new Error("Missing question metadata: " + key);
         });
         if (!FAMILY_GENERATORS[question.familyId]) throw new Error("Unknown family " + question.familyId);
         if (!question.answer.fields.length) throw new Error("Question has no answer fields");
@@ -1074,6 +1500,24 @@
         }
       }
 
+      function normalizeHexInteger(text) {
+        var clean = String(text).trim().toLowerCase().replace(/[\s_]/g, "");
+        if (!/^[+-]?(?:0x)?[0-9a-f]+$/.test(clean)) return null;
+        var sign = "";
+        if (clean[0] === "+" || clean[0] === "-") {
+          sign = clean[0];
+          clean = clean.slice(1);
+        }
+        clean = clean.replace(/^0x/, "");
+        try {
+          var value = BigInt("0x" + clean);
+          if (sign === "-") value = -value;
+          return value.toString();
+        } catch (error) {
+          return null;
+        }
+      }
+
       function normalizeBoolean(text) {
         var clean = String(text).trim().toLowerCase();
         if (["yes", "true", "1", "ja"].includes(clean)) return "yes";
@@ -1099,6 +1543,7 @@
 
       function normalizeFieldAnswer(answerField, value) {
         if (answerField.kind === "integer") return normalizeInteger(value);
+        if (answerField.kind === "hexInteger") return normalizeHexInteger(value);
         if (["binaryPattern", "hexPattern", "octalPattern"].includes(answerField.kind)) return normalizeDigits(value, answerField.kind);
         if (answerField.kind === "boolean") return normalizeBoolean(value);
         if (answerField.kind === "positions") return normalizePositions(value);
@@ -1896,8 +2341,8 @@
         function assert(name, condition) {
           if (!condition) failures.push(name);
         }
-        assert("38 families", FAMILIES.length === 38);
-        assert("38 generators", Object.keys(FAMILY_GENERATORS).length === 38);
+        assert("50 families", FAMILIES.length === 50);
+        assert("50 generators", Object.keys(FAMILY_GENERATORS).length === 50);
         [4, 8].forEach(function (width) {
           for (var raw = 0n; raw <= widthMask(width); raw += 1n) {
             assert("signed roundtrip " + width + ":" + raw, modulo(toSigned(raw, width), width) === raw);
@@ -1935,6 +2380,27 @@
             assert("little byte inverse", byteArray(rawLittle, 16).slice().reverse().join("") === bytes.join("").toUpperCase());
           }
         }
+        for (var alignment = 2n; alignment <= 4096n; alignment <<= 1n) {
+          for (var address = 0n; address < alignment * 2n; address += 1n) {
+            var remainder = address % alignment;
+            var down = address - remainder;
+            var up = remainder === 0n ? address : address + alignment - remainder;
+            assert("align down invariant", down % alignment === 0n && down <= address && address - down < alignment);
+            assert("align up invariant", up % alignment === 0n && up >= address && up - address < alignment);
+            assert("power-two remainder invariant", remainder === (address & (alignment - 1n)));
+          }
+        }
+        for (var maskWidth = 2; maskWidth <= 12; maskWidth += 1) {
+          for (var maskValue = 0n; maskValue <= widthMask(maskWidth); maskValue += 1n) {
+            var setPositions = Array.from({ length: maskWidth }, function (_, index) { return index; }).filter(function (index) { return (maskValue & (1n << BigInt(index))) !== 0n; });
+            assert("popcount positions " + maskWidth + ":" + maskValue, popcount(maskValue, maskWidth) === setPositions.length);
+            if (setPositions.length) {
+              var contiguous = setPositions[setPositions.length - 1] - setPositions[0] + 1 === setPositions.length;
+              var shiftedRun = widthMask(setPositions.length) << BigInt(setPositions[0]);
+              assert("contiguous run " + maskWidth + ":" + maskValue, contiguous === (shiftedRun === maskValue));
+            }
+          }
+        }
         FAMILIES.forEach(function (family, familyIndex) {
           LEVELS.forEach(function (level) {
             for (var sample = 0; sample < 40; sample += 1) {
@@ -1957,7 +2423,7 @@
           console.error("Self tests failed", failures.slice(0, 50), "total", failures.length);
           return { ok: false, failures: failures.slice(0, 100) };
         }
-        console.info("Self tests passed: 38 families, exhaustive low-width invariants, 7,600 generated instances");
+        console.info("Self tests passed: 50 families, exhaustive low-width/address invariants, 10,000 generated instances");
         return { ok: true, failures: [] };
       }
 

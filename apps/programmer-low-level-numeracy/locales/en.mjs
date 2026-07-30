@@ -5,7 +5,7 @@ export default {
   text: {
     localeCode: "en",
     appTitle: "Low-Level Numeracy",
-    brandSubtitle: "Build fluency with fixed-width integers, bit patterns, fields, and byte-addressed memory.",
+    brandSubtitle: "Build fluency with fixed-width integers, bit patterns, abstract addresses, layouts, and byte-addressed memory.",
     summary: {
       aria: "Progress summary",
       mastery: "Avg mastery",
@@ -67,6 +67,7 @@ export default {
       representation: { title: "Representation", short: "Represent" },
       "fixed-width-arithmetic": { title: "Fixed-Width Arithmetic", short: "Arithmetic" },
       "bit-manipulation": { title: "Bit Manipulation", short: "Bits" },
+      "address-layout-reasoning": { title: "Addresses & Layouts", short: "Addresses" },
       "memory-representation": { title: "Memory Representation", short: "Memory" }
     },
     settings: {

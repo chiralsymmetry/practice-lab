@@ -14,9 +14,9 @@ Programmer Low-Level Numeracy
 
 ### Topic goal
 
-Develop fast, accurate mental manipulation of fixed-width integers and bit patterns: move between representations, reason about wraparound and status conditions, apply bit operations, construct and use masks and fields, and reconstruct values from byte-addressed memory.
+Develop fast, accurate mental manipulation of fixed-width integers, bit patterns, and abstract byte addresses: move between representations, reason about wraparound and status conditions, apply bit operations, construct and use masks and fields, calculate address/layout relationships, and reconstruct values from byte-addressed memory.
 
-The goal is trainable performance. A practiced learner should be able to solve small and medium instances without writing code, while retaining precise width, signedness, and byte-order semantics.
+The goal is trainable performance. A practiced learner should be able to solve small and medium instances without writing code, while retaining precise width, signedness, address-unit, boundary, layout, and byte-order semantics.
 
 ### Scope
 
@@ -34,13 +34,22 @@ The topic includes:
 - construction and application of single-bit, set-of-bits, and contiguous masks;
 - `test-single`, `test-any`, `test-all`, and masked equality;
 - contiguous bit-field extraction, insertion, and fit checks;
+- decimal and hexadecimal programmer landmarks;
+- abstract byte-address arithmetic, distances, power-of-two alignment, and padding;
+- offsets and containing boundaries for explicitly sized words, cache lines, and pages;
+- boundary-crossing tests for explicitly sized byte ranges;
+- array-element and record-field offsets from completely supplied layouts;
+- population count and recognition of one-hot, contiguous, sparse, and complementary mask shapes;
+- power-of-two remainder shortcuts;
 - big- and little-endian byte storage, loads, subvalue loads, and signed interpretation.
 
 Expected prior knowledge:
 
 - ordinary integer addition and subtraction;
+- multiplication of small non-negative integers;
 - non-negative exponents;
 - place value;
+- the quotient/remainder idea for non-negative integers;
 - the idea that a bit is `0` or `1`.
 
 The default width set is `4, 8, 12, 16, 24, 32, 48, 64` bits. Individual families narrow this set. One- and two-bit instances may be used only as diagnostic or introductory scaffolding, never as the dominant practice.
@@ -50,13 +59,18 @@ The default width set is `4, 8, 12, 16, 24, 32, 48, 64` bits. Individual familie
 Do not include:
 
 - floating-point representation or floating-point underflow;
-- multiplication, division, or general modular-arithmetic proofs;
+- general multiplication, division, or modular-arithmetic proofs; small products formed from supplied array/layout sizes and division/remainder by explicit powers of two are included only as bounded programmer numeracy;
 - arbitrary-precision complement with infinitely many leading sign bits;
 - C, C++, Java, JavaScript, or ISA-specific shift and overflow behavior;
+- C or C++ undefined behavior, pointer provenance, object-lifetime, or pointer-comparison rules;
 - shifts by a negative count or by a count greater than or equal to the width;
 - saturating arithmetic;
 - bit order within a byte, bit-endian protocols, network bit numbering, or mixed-endian formats;
-- unaligned-access legality, alignment faults, aliasing, or undefined behavior;
+- unaligned-access legality, alignment faults, aliasing, or language-level undefined behavior;
+- inferred or ABI-dependent record/structure layout, including unstated padding;
+- virtual-to-physical address translation, page tables, TLBs, allocation validity, or protection;
+- cache-performance, locality, coherence, or replacement claims;
+- architecture-specific word, cache-line, or page sizes, address widths, canonical-address rules, or other unstated machine rules;
 - text encoding, checksums, cryptography, or instruction encoding;
 - non-contiguous fields in the bit-field subcategory;
 - octal arithmetic. Octal is an optional representation drill only.
@@ -77,6 +91,11 @@ Language-specific questions belong in a language or architecture topic. This top
 - Unsigned addition has carry-out when the exact sum is at least `2^n`.
 - Unsigned subtraction has borrow when the left operand is smaller than the right operand.
 - Signed addition or subtraction has **signed overflow** when its mathematical result is outside `[-2^(n-1), 2^(n-1)-1]`. Its direction is `above` or `below`; there is no separate processor concept named signed underflow in this specification.
+- An address is a non-negative integer naming an abstract byte position. It is not a language pointer. Address arithmetic is exact mathematical integer arithmetic; generated results never become negative and never wrap unless a question explicitly concerns a fixed-width integer instead.
+- Alignment `A` is always an explicitly supplied positive power of two. Address `x` is aligned to `A` exactly when `x mod A = 0`.
+- A byte range is written `[start, start + length)`: it includes `length > 0` bytes at addresses `start` through `start + length - 1`. Boundary-crossing questions use this half-open convention.
+- A word, cache line, or page is only an abstract fixed-size address unit. Its positive power-of-two size in bytes is stated in every question; the role name supplies no additional behavior.
+- Array and record layouts are complete question data. Record fields and explicit padding entries occupy the stated byte counts in the stated order; no hidden padding or ABI rule may be inferred.
 - Memory diagrams list increasing addresses from left to right unless arrows and addresses explicitly show otherwise.
 - Endianness changes byte order, never bit order within a byte.
 
@@ -101,6 +120,8 @@ Hexadecimal input:
 - must contain exactly `ceil(n/4)` digits when the answer is a fixed-width pattern;
 - may omit leading zeroes when the answer is explicitly a numeric value or the prompt says so.
 
+Address and byte-count answers are numeric values, not fixed-width patterns. The prompt states whether to answer in decimal or hexadecimal; hexadecimal numeric answers accept the global hexadecimal forms without requiring leading zeroes. A signed address displacement may use a leading `-`, but an address itself may not be negative.
+
 Octal input follows the same rules with optional `0o`. Fixed-width octal answers use exactly `ceil(n/3)` digits, with unused high displayed bits required to be zero.
 
 Boolean answers use displayed controls where possible. Text fallback accepts `yes/no`, `true/false`, and `1/0`. Status answers use named fields, for example `wrapped = 0110, carry = yes`, rather than an overloaded trailing `+`, `-`, or `0`.
@@ -116,6 +137,8 @@ Units such as `bits`, `bytes`, or `decimal` are not accepted inside numeric answ
 Every generated question must carry machine-readable metadata:
 
 `categoryId`, `subcategoryId`, `familyId`, `level`, `width`, `representation`, `difficultyDimensions`, `misconceptionsTargeted`, `parameters`, `canonicalAnswer`, and `structuralSignature`.
+
+`width` is the declared bit-pattern width when one exists and `null` for unbounded abstract-address numeric questions. Address families record `addressRepresentation`, `answerRepresentation`, and every applicable size, unit, and range convention in `parameters`; they must not invent an address width merely to fill metadata.
 
 Generators must:
 
@@ -1384,7 +1407,448 @@ Teach direct bitwise logic before shifts, then rotations. Mask construction must
 
 After mastery, interleave mask and field operations, but retain family identity in telemetry. If an insertion fails, diagnose in this order: field width/range, mask construction, shift alignment, destination clearing, and final OR. Do not merely reduce container width.
 
-## 5. Category: Memory Representation
+## 5. Category: Address, Layout, and Bit-Count Reasoning
+
+### Category purpose
+
+Train the programmer-facing arithmetic that connects powers of two and bit patterns to abstract byte addresses, boundaries, supplied data layouts, set-bit counts, and mask shapes. The learner should recognize low-bit structure and use it to avoid unnecessary long arithmetic while preserving exact units and range conventions.
+
+### Learn
+
+Programmer landmarks often appear as a `1` followed by zero hexadecimal digits: `0x10 = 16`, `0x100 = 256`, `0x1000 = 4096`, and `0x10000 = 65536`. One less than such a boundary is a run of hexadecimal `F` digits.
+
+An address plus an offset is ordinary integer addition. For a positive power-of-two boundary `A`, an address is aligned when its remainder on division by `A` is zero. If `r = address mod A`, aligning down subtracts `r`; aligning up adds `0` when `r = 0`, otherwise `A-r`. The same remainder is the byte offset within any explicitly sized word, cache line, or page.
+
+A range `[start, start+length)` touches addresses through `start+length-1`. It crosses a boundary of size `B` exactly when its first and last touched bytes have different containing-unit bases.
+
+For bit patterns, population count or Hamming weight is the number of `1` bits. A one-hot mask has exactly one set bit. This category calls a nonzero multi-bit mask contiguous when all its `1` bits form one uninterrupted run. It calls a mask sparse only under the explicit threshold stated below. Two width-bounded masks are complementary when every bit set in one is clear in the other and vice versa.
+
+Examples:
+
+```text
+0x1237 aligned down to 16 bytes = 0x1230
+0x1237 aligned up to 16 bytes   = 0x1240
+popcount(0xB4) = popcount(1011 0100) = 4
+```
+
+Address answers are numeric values, so leading zeroes do not carry width. Every word, cache-line, page, array-element, record-field, and padding size used by a question is supplied by that question.
+
+### Prerequisites
+
+- `power_relation`, `power_landmark`, and binary/hex grouping;
+- non-negative addition and subtraction for address arithmetic;
+- `construct_mask` before advanced mask-shape and remainder-expression variants;
+- multiplication by small supplied element sizes before array-offset variants.
+
+The landmark, direct address-addition, and direct population-count families may begin once Representation Level 2 is stable. Alignment and power-of-two remainder require reliable powers-of-two recognition. Supplied-layout composition requires base-plus-offset arithmetic.
+
+### Category boundaries
+
+Addresses are abstract byte indices, not pointers. No family may depend on object validity, allocation, provenance, aliasing, address-width wraparound, or language semantics. Alignment is an arithmetic predicate only and says nothing about whether an access is allowed or fast.
+
+The names “word,” “cache line,” and “page” identify explicitly sized boundary units only. They do not imply architecture defaults, virtual-memory translation, cache behavior, or performance. Record layouts never infer padding or alignment: offsets are derived only from stated sizes, explicit offsets, and entries literally labeled padding.
+
+Endianness and reconstruction of stored byte values belong to Memory Representation. Bit-field positions inside an integer belong to Bit Manipulation. General division and arbitrary moduli remain excluded.
+
+### Subcategories in order
+
+1. Programmer Landmarks and Address Arithmetic
+2. Power-of-Two Alignment and Padding
+3. Explicit Units and Boundary Crossing
+4. Supplied Array and Record Layouts
+5. Population Counts, Mask Shapes, and Power-of-Two Remainders
+
+### Common misconceptions across the category
+
+- Reading hexadecimal address digits as decimal digits.
+- Dropping a carry between hexadecimal digits when adding an offset.
+- Returning the final address when the question asks for an offset or distance.
+- Treating “aligned to `A`” as “contains the digit `A`” rather than remainder zero.
+- Always moving to the next boundary when align-up receives an already aligned address.
+- Using the current remainder as align-up padding instead of `A-remainder`.
+- Treating a range ending exactly at a boundary as crossing it.
+- Testing the exclusive end address instead of the last touched address.
+- Assuming unstated word, cache-line, page, or record-layout rules.
+- Counting hexadecimal digits rather than the `1` bits represented by them.
+- Treating any low-popcount mask as one-hot or any visually grouped ones as contiguous.
+- Using `2^k` rather than `2^k-1` as a remainder mask.
+
+## 5.1 Subcategory: Programmer Landmarks and Address Arithmetic
+
+### Family `programmer_landmark`
+
+**Learner task.** Convert or recognize exact power-of-two and one-less-than-power-of-two landmarks in decimal and hexadecimal.
+
+**Relationship to skill.** These landmarks make later boundary, page-offset, mask, and address calculations retrieval-plus-adjustment tasks rather than repeated base conversion.
+
+**Response mode.** Decimal-number input or hexadecimal numeric input.
+
+**Preferred templates.**
+
+- `Write decimal {decimalValue} in hexadecimal.`
+- `Write hexadecimal {hexValue} in decimal.`
+- `{value} is one less than which power-of-two boundary? Give the boundary in {answerRepresentation}.`
+
+**Derivation.** Choose `k` from `4..32`. The exact landmark is `2^k`; the adjacent lower landmark is `2^k-1`. Direct cross-base prompts concentrate on `k` divisible by four and the additional familiar cases `k = 10, 20, 30`. Format the exact integer in the requested base.
+
+**Constraints and rejection.** At Levels 1–2, use the core set `16, 256, 1024, 4096, 65536` and their hex forms. Higher levels may use `2^k`, `2^k-1`, or a small landmark multiple whose nonzero hex digits are at most two. Reject long general conversion, values with more than three nonzero hex digits, and prompts already answered verbatim by their notation.
+
+**Difficulty dimensions.** Direction of conversion, exact versus one-less boundary, decimal versus hex cue, exponent divisible by four or not, and adjustment from a recalled landmark.
+
+**Difficulty.** Level 1 uses exact core landmarks. Level 2 interleaves both directions and one-less values such as `255/0xFF`. Level 3 uses `2^10`, `2^20`, and small multiples. Level 4 asks for the adjacent boundary or combines a landmark with a small stated adjustment.
+
+**Feedback.** Show the power relationship and hexadecimal digit grouping. Diagnose answers off by one as confusion between a boundary and its largest lower value; diagnose decimal-looking hex transcription separately.
+
+**Examples.**
+
+1. `Write decimal 256 in hexadecimal.` Answer `0x100`; `256 = 2^8`. Level 1.
+2. `Write hexadecimal 0x1000 in decimal.` Answer `4096`; `0x1000 = 2^12`. Level 2.
+3. `65535 is one less than which power-of-two boundary? Give the boundary in hexadecimal.` Answer `0x10000`; `65535 = 2^16-1`. Level 3.
+
+**Validation and coverage.** Parse both representations and assert exact equality. Across 100 items, include every core landmark in both directions, at least 25 one-less cases, both divisible-by-four and non-divisible exponents, and no more than 15% small-multiple variants.
+
+### Family `base_address_offset`
+
+**Learner task.** Compute an abstract byte address from a supplied base address and signed or unsigned byte offset.
+
+**Relationship to skill.** Repeated base-plus-offset calculation establishes the primitive used by arrays, fields, load windows, and boundary questions.
+
+**Response mode.** Decimal or hexadecimal numeric input in the representation requested by the prompt.
+
+**Preferred templates.**
+
+- `Base address {base} plus byte offset {offset} gives what address? Answer in {answerRepresentation}.`
+- `Starting at address {base}, move {magnitude} bytes {direction}. What address is reached?`
+
+**Derivation.** `answer = base + offset`, where `{offset}` is an integer. “Forward” uses a positive offset and “back” uses its negative. Generate only cases with `answer >= 0`.
+
+**Constraints and rejection.** Levels 1–2 use non-negative offsets. Signed offsets begin at Level 3 and must display an explicit sign or direction. Hex questions should exercise low-digit carry or borrow in 40–60% of items, but reject chains longer than four hex digits and arithmetic dominated by decimal conversion. No wrapping or fixed address width is implied.
+
+**Difficulty.** Level 1 uses same-base small decimal offsets or nibble-aligned hex offsets. Level 2 includes one or two hex carries. Level 3 includes backward displacement and mixed decimal/hex presentation with an explicit answer base. Level 4 uses a landmark base plus a near-boundary offset.
+
+**Feedback.** Align base and offset in the working base, preserve the requested unit, and show each carry or borrow. If the answer equals the offset, diagnose omission of the base; if it equals `base-offset` for a forward prompt, diagnose direction.
+
+**Examples.**
+
+1. `Base address 0x1000 plus byte offset 0x34 gives what address? Answer in hexadecimal.` Answer `0x1034`. Level 1.
+2. `Base address 8192 plus byte offset 96 gives what address? Answer in decimal.` Answer `8288`. Level 2.
+3. `Starting at address 0x2040, move 0x58 bytes back. What address is reached?` Answer `0x1FE8`. Level 3.
+
+**Validation and coverage.** Recompute with arbitrary-precision signed integers and resubtract the base to recover the offset. Cross-tab direction, answer base, carry/borrow presence, and landmark proximity; mutate the base while retaining the offset and verify the answer changes by the same amount.
+
+### Family `address_distance`
+
+**Learner task.** Compute either the non-negative byte distance between ordered addresses or the signed displacement from one address to another, as explicitly requested.
+
+**Relationship to skill.** This is the inverse of base-plus-offset arithmetic and prevents conflating addresses with lengths.
+
+**Response mode.** Decimal or hexadecimal integer input.
+
+**Preferred templates.**
+
+- `How many bytes from lower address {low} to higher address {high}? Answer in {answerRepresentation}.`
+- `What signed byte displacement takes address {from} to address {to}? Answer in {answerRepresentation}.`
+
+**Derivation.** Ordered distance is `high-low` with precondition `high >= low`. Signed displacement is `to-from`. The inverse check is `from + displacement = to`.
+
+**Constraints and rejection.** Wording must distinguish non-negative distance from signed displacement. Use differences `1..65536`; larger displayed addresses are allowed only when common high prefixes cancel cleanly. Reject subtraction requiring long unrelated decimal work or any item where address order is visually ambiguous.
+
+**Difficulty.** Level 1 subtracts within one small block. Level 2 crosses a hex digit or landmark boundary. Level 3 mixes display and answer bases. Level 4 uses signed backward displacement or asks for a missing endpoint.
+
+**Feedback.** Cancel common high address digits when useful, subtract endpoints, and verify by adding the result back. Diagnose reversed subtraction by sign and diagnose inclusive counting (`+1`) as confusion between address distance and number of addresses in an inclusive list.
+
+**Examples.**
+
+1. `How many bytes from lower address 0x1080 to higher address 0x1200? Answer in hexadecimal.` Answer `0x180`. Level 1.
+2. `How many bytes from lower address 0x4000 to higher address 0x4C00? Answer in decimal.` Answer `3072`. Level 2.
+3. `What signed byte displacement takes address 0x2020 to address 0x1FF0? Answer in decimal.` Answer `-48`. Level 3.
+
+**Validation and coverage.** Assert endpoint order for distance variants, recompute subtraction independently, and verify the inverse addition. Balance borrow/no-borrow, forward/backward signed displacement, power-of-two distances, and non-landmark ordinary distances.
+
+## 5.2 Subcategory: Power-of-Two Alignment and Padding
+
+### Family `alignment_predicate`
+
+**Learner task.** Decide whether an address is aligned to an explicitly supplied power-of-two byte boundary.
+
+**Relationship to skill.** This isolates the zero-remainder/zero-low-bits test before the learner must calculate a new address or padding.
+
+**Response mode.** Yes/no.
+
+**Template.** `Is address {address} aligned to a {alignment}-byte boundary?`
+
+**Derivation.** Compute `remainder = address mod alignment`; answer yes exactly when `remainder = 0`. Equivalently, for `alignment=2^k`, the low `k` address bits are all zero.
+
+**Constraints and rejection.** `{alignment}` is one of `2,4,8,...,4096` and is always printed. Construct 50% aligned and 50% unaligned cases. Unaligned remainders must cover `1`, `alignment-1`, and ordinary interior values. Reject decimal items where digit appearance alone is a reliable alignment rule.
+
+**Difficulty.** Level 1 uses 2–16-byte alignment with binary or simple hex suffixes. Level 2 uses 32–256. Level 3 mixes decimal and hex addresses. Level 4 contrasts two supplied alignments for one address.
+
+**Feedback.** Show either the remainder or the low `k` bits. If the learner checks divisibility by the exponent `k`, name the required divisor `2^k`; if they infer a stronger alignment from a weaker one in the wrong direction, show both remainders.
+
+**Examples.**
+
+1. `Is address 0x1230 aligned to a 16-byte boundary?` Answer `yes`; the low hex digit is zero. Level 1.
+2. `Is address 4100 aligned to an 8-byte boundary?` Answer `no`; `4100 mod 8 = 4`. Level 2.
+3. `Is address 0x12C0 aligned to a 64-byte boundary?` Answer `yes`; `0x12C0 mod 0x40 = 0`. Level 3.
+
+**Validation and coverage.** Compare exact remainder with a low-bit-mask test using `alignment-1`. Cross-tab answer, representation, exponent, and remainder class. Verify the implication that alignment to a larger supplied power of two implies alignment to every smaller supplied divisor used in contrast items.
+
+### Family `align_power_two`
+
+**Learner task.** Find the aligned address at or below, or at or above, a supplied address.
+
+**Relationship to skill.** The family turns the alignment predicate into constructive boundary finding and distinguishes “at or above” from “strictly above.”
+
+**Response mode.** Numeric input or two named fields `down` and `up`.
+
+**Preferred templates.**
+
+- `Align address {address} down to a {alignment}-byte boundary.`
+- `Align address {address} up to a {alignment}-byte boundary.`
+- `For address {address} and {alignment}-byte alignment, give down and up.`
+
+**Derivation.** Let `r = address mod alignment`. `down = address-r`. `up = address` when `r=0`, otherwise `address+(alignment-r)`. Both are numeric addresses, not fixed-width patterns.
+
+**Constraints and rejection.** Alignment is explicitly supplied and power-of-two. Include already aligned addresses in 20–30% of align-up items. Reject instances where “up” could be misread as the next strictly greater boundary; the Learn text and feedback must repeat “at or above.”
+
+**Difficulty.** Level 1 aligns down with 4–16-byte boundaries. Level 2 aligns up and includes already aligned cases. Level 3 returns both endpoints for 32–256-byte boundaries. Level 4 mixes decimal/hex or uses addresses just below and just above a major landmark.
+
+**Feedback.** Show `r`, then subtract it for down or add the required complement for up. Diagnose always adding a full alignment on an already aligned input and diagnose swapping the two endpoints.
+
+**Examples.**
+
+1. `Align address 0x1237 down to a 16-byte boundary.` Answer `0x1230`; remainder is `7`. Level 1.
+2. `Align address 0x1230 up to a 16-byte boundary.` Answer `0x1230`; it is already aligned. Level 2.
+3. `For address 0x1F3A and 256-byte alignment, give down and up.` Answer `down = 0x1F00, up = 0x2000`. Level 3.
+
+**Validation and coverage.** Assert both results are multiples of alignment, `down <= address <= up`, and no closer qualifying multiples exist. Cross-check `address-down` and `up-address` against the remainder formulas. Cover zero, one, maximum, and interior remainder classes.
+
+### Family `alignment_padding`
+
+**Learner task.** Calculate the number of padding bytes required so the next address is aligned to a supplied boundary.
+
+**Relationship to skill.** Padding is the distance from the current remainder to the next boundary, connecting alignment to layout-size reasoning.
+
+**Response mode.** Non-negative decimal or hexadecimal integer input.
+
+**Template.** `The next free address is {address}. How many padding bytes are required for {alignment}-byte alignment? Answer in {answerRepresentation}.`
+
+**Derivation.** Let `r = address mod alignment`; `padding = 0` if `r=0`, otherwise `alignment-r`. Equivalently, `padding = (alignment-r) mod alignment` over non-negative integers.
+
+**Constraints and rejection.** Generate all remainder classes constructively. Padding zero must occur in 20–30% of items, not disappear as a “trivial” case. No family may claim the padding is required by an ABI; it is required only by the alignment condition stated in the prompt.
+
+**Difficulty.** Level 1 uses small alignment and decimal addresses. Level 2 uses hex suffix reasoning. Level 3 derives the next free address from `base + supplied size` first. Level 4 compares candidate layouts only by their explicitly requested padding.
+
+**Feedback.** Show current remainder, distance to the next multiple, and the aligned result. If the learner returns the remainder, contrast bytes already past the boundary with bytes still needed.
+
+**Examples.**
+
+1. `The next free address is 0x1003. How many padding bytes are required for 4-byte alignment?` Answer `1`. Level 1.
+2. `The next free address is 8190. How many padding bytes are required for 16-byte alignment?` Answer `2`. Level 2.
+3. `The next free address is 0x21A6. How many padding bytes are required for 64-byte alignment? Answer in hexadecimal.` Answer `0x1A`; the next boundary is `0x21C0`. Level 3.
+
+**Validation and coverage.** Assert `(address+padding) mod alignment = 0`, `0 <= padding < alignment`, and minimality. Cross-tab zero/nonzero, small/max/interior padding, representation, and whether the free address was direct or derived.
+
+## 5.3 Subcategory: Explicit Units and Boundary Crossing
+
+### Family `unit_offset_boundary`
+
+**Learner task.** Find an address's byte offset within, containing base for, or containing interval of an explicitly sized word, cache line, or page.
+
+**Relationship to skill.** Applying one remainder decomposition across several role labels reinforces that the supplied size, not architectural folklore, determines the answer.
+
+**Response mode.** Numeric input or named numeric fields `offset`, `base`, and optionally `nextBoundary`.
+
+**Preferred templates.**
+
+- `A {role} is {unitSize} bytes. What is the byte offset of address {address} within its containing {role}?`
+- `A {role} is {unitSize} bytes. Give the base address of the {role} containing {address}.`
+- `A {role} is {unitSize} bytes. Give the containing half-open interval [base, nextBoundary) for address {address}.`
+
+**Derivation.** `offset = address mod unitSize`; `base = address-offset`; `nextBoundary = base+unitSize`. The containing unit is `[base,nextBoundary)`, including when `address=base`.
+
+**Constraints and rejection.** `{role}` is `word`, `cache line`, or `page`; `{unitSize}` is always printed and is a power of two. Typical generation sets are word `2..16`, cache line `16..256`, and page `256..65536`, but these are exercise ranges, not machine defaults. Do not infer any access, translation, or performance property from the role.
+
+**Difficulty.** Level 1 asks only offset with small sizes. Level 2 asks base or interval. Level 3 uses 64–4096-byte units and mixed representations. Level 4 asks multiple named fields or compares the same address under two explicitly different unit sizes.
+
+**Feedback.** Show quotient grouping only as repeated boundary chunks when useful; the preferred mental method is low-bit/hex-suffix remainder followed by subtraction. Diagnose returning the absolute address instead of within-unit offset and diagnose using an unstated “standard” size.
+
+**Examples.**
+
+1. `A word is 4 bytes. What is the byte offset of address 0x103B within its containing word?` Answer `3`. Level 1.
+2. `A cache line is 64 bytes. Give the base address of the cache line containing 0x12D5.` Answer `0x12C0`; offset is `0x15`. Level 2.
+3. `A page is 4096 bytes. Give base and nextBoundary for the containing half-open interval of address 0x2345.` Answer `base = 0x2000, nextBoundary = 0x3000`. Level 3.
+
+**Validation and coverage.** Assert `address = base+offset`, `0 <= offset < unitSize`, both boundaries are multiples of unit size, and interval membership holds. Cross-tab role independently from size, boundary/interior offset class, requested output, and representation.
+
+### Family `range_crosses_boundary`
+
+**Learner task.** Decide whether a positive-length abstract byte range crosses a boundary of an explicitly supplied unit size.
+
+**Relationship to skill.** This composes half-open range endpoints with containing-unit reasoning and targets the common exclusive-end off-by-one error.
+
+**Response mode.** Yes/no; advanced variants may add the first crossed boundary as a named numeric field.
+
+**Template.** `A {role} is {unitSize} bytes. Does byte range [{start}, {endExclusive}) cross a {role} boundary?`
+
+**Placeholder derivation.** Generate `{length} > 0`; `{endExclusive} = start+length`. Display both endpoints or display `{start}` and `{length}`, but always name the half-open convention. `last = endExclusive-1`. The answer is yes iff `floor(start/unitSize) != floor(last/unitSize)`.
+
+**Constraints and rejection.** Construct rather than sample 50% crossing and 50% non-crossing cases. Include ranges ending exactly at a boundary, starting exactly at a boundary, crossing by one byte, and crossing more than one boundary. Limit length arithmetic so boundary reasoning remains central.
+
+**Difficulty.** Level 1 uses small units and displays start plus length. Level 2 displays half-open endpoints and includes exact-end cases. Level 3 uses hex addresses and page/cache-line labels with supplied sizes. Level 4 asks how many unit boundaries are crossed or for the first boundary after the Boolean decision.
+
+**Feedback.** Identify the first and last touched bytes and their containing bases. If the learner tests `endExclusive`, show why that byte is not part of the range; if they treat any boundary endpoint as a crossing, contrast a range ending exactly there.
+
+**Examples.**
+
+1. `A cache line is 64 bytes. Does byte range [0x1030, 0x1040) cross a cache-line boundary?` Answer `no`; the last touched byte is `0x103F`. Level 2.
+2. `A cache line is 64 bytes. Does the 16-byte range starting at 0x1038 cross a cache-line boundary?` Answer `yes`; it touches through `0x1047`. Level 2.
+3. `A page is 4096 bytes. Does the 4-byte range starting at 8190 cross a page boundary?` Answer `yes`; it touches addresses on both sides of `8192`. Level 3.
+
+**Validation and coverage.** Compare containing-base derivation with an independent interval enumeration for bounded test cases. If boundary count is requested, compute `floor(last/unitSize)-floor(start/unitSize)`. Cross-tab answer, exact-end, exact-start, one-byte-over, multi-boundary, role, and representation classes.
+
+## 5.4 Subcategory: Supplied Array and Record Layouts
+
+### Family `supplied_layout_offset`
+
+**Learner task.** Calculate an array element, record field, or array-of-record field byte offset/address from a completely supplied layout.
+
+**Relationship to skill.** Repeated practice separates zero-based stride, explicit field displacement, and final base addition while making unstated layout rules irrelevant.
+
+**Response mode.** Decimal or hexadecimal numeric input; intermediate `elementOffset` and `fieldOffset` may be separate named fields.
+
+**Preferred templates.**
+
+- `An array begins at {base}; each element is {elementSize} bytes. What is the byte offset of element index {index}?`
+- `This record is laid out in the listed order with no implicit padding: {layout}. What is the byte offset of field {field}?`
+- `Records of explicitly stated size {recordSize} form an array at {base}. Field {field} has supplied offset {fieldOffset}. What is the address of that field in element {index}?`
+
+**Derivation.** Array element offset is `index*elementSize`. In a sequential record, a field offset is the sum of all preceding stated field and explicit-padding sizes. For an array-of-record field, `address = base + index*recordSize + fieldOffset`. Indexing is zero-based and stated in every prompt.
+
+**Constraints and rejection.** Element sizes are `1..32`, indices `0..31`, record component counts `2..7`, and total arithmetic normally stays below 4096 bytes. A record is either explicitly sequential with no implicit padding, or supplies every field offset directly. Padding can affect an answer only when listed as an explicit entry. Reject any layout whose displayed offsets/sizes overlap, disagree with record size, omit a needed fact, or invite an ABI inference.
+
+**Difficulty.** Level 1 asks direct array element offset with small products. Level 2 sums preceding record entries, including explicit padding. Level 3 composes array stride and field offset. Level 4 supplies selected offsets and asks for a missing address or verifies whether a field range fits inside the stated record size.
+
+**Feedback.** Stage the calculation as `element contribution + field contribution`, and visually include explicit padding as an ordinary occupied byte range. Diagnose one-based indexing, multiplying the field offset by the index, omitting padding, and inventing padding.
+
+**Examples.**
+
+1. `A zero-indexed array has 6-byte elements. What is the byte offset of element index 5?` Answer `30`; `5*6`. Level 1.
+2. `Record layout, sequential with no implicit padding: tag 1 byte, padding 3 bytes, count 4 bytes, payload 12 bytes. What is payload's byte offset?` Answer `8`; `1+3+4`. Level 2.
+3. `An array begins at 0x1000. Each record is explicitly 24 bytes; field value has supplied offset 8. What is value's address in zero-based element 3?` Answer `0x1050`; `0x1000 + 3*24 + 8`. Level 3.
+
+**Validation and coverage.** Build an explicit interval list and independently sum sizes. Assert all fields/padding fit without overlap and any stated record size contains them. Verify `answer-base = index*recordSize+fieldOffset`. Balance arrays, records, composed variants, index zero/nonzero, explicit padding present/absent, and decimal/hex answers.
+
+## 5.5 Subcategory: Population Counts, Mask Shapes, and Power-of-Two Remainders
+
+### Family `population_count`
+
+**Learner task.** Count the set bits in a bounded binary or hexadecimal pattern.
+
+**Relationship to skill.** Popcount supports mask density, one-hot checks, and compact reasoning about grouped hexadecimal patterns.
+
+**Response mode.** Non-negative decimal integer input.
+
+**Template.** `What is the population count (number of 1 bits) of the {width}-bit pattern {pattern}?`
+
+**Derivation.** Count `1` bits in the exact-width binary representation. For hex, sum the known nibble weights: `0→0`, `1/2/4/8→1`, `3/5/6/9/A/C→2`, `7/B/D/E→3`, `F→4`.
+
+**Constraints and rejection.** Direct binary uses widths `4..24`; direct hex uses `8..32`. Widths `48` and `64` appear only for sparse, repeated-nibble, or otherwise chunkable patterns. Exclude all-zero/all-one except diagnostics, and prevent uniform random generation from making middle counts dominate.
+
+**Difficulty.** Level 1 counts 4–8 displayed bits. Level 2 uses two to four hex nibbles. Level 3 uses mixed-density nibbles and internal zero/F groups. Level 4 uses chunkable 32–64-bit patterns with repeated, sparse, or landmark nibble groups.
+
+**Feedback.** Annotate each binary group or hex nibble with its local count and sum the subtotals. Diagnose counting nonzero hex digits, decimal digits, or bit positions rather than set bits.
+
+**Examples.**
+
+1. `What is the population count of the 8-bit pattern 1011 0100?` Answer `4`. Level 1.
+2. `What is the population count of the 16-bit pattern 0xF00F?` Answer `8`; `4+0+0+4`. Level 2.
+3. `What is the population count of the 64-bit pattern 0x8000000100000001?` Answer `3`. Level 4.
+
+**Validation and coverage.** Compare exact binary-string counting with repeated `x &= x-1` on an arbitrary-precision non-negative integer. Stratify target popcounts into zero/one, low, middle, high, and all-one classes with extremes limited to diagnostics; cover every hex nibble value regularly.
+
+### Family `mask_shape`
+
+**Learner task.** Recognize a precisely defined one-hot, contiguous-run, sparse, or complementary mask shape.
+
+**Relationship to skill.** Shape recognition compresses common masks into popcount, gap, and width-bounded complement relationships instead of visual guesswork.
+
+**Response mode.** Yes/no, single-choice among non-overlapping constructed classes, or multiple named Boolean fields.
+
+**Preferred templates.**
+
+- `Is the {width}-bit mask {mask} one-hot (exactly one 1 bit)?`
+- `Do all 1 bits in nonzero mask {mask} form one contiguous run?`
+- `Under this question's rule, sparse means 2..{sparseMax} set bits with at least one zero gap between set bits. Is {mask} sparse?`
+- `Are {left} and {right} complementary {width}-bit masks?`
+
+**Derivation.** One-hot iff `mask != 0` and `popcount(mask)=1`. Contiguous iff `mask != 0` and the set-bit positions form every integer from lowest set position through highest set position. Sparse uses the exact prompt definition: `2 <= popcount <= sparseMax` and non-contiguous, where `sparseMax = min(4, floor(width/4))` and generated widths are at least 8. Complementary iff `left XOR right = 2^width-1`, equivalently both AND to zero and OR to the width mask.
+
+**Constraints and rejection.** A single-choice taxonomy uses mutually exclusive constructed labels: one-hot; contiguous multi-bit; sparse under the stated rule; or other. Never ask for an unqualified “sparse” judgment. Complement questions always state width. Negative examples should be one edit away in at least half of items: an extra isolated bit, a one-bit gap, a missing complement bit, or a bit outside the visible width.
+
+**Difficulty.** Level 1 uses one-hot yes/no. Level 2 contrasts one-hot with contiguous multi-bit masks. Level 3 introduces explicit sparse and gap cases. Level 4 uses complementary pairs and hex patterns. Level 5 asks multiple shape predicates where overlap is allowed and reports each Boolean separately.
+
+**Multiple-choice distractors.** Use only the other defined shape labels plus `other`; never invent synonymous labels. Construct the instance so one-hot, contiguous multi-bit, sparse-under-definition, and other are mutually exclusive, then evaluate every label from set positions before shuffling.
+
+**Feedback.** Give popcount and set positions, then apply the named shape definition. For complements, show width-bounded AND and OR or aligned opposite bits. Diagnose “one-hot means one nonzero digit,” ignored gaps, and unbounded complement assumptions.
+
+**Examples.**
+
+1. `Is the 8-bit mask 0x20 one-hot?` Answer `yes`; exactly bit 5 is set. Level 1.
+2. `Do all 1 bits in nonzero mask 0011 1100 form one contiguous run?` Answer `yes`; bits `5..2` are set. Level 2.
+3. `Are 0x0F0F and 0xF0F0 complementary 16-bit masks?` Answer `yes`; XOR is `0xFFFF`. Level 4.
+
+**Validation and coverage.** Derive set positions independently from numeric predicates. Enumerate all masks through width 12 to verify shape classifiers and mutual exclusivity of choice variants. Cross-tab positive/negative, representation, popcount, edge-touching, one-gap, extra-bit, sparse threshold, and complement-error classes.
+
+### Family `power_two_remainder`
+
+**Learner task.** Compute a non-negative value's remainder modulo an explicitly supplied power of two or choose the low-bit shortcut that computes it.
+
+**Relationship to skill.** This unifies alignment remainders, within-unit offsets, and low-bit masks without expanding into general modular arithmetic.
+
+**Response mode.** Decimal/hex numeric input or single-choice.
+
+**Preferred templates.**
+
+- `What is non-negative {value} mod {modulus}? Answer in {answerRepresentation}.`
+- `{modulus} = 2^{k}. Which low bits of {value} determine the remainder?`
+- `Which mask computes x mod {modulus} for non-negative x under width {width}?`
+
+**Derivation.** With `modulus = 2^k`, `remainder = value & (modulus-1)`, equal to the numeric value of the low `k` bits. The mask is `2^k-1`, formatted to the stated width when the answer is a pattern.
+
+**Constraints and rejection.** Values are non-negative; modulus is one of `2,4,...,65536` and always stated. Numeric instances must have remainder in constructed classes `0`, `1`, `modulus-1`, and interior. Expression choices use abstract width-bounded operators, never a host language, and require a stated pattern width at least `k` for modulus `2^k`. General or negative modulo conventions are excluded.
+
+**Difficulty.** Level 1 reads low binary bits for mod 2–16. Level 2 reads one or two low hex digits for mod 16/256. Level 3 handles non-nibble powers such as 8, 32, and 64. Level 4 chooses the correct mask or connects the remainder to an alignment/unit-offset question.
+
+**Multiple-choice distractors.** Use mask `modulus` instead of `modulus-1`, retain `k+1` or `k-1` low bits, select high rather than low bits, or return the quotient-aligned value. Evaluate choices and reject accidental equivalence for the displayed domain.
+
+**Feedback.** State `modulus=2^k`, retain exactly the low `k` bits, and show their value. Diagnose confusing the modulus with its mask and confusing remainder with align-down.
+
+**Examples.**
+
+1. `What is 77 mod 8?` Answer `5`; low three bits of `77` are `101`. Level 1.
+2. `What is 0x12AB mod 256? Answer in hexadecimal.` Answer `0xAB`; retain the low eight bits. Level 2.
+3. `Which 16-bit mask computes x mod 64 for non-negative x?` Answer `0x003F`; `64-1 = 63`. Level 4.
+
+**Validation and coverage.** Compare low-bit masking with arbitrary-precision quotient/remainder arithmetic. For choice items, prove exactly one candidate works over every `x` in `0..2^min(width,12)-1` and randomized wider values. Balance exponent, nibble-aligned/nonaligned modulus, remainder class, response representation, and numeric/expression variants.
+
+### Cross-family progression for Address, Layout, and Bit-Count Reasoning
+
+Introduce `programmer_landmark`, direct `base_address_offset`, and `population_count` after basic representation. Follow base-plus-offset with `address_distance` as its inverse. Teach `alignment_predicate` before align-up/down, then derive `alignment_padding` from align-up distance. Introduce generic power-of-two remainder alongside alignment and only then apply the same operation to named word/cache-line/page units.
+
+Range crossing requires reliable containing-boundary calculations and the half-open range convention. Direct arrays precede record-field sums; composed array-of-record questions wait for both layout offsets and base-plus-offset to be stable. One-hot recognition may accompany single-bit masks, but sparse and complementary shape variants wait for popcount and width-bounded masks.
+
+After acquisition, interleave:
+
+- `base_address_offset` with `address_distance`;
+- `alignment_predicate`, `align_power_two`, `alignment_padding`, and `power_two_remainder` on related low-bit structures;
+- `unit_offset_boundary` with `range_crosses_boundary`;
+- `population_count` with `mask_shape`;
+- direct layout offsets with address reconstruction.
+
+If a range-crossing answer fails, diagnose in order: exclusive-end convention, last touched byte, within-unit offset, then containing bases. If a composed layout address fails, separately assess zero-based index multiplication, supplied field offset, and final base addition. Do not respond by introducing architecture rules or merely shrinking every number.
+
+## 6. Category: Memory Representation
 
 ### Category purpose
 
@@ -1405,11 +1869,11 @@ Endianness reverses byte significance, not the eight bits inside each byte. A lo
 
 ### Prerequisites
 
-Hex/binary byte grouping and signed/unsigned views.
+Hex/binary byte grouping and signed/unsigned views. Load-window offset variants also require `base_address_offset`; questions that describe byte intervals require the half-open range convention from Address, Layout, and Bit-Count Reasoning.
 
 ### Category boundaries
 
-No alignment or host-language pointer behavior. Loads are abstract and always permitted. Address order and load width are explicit. Bit fields inside a loaded value belong to Bit Manipulation after reconstruction.
+No alignment legality, virtual-memory behavior, cache claim, or host-language pointer behavior. Loads are abstract and always permitted. Address order and load width are explicit. Bit fields inside a loaded value belong to Bit Manipulation after reconstruction.
 
 ### Subcategories in order
 
@@ -1426,7 +1890,7 @@ No alignment or host-language pointer behavior. Loads are abstract and always pe
 - Applying signed interpretation to each byte separately.
 - Believing the byte sequence itself has intrinsic endianness; endianness belongs to the interpretation/store rule.
 
-## 5.1 Subcategory: Storing Values as Bytes
+## 6.1 Subcategory: Storing Values as Bytes
 
 ### Family `store_integer_bytes`
 
@@ -1460,7 +1924,7 @@ No alignment or host-language pointer behavior. Loads are abstract and always pe
 
 **Implementation and automated validation.** Serialize by extracting `(raw >> (8*i)) & 0xFF` for little-endian and reversed index for big. Reconstruct from output and assert original raw value. Balance endianness and byte count; prevent palindromes.
 
-## 5.2 Subcategory: Reconstructing Values from Memory
+## 6.2 Subcategory: Reconstructing Values from Memory
 
 ### Family `load_integer_bytes`
 
@@ -1493,7 +1957,7 @@ Load a {width}-bit {endianness}-endian value at {start}. What raw hex pattern is
 
 **Validation and coverage.** Re-serialize reconstructed raw value and compare selected bytes. Assert bytes outside load window do not affect answer. Balance start offset and endian direction.
 
-## 5.3 Subcategory: Subvalue and Signed Loads
+## 6.3 Subcategory: Subvalue and Signed Loads
 
 ### Family `load_subvalue`
 
@@ -1549,21 +2013,24 @@ Store questions precede loads because they establish address/significance mappin
 
 If a signed load fails, first ask for raw reconstruction alone. If raw is correct, target signed-view practice. If the wrong byte window was selected, keep endianness simple and retrain addressing before combining rules.
 
-## 6. Topic-level cross-family progression
+## 7. Topic-level cross-family progression
 
 Recommended introduction sequence:
 
-1. powers and binary/hex grouping;
+1. powers, binary/hex grouping, and programmer landmarks;
 2. unsigned pattern interpretation and fixed-width preservation;
 3. signed views, ranges, and representability;
 4. extension/truncation;
-5. unsigned direct arithmetic;
-6. signed direct arithmetic, then joint status classification;
-7. bitwise operators;
-8. shifts, then rotations;
-9. mask construction, then mask application and named flag tests;
-10. bit-field extraction, then insertion;
-11. endian stores/loads, offsets, then signed loads.
+5. direct base-address/offset and address-distance inverses, plus bounded population count;
+6. unsigned direct arithmetic;
+7. signed direct arithmetic, then joint status classification;
+8. bitwise operators;
+9. shifts, then rotations;
+10. mask construction, mask application, named flag tests, then mask shapes;
+11. alignment predicates, align-down/up, padding, and power-of-two remainder;
+12. explicit unit offsets/boundaries, then range crossing;
+13. bit-field extraction/insertion and supplied array/record layouts;
+14. endian stores/loads, offsets, then signed loads.
 
 Families that should be interleaved after acquisition:
 
@@ -1573,6 +2040,11 @@ Families that should be interleaved after acquisition:
 - logical and arithmetic right shifts on top-bit-set sources;
 - `test-any` and `test-all` on some-but-not-all masks;
 - mask construction with application;
+- `base_address_offset` with inverse `address_distance`;
+- alignment, padding, and power-of-two remainder on matched low-bit cases;
+- unit offsets with boundary crossing on the same explicitly supplied sizes;
+- population count with one-hot/contiguous/sparse mask recognition;
+- direct array/record offsets with composed field addresses;
 - endian store with inverse load;
 - raw load with signed interpretation.
 
@@ -1581,11 +2053,15 @@ Families that should remain separate until prerequisites are mastered:
 - missing-operand arithmetic;
 - shift/rotate identification;
 - insertion expressions;
+- align-up/down until the alignment predicate is reliable;
+- range crossing until containing-unit bases and the exclusive end convention are reliable;
+- composed array-of-record addresses until direct array stride and record-field offset are reliable;
+- sparse/complement mask classification until popcount and width-bounded masks are reliable;
 - offset plus signed endian loads.
 
 Level selection must respect family-specific introductions. A topic-wide Level 4 does not authorize a Level 4 family whose prerequisite family has not reached stable Level 2 performance.
 
-## 7. Adaptive practice guidance
+## 8. Adaptive practice guidance
 
 ### Mastery dimensions
 
@@ -1598,13 +2074,19 @@ Track mastery at:
 - difficulty dimension (inverse, boundary, mixed representation, multi-rule);
 - status class for arithmetic;
 - predicate class for masks;
+- address operation and answer representation;
+- alignment exponent and remainder/padding class;
+- explicit unit role and supplied size as separate dimensions;
+- range-crossing class (`no`, `exact-end`, `one-byte-over`, `multi-boundary`);
+- layout form (`array`, `sequential-record`, `explicit-offset-record`, `composed`);
+- popcount band and mask-shape predicate;
 - endianness and load-window selection separately.
 
 Category-only mastery is too coarse. The displayed category score may aggregate these values, but selection must use the finer records.
 
 ### Evidence model
 
-Record correctness, normalized answer parts, latency excluding paused time, hint/worked-solution use, and diagnosed misconception. Partial multi-field answers should update each dimension separately: correct result bits with wrong status is evidence for result computation and against status classification.
+Record correctness, normalized answer parts, latency excluding paused time, hint/worked-solution use, and diagnosed misconception. Partial multi-field answers should update each dimension separately: correct result bits with wrong status is evidence for result computation and against status classification; correct align-down with wrong align-up is separate evidence; correct element stride with wrong field addition is evidence for array indexing and against layout composition.
 
 A single correct response does not establish mastery. Promotion should normally require at least:
 
@@ -1631,6 +2113,16 @@ Do not demote solely for slow but correct performance. Keep the level and increa
 | Clear answer equals `x & mask` | mask polarity confusion | aligned `x & ~mask` worked example |
 | `test-all` response matches `test-any` | predicate ambiguity | same some-but-not-all class, alternated wording |
 | Insert answer equals OR without clear | destination not cleared | insertion with old field containing ones to clear |
+| Align-up advances an already aligned address | “up” means strictly greater | matched already-aligned align-up and zero-padding items |
+| Align-up padding equals current remainder | distance-from-previous used as distance-to-next | small alignment-padding pairs with unequal `r` and `A-r` |
+| Boundary-crossing answer changes when only exclusive end is on boundary | exclusive end counted as touched | exact-end half-open range followed by one-byte-over contrast |
+| Word/cache-line/page answer uses an unstated familiar size | architecture default imported | same role with two different explicitly printed sizes |
+| Array offset equals `(index+1)*size` | one-based indexing | zero-indexed element 0, then nonzero direct stride |
+| Record field offset omits listed padding | explicit padding ignored | interval diagram including padding as an ordinary stated entry |
+| Popcount equals number of nonzero hex digits | nibble count used as bit count | mixed hex digits with weights 1, 2, 3, and 4 |
+| Remainder mask equals the modulus | used `2^k` instead of `2^k-1` | low-`k`-bits item paired with mask construction |
+| One-hot answer accepts two ones in one hex digit | nonzero digit mistaken for set bit | binary expansion followed by exact-popcount predicate |
+| Complement answer ignores displayed width | unbounded or incomplete complement | aligned exact-width mask pair with AND/OR feedback |
 | Endian answer reverses bits per byte | byte/bit order confusion | 2-byte store using asymmetric bytes |
 | Signed load sign follows first displayed byte | significance/order confusion | raw reconstruction first, then signed view |
 | Numeric value right but leading zeroes absent | pattern/value confusion | exact-width base grouping, no difficulty demotion |
@@ -1646,9 +2138,9 @@ Adaptive selection should combine:
 - 15% prerequisite diagnostics or misconception contrasts;
 - 10% controlled stretch.
 
-Within a family, use coverage quotas defined above and penalize recently used structural signatures. Optional octal defaults to off or at most 5% of total topic selection. Direct rotates decline after mastery in favor of inverse/equivalence questions. Standalone unsigned-minimum recall is not scheduled after introduction.
+Within a family, use coverage quotas defined above and penalize recently used structural signatures. Optional octal defaults to off or at most 5% of total topic selection. Direct rotates decline after mastery in favor of inverse/equivalence questions. Standalone unsigned-minimum recall and direct core-landmark recall are not scheduled heavily after introduction; later landmark review should occur through alignment, offsets, ranges, and masks. Role labels must not bias selection toward one supposedly standard word/cache-line/page size.
 
-## 8. Feedback requirements
+## 9. Feedback requirements
 
 Every question stores:
 
@@ -1659,9 +2151,9 @@ Every question stores:
 
 Feedback must preserve the prompt's width and representation. It should reveal no unrelated technique. For multi-rule questions, it should stage the solution and identify the first incorrect stage when answer parts permit that inference.
 
-The learner should be able to open a Learn panel from any question. That panel must show the exact conventions relevant to the active family, including shift notation, answer-field meanings, field inclusivity, or address direction.
+The learner should be able to open a Learn panel from any question. That panel must show the exact conventions relevant to the active family, including shift notation, answer-field meanings, field inclusivity, address direction, half-open range endpoints, zero-based array indexing, or explicitly supplied unit/layout sizes.
 
-## 9. Implementation requirements
+## 10. Implementation requirements
 
 ### Numeric safety
 
@@ -1684,9 +2176,9 @@ All active instances are prevalidated before display. Choice order may be shuffl
 
 ### Structural signatures
 
-A signature should include family, width band, operation, direction/predicate/status class, representation pair, boundary class, field shape or shift-count band, and normalized operand-shape features. It should not include incidental prose, address label, or exact random value alone.
+A signature should include family, width band when applicable, operation, direction/predicate/status class, representation pair, boundary/remainder class, unit-size band, layout form, popcount/mask shape, field shape or shift-count band, and normalized operand-shape features. It should not include incidental prose, address label, role name without its supplied size, or exact random value alone.
 
-## 10. Automated validation plan
+## 11. Automated validation plan
 
 ### Per-instance invariants
 
@@ -1694,7 +2186,7 @@ For every generated instance:
 
 1. all placeholders are substituted;
 2. prompt, answer mode, and canonical answer agree;
-3. declared width and formatted digit counts agree;
+3. declared width and formatted digit counts agree when `width` is non-null; address-numeric questions have no invented fixed width;
 4. every parameter is in its declared range;
 5. family derivation recomputes the answer independently;
 6. rejection rules pass;
@@ -1707,12 +2199,17 @@ For every generated instance:
 
 - Exhaust all patterns through width 8 for signed/unsigned views, extension pairs, arithmetic status, bitwise operations, shifts, and rotations.
 - Exhaust all legal fields in containers through width 12 for construction, extraction, fit, and insertion properties.
+- Exhaust addresses `0..4095` against every supplied alignment/unit size `2..256` for predicate, align-down/up, padding, offset, containing base, and power-of-two remainder equivalence.
+- Exhaust positive ranges with start `0..255`, length `1..256`, and unit sizes `2..64`; compare boundary-crossing formulas with enumerated touched addresses.
+- Exhaust masks through width 12 for population count, one-hot, contiguous, sparse-under-definition, and complementary-pair predicates.
+- Enumerate small supplied layouts and assert summed offsets, explicit intervals, array strides, and composed field addresses without adding unstated padding.
 - Exhaust short byte sequences for 16-bit store/load inverse tests.
 - Property-test at least 10,000 seeds per family across supported levels.
-- Assert encode/decode, store/load, construct/decode-mask, rotate/inverse, and insert/extract round trips.
+- Assert encode/decode, store/load, construct/decode-mask, rotate/inverse, insert/extract, address-plus-distance, align-plus-padding, and layout-offset/address round trips.
 - Mutate unrelated bits/bytes and verify family invariants such as insertion preservation and load-window isolation.
 - Compare shift carry formulas with repeated one-bit simulation.
 - Compare arithmetic overflow range tests with sign-rule tests.
+- Compare low-bit remainder/mask derivations with exact quotient/remainder arithmetic.
 
 ### Distribution tests
 
@@ -1721,7 +2218,7 @@ For a deterministic large seed sample, fail tests when:
 - an answer/status/predicate class falls outside its declared tolerance;
 - a family variation is starved;
 - easy zero/identity/palindrome cases exceed quotas;
-- a bit position, nibble value, operator, endianness, sign, or field shape is materially underrepresented;
+- a bit position, nibble value, operator, endianness, sign, field shape, landmark class, alignment exponent, remainder class, supplied unit size, boundary-crossing class, layout form, popcount band, or mask shape is materially underrepresented;
 - exact structural duplicates recur inside the configured window;
 - rejection rates exceed 30% for a family, indicating poor construction.
 
@@ -1729,9 +2226,9 @@ Distribution tests should use broad tolerances appropriate to random sampling bu
 
 ### Parser tests
 
-Test accepted prefixes, case, grouping spaces/underscores, surrounding whitespace, exact pattern widths, list order, byte separators, and Boolean synonyms. Explicitly reject internal invalid characters, missing required status fields, extra pattern digits, blank position lists, and signed decimals in unsigned-only fields.
+Test accepted prefixes, case, grouping spaces/underscores, surrounding whitespace, exact pattern widths, numeric address forms, signed displacement forms, named multi-field address answers, list order, byte separators, and Boolean synonyms. Explicitly reject internal invalid characters, negative addresses, missing required status/address fields, extra pattern digits, blank position lists, and signed decimals in unsigned-only fields.
 
-## 11. Coverage requirements
+## 12. Coverage requirements
 
 Across a long practice history:
 
@@ -1745,11 +2242,20 @@ Across a long practice history:
 - masks cover construction separately from application;
 - any/all/exact flag predicates all recur with decisive some-but-not-all cases;
 - bit fields cover alignment, crossing nibble boundaries, edge-touching, extraction, fit, and insertion preservation;
+- programmer landmarks cover decimal/hex directions, exact powers, one-less boundaries, and the core values without becoming a general base-conversion drill;
+- base-plus-offset and distance families cover forward/backward, carry/borrow, decimal/hex answers, and inverse checks;
+- alignment covers yes/no predicates, already-aligned align-up, align-down/up, and padding remainder classes;
+- word, cache-line, and page labels each occur with varied explicitly supplied sizes; no role is coupled to an architecture default;
+- unit-offset and range-crossing work covers boundary starts, exact ends, one-byte crossings, and multi-boundary ranges;
+- supplied layouts cover direct arrays, sequential records, explicit padding, supplied field offsets, and composed array-of-record addresses without inferred ABI behavior;
+- population-count work covers low/middle/high density and bounded chunkable wide patterns;
+- mask-shape work covers positive and near-miss one-hot, contiguous, explicitly defined sparse, and width-bounded complementary cases;
+- power-of-two remainder work covers low-bit counts, numeric remainders, correct `2^k-1` masks, and nibble-aligned/nonaligned moduli;
 - endian work includes both directions, offsets, subvalue widths, and signed interpretation;
 - zero, all-one, powers-of-two, and palindromic cases never dominate merely because they are easy to generate;
 - recent structural repetition is suppressed without starving misconception-targeted review.
 
-## 12. Topic-level quality checklist
+## 13. Topic-level quality checklist
 
 Before implementation is accepted, verify:
 
@@ -1764,19 +2270,28 @@ Before implementation is accepted, verify:
 - [ ] Width/range work emphasizes representability and minimum-width reasoning, not repeated unsigned-minimum recall.
 - [ ] Extension feedback states which interpretation is preserved; truncation states modulo semantics.
 - [ ] Bit-field extraction, insertion, and fit questions are implemented.
+- [ ] Abstract addresses never wrap and are not treated as language pointers.
+- [ ] Decimal/hex programmer landmarks, base-plus-offset, and address-distance families are implemented as distinct trainable relationships.
+- [ ] Alignment predicates, align-down/up, and padding use explicitly supplied power-of-two sizes and include already-aligned cases.
+- [ ] Word, cache-line, and page questions state their sizes and make no architecture or performance claim.
+- [ ] Byte ranges use `[start, end)` and test the last touched byte for boundary crossing.
+- [ ] Array and record offsets use only supplied sizes, explicit offsets, and explicit padding; no ABI layout is inferred.
+- [ ] Population count and one-hot, contiguous, explicitly defined sparse, and width-bounded complement shapes are exercised.
+- [ ] Power-of-two remainder shortcuts retain exactly the low `k` bits and use mask `2^k-1`.
 - [ ] Endian questions include reconstruction, offsets, subvalues, and signed loads, not only direct byte reversal.
 - [ ] Every family has meaningful difficulty changes, misconception-based feedback, rejection rules, three examples, validation, and coverage requirements.
 - [ ] Generated questions are semantic objects, deterministic by seed, localized only at rendering, and prevalidated.
 - [ ] Large-seed property and distribution tests pass.
 - [ ] Solving repeated instances improves an identifiable mental operation rather than tolerance for tedious transcription.
 
-## 13. Recommended navigation labels
+## 14. Recommended navigation labels
 
-The UI may group subcategories under four navigation headings without making every subcategory a separate page:
+The UI may group subcategories under five navigation headings without making every subcategory a separate page:
 
 - **Representation:** Powers, Bases, Views, Widths & Fit, Extension
 - **Fixed-Width Arithmetic:** Unsigned, Signed, Status
 - **Bit Manipulation:** Bitwise, Shifts, Rotates, Masks, Flags, Fields
+- **Addresses & Layouts:** Landmarks, Address Arithmetic, Alignment, Boundaries, Layouts, Bit Counts & Shapes
 - **Memory Representation:** Store, Load, Subvalue & Signed Load
 
 Progress and adaptive telemetry must retain the stable family identifiers from this specification even if navigation labels or localization change.
