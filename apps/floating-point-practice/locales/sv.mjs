@@ -5,7 +5,7 @@ export default {
   text: {
     localeCode: "sv",
     appTitle: "Flyttalsövning",
-    brandSubtitle: "Små flyttalsformat, IEEE-liknande fält, exakta bråk och flyttalens små egenheter.",
+    brandSubtitle: "Små flyttalsformat, binary16, bfloat16, binary32, exakta bråk och flyttalens små egenheter.",
     summary: {
       aria: "Framstegssammanfattning",
       mastery: "Snittstyrka",
@@ -120,6 +120,16 @@ export default {
         title: "Avrunda till ett format",
         learn: "Jämför de exakta avstånden till grannvärdena; vid lika avstånd väljs en jämn bibehållen signifikand."
       },
+      round_to_bfloat16: {
+        subcategory: "bfloat16-konvertering",
+        title: "Avrunda till bfloat16",
+        learn: "Avkoda källan exakt och avrunda sedan en gång till bfloat16; att kasta de låga binary32-bitarna är inte avrundning."
+      },
+      compare_binary16_bfloat16_rounding: {
+        subcategory: "Formatjämförelse",
+        title: "Jämför avrundning i binary16 och bfloat16",
+        learn: "Avrunda oberoende och jämför sedan avkodade klasser och exakta värden, inte de råa 16-bitarsmönstren."
+      },
       rounding_boundary_result: {
         subcategory: "Avrundning vid gräns",
         title: "Avrunda vid en gräns",
@@ -135,6 +145,11 @@ export default {
         title: "ULP-avstånd",
         learn: "Normalt avstånd nära 2^e är 2^(e−(p−1)); det subnormala avståndet är konstant."
       },
+      compare_binary16_bfloat16_spacing: {
+        subcategory: "Formatjämförelse",
+        title: "Jämför avstånd i binary16 och bfloat16",
+        learn: "Jämför oberoende konstruerade efterföljare vid samma exakta värde; subnormaler kan vända den vanliga precisionsordningen."
+      },
       adjacent_values: {
         subcategory: "Grannvärden",
         title: "Intilliggande värden",
@@ -145,6 +160,16 @@ export default {
         title: "Formatets gränsvärden",
         learn: "Avläs exakta ändpunkter från fältmönstren vid gränserna."
       },
+      compare_binary16_bfloat16_capability: {
+        subcategory: "Område kontra precision",
+        title: "Jämför område och precision",
+        learn: "Exponentbitar styr värdeområdet; signifikandbitar styr normal precision; lokalt avstånd beror också på storleken."
+      },
+      choose_binary16_or_bfloat16: {
+        subcategory: "Praktisk avvägning",
+        title: "Välj binary16 eller bfloat16",
+        learn: "Översätt exakta numeriska krav till oberoende test av värdeområde och upplösning utan påståenden om hårdvaruprestanda."
+      },
       rational_exactness: {
         subcategory: "Bråktal",
         title: "Exakthet för bråktal",
@@ -154,6 +179,11 @@ export default {
         subcategory: "Heltal",
         title: "Exakthet för heltal",
         learn: "Ovanför 2^p måste heltal ligga i linje med det lokala avståndet."
+      },
+      largest_consecutive_integer: {
+        subcategory: "Heltalsgräns",
+        title: "Största konsekutiva heltal",
+        learn: "Varje heltal till och med 2^p är exakt; 2^p+1 är det första positiva heltalet som saknas."
       },
       operation_exactness: {
         subcategory: "Operationer",
@@ -197,24 +227,24 @@ export default {
         concept: "Små format gör flyttalsvärden tydliga nog att avkoda exakt.",
         rules: "Normaliserade värden har en implicit inledande etta. Subnormaler har inte det.",
         example: "FP4 0001 = 1/2; FP4 0010 = 1; FP6 kan också visa värden som 3/2.",
-        format: "Skriv ett exakt heltal eller bråk. Decimalform och blandad form som 1.5 eller 1 1/2 accepteras när de är exakta."
+        format: "Skriv ett exakt heltal, bråk, ändlig decimal, blandat tal eller potensform som 3×2^-133."
       },
       encode: {
         concept: "Kodning är avkodning baklänges: välj tecken, biasad exponent och fraktionsbitar.",
         rules: "De genererade värdena är representerbara i det visade formatet. NaN använder ett representativt NaN-mönster.",
         example: "I FP4 kodas värdet 1 som 0010 och -0 som 1000.",
-        format: "Skriv hela bitmönstret. Hex accepteras för FP16 och FP32."
+        format: "Skriv hela bitmönstret. Hex accepteras för FP16, bfloat16 och FP32."
       },
       spacing: {
         concept: "Inom ett intervall mellan två potenser av två har närliggande flyttal jämnt avstånd.",
         rules: "För normaliserade värden nära 2^e är avståndet 2^(e - (precisionsbitar - 1)).",
-        example: "FP32 nära 2^20 har avståndet 2^(20 - 23) = 1/8.",
+        example: "Nära 1 är avståndet 2^-10 i binary16 och 2^-7 i bfloat16; bfloat16 har mycket större värdeområde.",
         format: "Skriv en obiasad exponent eller ett exakt avstånd, till exempel 1/8."
       },
       exactness: {
         concept: "Binära flyttal kan bara representera bråk exakt när den förkortade nämnaren är en tvåpotens.",
         rules: "Heltal är exakta så länge precisionen räcker och värdet ligger inom formatets område.",
-        example: "0.5 och 3/8 är exakta; 0.1 är inte exakt. FP32 representerar 16777216 exakt men inte 16777217.",
+        example: "bfloat16 representerar varje heltal till och med 256, men inte 257; binary16 når 2048.",
         format: "Skriv ja eller nej."
       },
       "will-change": {
@@ -257,6 +287,86 @@ export default {
       no: "nej"
     },
     generatedReplacements: [
+      ["Give the complete bfloat16 encoding; do not merely discard binary32 low bits.", "Ange hela bfloat16-kodningen; kasta inte bara de låga binary32-bitarna."],
+      ["Enter an exact integer, fraction, terminating decimal, mixed number, or power-of-two form.", "Ange ett exakt heltal, bråk, ändlig decimal, blandat tal eller tvåpotensform."],
+      ["There is no hidden leading one; exact power-of-two forms are accepted.", "Det finns ingen implicit inledande etta; exakta tvåpotensformer accepteras."],
+      ["Use an exact integer, fraction, or power-of-two form.", "Använd ett exakt heltal, bråk eller tvåpotensform."],
+      ["Round independently with nearest-even; compare decoded values, not raw patterns.", "Avrunda oberoende med närmaste jämna; jämför avkodade värden, inte råa bitmönster."],
+      ["For each format, find the largest N such that every integer from 0 through N is exact.", "Bestäm för varje format det största N så att varje heltal från 0 till och med N är exakt."],
+      ["Give both exact successor gaps; at powers of two, use upward spacing.", "Ange båda exakta avstånden till efterföljaren; vid tvåpotenser ska avståndet uppåt användas."],
+      ["Ignore hardware performance; test binary16 and bfloat16 independently.", "Bortse från hårdvaruprestanda; pröva binary16 och bfloat16 oberoende."],
+      ["Choose using exact range, precision, or local-spacing facts.", "Välj med hjälp av exakta fakta om värdeområde, precision eller lokalt avstånd."],
+      ["The same format must represent 2^100 finitely and distinguish 1 from 1+2^-9.", "Samma format måste representera 2^100 ändligt och skilja 1 från 1+2^-9."],
+      ["The format must represent 2^10 finitely and distinguish 1 from 1+2^-7.", "Formatet måste representera 2^10 ändligt och skilja 1 från 1+2^-7."],
+      ["The format must represent 2^100 finitely; no finer resolution is required.", "Formatet måste representera 2^100 ändligt; ingen finare upplösning krävs."],
+      ["Every integer from 0 through 1000 must be exact.", "Varje heltal från 0 till och med 1000 måste vara exakt."],
+      ["The exact value 2^-100 must remain finite and nonzero.", "Det exakta värdet 2^-100 måste förbli ändligt och skilt från noll."],
+      ["Which format represents more consecutive integers exactly?", "Vilket format representerar fler konsekutiva heltal exakt?"],
+      ["Which format has greater normal significand precision?", "Vilket format har större normal signifikandprecision?"],
+      ["Which format has the larger maximum finite magnitude?", "Vilket format har störst maximalt ändligt absolutbelopp?"],
+      ["Which format reaches the smaller positive nonzero magnitude?", "Vilket format når det mindre positiva värdet skilt från noll?"],
+      ["Which format has the wider normal exponent range?", "Vilket format har bredare normalt exponentområde?"],
+      ["Choose a format from exact numerical requirements.", "Välj ett format utifrån exakta numeriska krav."],
+      ["Compare upward spacing at the same exact value.", "Jämför avståndet uppåt vid samma exakta värde."],
+      ["Compare binary16 and bfloat16 rounding.", "Jämför avrundning i binary16 och bfloat16."],
+      ["Give both consecutive-integer boundaries.", "Ange båda gränserna för konsekutiva heltal."],
+      ["Find the consecutive-integer boundary.", "Bestäm gränsen för konsekutiva heltal."],
+      ["Round exactly to bfloat16.", "Avrunda exakt till bfloat16."],
+      ["Give the largest N such that every integer from 0 through N is exactly representable.", "Ange det största N så att varje heltal från 0 till och med N kan representeras exakt."],
+      ["the next odd integer is the first missing one in each format.", "nästa udda heltal är det första som saknas i respektive format."],
+      ["N+1 = ", "N+1 = "],
+      [" is not representable, although some larger integers are.", " kan inte representeras, även om vissa större heltal kan det."],
+      ["binary16: passes all requirements.", "binary16: uppfyller alla krav."],
+      ["bfloat16: passes all requirements.", "bfloat16: uppfyller alla krav."],
+      ["binary16: fails at least one requirement.", "binary16: uppfyller inte minst ett krav."],
+      ["bfloat16: fails at least one requirement.", "bfloat16: uppfyller inte minst ett krav."],
+      ["decoded results are the same exact value.", "de avkodade resultaten är samma exakta värde."],
+      ["decoded results are different.", "de avkodade resultaten skiljer sig."],
+      ["midpoint; even endpoint carries into the next binade", "mittpunkt; den jämna ändpunkten för över till nästa binad"],
+      ["midpoint; lower retained significand is even", "mittpunkt; den lägre bibehållna signifikanden är jämn"],
+      ["midpoint; upper retained significand is even", "mittpunkt; den övre bibehållna signifikanden är jämn"],
+      ["zero/subnormal midpoint; zero is even", "mittpunkt mellan noll och subnormal; noll är jämn"],
+      ["negative zero/subnormal midpoint; signed zero is even", "negativ mittpunkt mellan noll och subnormal; tecknad noll är jämn"],
+      ["subnormal/normal midpoint; smallest normal is even", "mittpunkt mellan subnormal och normal; minsta normalvärdet är jämnt"],
+      ["max-finite/infinity midpoint; the overflow endpoint is even", "mittpunkt mellan största ändliga och oändlighet; spilländpunkten är jämn"],
+      ["negative max-finite/infinity midpoint; the overflow endpoint is even", "negativ mittpunkt mellan största ändliga och oändlighet; spilländpunkten är jämn"],
+      ["strictly nearer the upper neighbor", "strikt närmare det övre grannvärdet"],
+      ["already exact", "redan exakt"],
+      ["binary32 upper half = ", "övre halvan av binary32 = "],
+      ["lower half = ", "nedre halvan = "],
+      ["binary16 upward spacing = ", "avstånd uppåt i binary16 = "],
+      ["bfloat16 upward spacing = ", "avstånd uppåt i bfloat16 = "],
+      ["binary16 result = ", "binary16-resultat = "],
+      ["bfloat16 result = ", "bfloat16-resultat = "],
+      ["bfloat16 encoding: ", "bfloat16-kodning: "],
+      ["source value = ", "källvärde = "],
+      ["finer spacing: ", "finare avstånd: "],
+      ["normal exponents: ", "normalexponenter: "],
+      ["normal precision: ", "normalprecision: "],
+      ["consecutive integers: binary16 through 2048, bfloat16 through 256", "konsekutiva heltal: binary16 till och med 2048, bfloat16 till och med 256"],
+      ["maximum finite: ", "största ändliga: "],
+      ["minimum positive subnormal: ", "minsta positiva subnormal: "],
+      ["binary16 spacing ", "binary16-avstånd "],
+      ["bfloat16 spacing ", "bfloat16-avstånd "],
+      ["at 2^", "vid 2^"],
+      ["Binary32 source: ", "Binary32-källa: "],
+      ["Exact source: ", "Exakt källa: "],
+      ["Shared value: ", "Gemensamt värde: "],
+      ["bfloat16 encoding", "bfloat16-kodning"],
+      ["binary16 encoding", "binary16-kodning"],
+      ["binary16 upward spacing", "avstånd uppåt i binary16"],
+      ["bfloat16 upward spacing", "avstånd uppåt i bfloat16"],
+      ["Same exact value?", "Samma exakta värde?"],
+      ["Finer spacing", "Finare avstånd"],
+      ["Satisfying format", "Format som uppfyller kraven"],
+      ["Largest consecutive N", "Största konsekutiva N"],
+      ["precision p = ", "precision p = "],
+      ["Which format has finer upward spacing at ", "Vilket format har finare avstånd uppåt vid "],
+      ["same", "samma"],
+      ["different", "olika"],
+      ["equal", "lika"],
+      ["both", "båda"],
+      ["neither", "inget"],
       ["Inspect exponent and fraction reserved patterns; sign does not determine the class.", "Granska exponentens och fraktionens reserverade mönster; tecknet avgör inte klassen."],
       ["Keep sign, biased exponent, hidden bit, and exact power-of-two scaling separate.", "Håll isär tecken, biasad exponent, implicit bit och exakt skalning med en tvåpotens."],
       ["Compare exact neighbors and apply nearest-even; a half-ULP tie depends on retained parity.", "Jämför de exakta grannvärdena och använd närmaste jämna; lika avstånd vid ett halvt ULP avgörs av den bibehållna pariteten."],

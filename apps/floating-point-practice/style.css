@@ -448,6 +448,10 @@ label {
   font-weight: 700;
 }
 
+.keypad button.wide {
+  grid-column: span 2;
+}
+
 .word-keypad {
   grid-template-columns: repeat(5, minmax(0, 1fr));
 }

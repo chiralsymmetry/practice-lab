@@ -86,6 +86,17 @@
   }
   function scalePow2(value, exponent) { return mul(value, pow2(exponent)); }
   function rationalText(value) { return value.d === 1n ? String(value.n) : String(value.n) + "/" + String(value.d); }
+  function compactExactText(value) {
+    if (!value.n) return "0";
+    var sign=value.n<0n?"-":"",numerator=value.n<0n?-value.n:value.n,denominator=value.d,exponent=0;
+    while(numerator%2n===0n){numerator/=2n;exponent+=1;}
+    while(denominator%2n===0n){denominator/=2n;exponent-=1;}
+    if(denominator!==1n||String(numerator).length>4)return rationalText(value);
+    var coefficient=sign+String(numerator);
+    if(exponent===0)return coefficient;
+    if(numerator===1n)return sign+"2^"+exponent;
+    return coefficient+"×2^"+exponent;
+  }
   function roundEvenPositive(value) {
     if (value.n < 0n) throw new Error("positive rounding only");
     var quotient = value.n / value.d;
@@ -119,6 +130,7 @@
     { id: "fp6", label: "FP6", bits: 6, e: 3, f: 2, bias: 3, p: 3 },
     { id: "fp8", label: "FP8", bits: 8, e: 4, f: 3, bias: 7, p: 4 },
     { id: "fp16", label: "binary16 / FP16", bits: 16, e: 5, f: 10, bias: 15, p: 11 },
+    { id: "bf16", label: "bfloat16 / BF16", bits: 16, e: 8, f: 7, bias: 127, p: 8 },
     { id: "fp32", label: "binary32 / FP32", bits: 32, e: 8, f: 23, bias: 127, p: 24 }
   ];
   function formatById(id) { return FORMATS.find(function (format) { return format.id === id; }) || FORMATS[0]; }
@@ -126,7 +138,7 @@
     if (level === 1) return [FORMATS[0]];
     if (level === 2) return FORMATS.slice(0, 2);
     if (level === 3) return FORMATS.slice(0, 3);
-    if (level === 4) return FORMATS.slice(1, 4);
+    if (level === 4) return FORMATS.slice(1, 5);
     return FORMATS.slice(2);
   }
   function chooseFormat(level, rng) { return rng.pick(formatsForLevel(level)); }
@@ -277,13 +289,19 @@
     ["encode_exact_finite", "encode", "Exact encode", "Encode an exact finite value", [1,2,3,4], "Normalize the exact value, then store only trailing fraction bits."],
     ["encode_special", "encode", "Special encode", "Encode a special value", [1,2,3], "Zeros use all-zero exponent/fraction; infinities use all-one exponent and zero fraction."],
     ["round_to_format", "encode", "Nearest-even", "Round to a format", [2,3,4,5], "Compare exact distances to adjacent values; ties select an even retained significand."],
+    ["round_to_bfloat16", "encode", "bfloat16 conversion", "Round to bfloat16", [1,2,3,4,5], "Decode the source exactly, then round once to bfloat16; discarding binary32 low bits is not rounding."],
+    ["compare_binary16_bfloat16_rounding", "encode", "Format contrast", "Compare binary16 and bfloat16 rounding", [2,3,4,5], "Round independently, then compare decoded classes and exact values rather than raw 16-bit patterns."],
     ["rounding_boundary_result", "encode", "Boundary rounding", "Round at a boundary", [3,4,5], "Nearest-even covers zero/subnormal, subnormal/normal, and finite/infinity boundaries."],
     ["remove_exponent_bias", "spacing", "Exponent bias", "Remove or apply bias", [1,2,3,4], "For normals, e=E−bias and E=e+bias."],
     ["ulp_spacing", "spacing", "Spacing", "ULP spacing", [1,2,3,4], "Normal spacing near 2^e is 2^(e−(p−1)); subnormal spacing is constant."],
+    ["compare_binary16_bfloat16_spacing", "spacing", "Format contrast", "Compare binary16 and bfloat16 spacing", [2,3,4,5], "At the same exact value, compare independently constructed successors; subnormal behavior can reverse the usual precision ordering."],
     ["adjacent_values", "spacing", "Neighbors", "Adjacent values", [2,3,4,5], "Step to the exact predecessor or successor, respecting sign and boundaries."],
     ["format_extrema", "spacing", "Range", "Format extrema", [1,2,3,4], "Read exact endpoints from boundary fields."],
+    ["compare_binary16_bfloat16_capability", "spacing", "Range versus precision", "Compare range and precision", [1,2,3,4,5], "Exponent bits control range; significand bits control normal precision; local spacing also depends on magnitude."],
+    ["choose_binary16_or_bfloat16", "spacing", "Practical tradeoff", "Choose binary16 or bfloat16", [2,3,4,5], "Translate exact numerical requirements into independent range and resolution tests without hardware claims."],
     ["rational_exactness", "exactness", "Rationals", "Rational exactness", [1,2,3,4], "A power-of-two denominator is necessary, but precision and range must also fit."],
     ["integer_exactness", "exactness", "Integers", "Integer exactness", [2,3,4], "Above 2^p, integers must align with the local spacing."],
+    ["largest_consecutive_integer", "exactness", "Integer boundary", "Largest consecutive integer", [1,2,3,4], "Every integer through 2^p is exact; 2^p+1 is the first missing positive integer."],
     ["operation_exactness", "exactness", "Operations", "Operation-result exactness", [3,4,5], "Compute the mathematical result exactly before testing the target lattice."],
     ["addition_changes_value", "will-change", "Absorption", "Does addition change it?", [2,3,4,5], "Round exact x+y; half-ULP ties depend on retained parity."],
     ["rounded_addition_result", "will-change", "Rounded arithmetic", "Rounded addition result", [2,3,4,5], "Perform the exact operation, then round once to the declared format."],
@@ -308,7 +326,7 @@
     return { id: id, label: label, kind: "choice", value: value, options: options.map(function (option) { return typeof option === "string" ? { value: option, label: option } : option; }) };
   }
   function textField(id, label, kind, value, meta) { return Object.assign({ id: id, label: label, kind: kind, value: String(value) }, meta || {}); }
-  function rationalField(id, label, value) { return textField(id, label, "rational", rationalText(value), { exact: rationalText(value) }); }
+  function rationalField(id, label, value) { return textField(id, label, "rational", rationalText(value), { exact: rationalText(value), display: compactExactText(value) }); }
   function integerField(id, label, value) { return textField(id, label, "integer", value); }
   function bitsField(id, label, format, raw) { return textField(id, label, "bits", bits(raw, format.bits), { formatId: format.id }); }
   function prompt(title, rows, note) { return { title: title, rows: rows, note: note }; }
@@ -386,14 +404,14 @@
   }
   GENERATORS.decode_normal = function (level, rng) {
     var format = chooseFormat(level, rng), raw = normalRaw(format, rng, level >= 4), decoded = decode(format, raw);
-    return makeQuestion("decode_normal", level, format, { raw: String(raw) }, prompt("Decode this normal value exactly.", [formatSpec(format), "Pattern: " + pattern(format, raw, level >= 4 ? "hex" : level === 1 ? "fields" : "bits")], "Enter an integer, reduced fraction, mixed number, or exact terminating decimal."), [rationalField("value","Exact value",decoded.value)], ["e = " + decoded.exponent + " − " + format.bias + " = " + decoded.effectiveExponent + ".", "significand = " + rationalText(decoded.significand) + " (hidden one included).", "value = " + (decoded.sign ? "−" : "") + rationalText(decoded.significand) + " × 2^" + decoded.effectiveExponent + " = " + rationalText(decoded.value) + "."], ["sign-"+decoded.sign,"e-"+(decoded.effectiveExponent<0?"neg":"nonneg"),representation(level,format)], { rawBits: raw, exactValue: rationalText(decoded.value), valueClass: "normal", fields: { sign: decoded.sign, exponent: String(decoded.exponent), fraction: String(decoded.fraction) }, misconception: "hidden-one" });
+    return makeQuestion("decode_normal", level, format, { raw: String(raw) }, prompt("Decode this normal value exactly.", [formatSpec(format), "Pattern: " + pattern(format, raw, level >= 4 ? "hex" : level === 1 ? "fields" : "bits")], "Enter an exact integer, fraction, terminating decimal, mixed number, or power-of-two form."), [rationalField("value","Exact value",decoded.value)], ["e = " + decoded.exponent + " − " + format.bias + " = " + decoded.effectiveExponent + ".", "significand = " + rationalText(decoded.significand) + " (hidden one included).", "value = " + (decoded.sign ? "−" : "") + rationalText(decoded.significand) + " × 2^" + decoded.effectiveExponent + " = " + compactExactText(decoded.value) + "."], ["sign-"+decoded.sign,"e-"+(decoded.effectiveExponent<0?"neg":"nonneg"),representation(level,format)], { rawBits: raw, exactValue: rationalText(decoded.value), valueClass: "normal", fields: { sign: decoded.sign, exponent: String(decoded.exponent), fraction: String(decoded.fraction) }, misconception: "hidden-one" });
   };
   DERIVERS.decode_normal = function (p, format) { return { value: rationalText(decode(format,p.raw).value) }; };
 
   GENERATORS.decode_subnormal = function (level, rng) {
     var format = chooseFormat(level, rng), fraction = rng.pick([1n, maxF(format), format.f > 1 ? 1n << BigInt(format.f-1) : 1n]);
     var raw = rawFromFields(format, level >= 3 ? rng.int(0,1) : 0, 0, fraction), decoded = decode(format,raw);
-    return makeQuestion("decode_subnormal", level, format, { raw: String(raw) }, prompt("Decode this subnormal exactly.", [formatSpec(format), "Pattern: " + pattern(format,raw,level>=4?"hex":level===1?"fields":"bits")], "There is no hidden leading one."), [rationalField("value","Exact value",decoded.value)], ["effective exponent = 1 − bias = " + decoded.effectiveExponent + ".", "significand = F/2^f = " + rationalText(decoded.significand) + ".", "value = " + rationalText(decoded.value) + "."], ["sign-"+decoded.sign,"fraction-"+(fraction===1n?"min":fraction===maxF(format)?"max":"middle")], { rawBits: raw, exactValue: rationalText(decoded.value), valueClass: "subnormal", fields: { sign:decoded.sign, exponent:"0", fraction:String(fraction) }, misconception: "subnormal-hidden-one" });
+    return makeQuestion("decode_subnormal", level, format, { raw: String(raw) }, prompt("Decode this subnormal exactly.", [formatSpec(format), "Pattern: " + pattern(format,raw,level>=4?"hex":level===1?"fields":"bits")], "There is no hidden leading one; exact power-of-two forms are accepted."), [rationalField("value","Exact value",decoded.value)], ["effective exponent = 1 − bias = " + decoded.effectiveExponent + ".", "significand = F/2^f = " + rationalText(decoded.significand) + ".", "value = " + compactExactText(decoded.value) + "."], ["sign-"+decoded.sign,"fraction-"+(fraction===1n?"min":fraction===maxF(format)?"max":"middle")], { rawBits: raw, exactValue: rationalText(decoded.value), valueClass: "subnormal", fields: { sign:decoded.sign, exponent:"0", fraction:String(fraction) }, misconception: "subnormal-hidden-one" });
   };
   DERIVERS.decode_subnormal = DERIVERS.decode_normal;
 
@@ -417,6 +435,16 @@
   DERIVERS.encode_exact_finite=function(p,format){return{bits:bits(encodeExact(format,parseRational(p.value)),format.bits)};};
 
   function canonicalNan(format){return rawFromFields(format,0,maxE(format),1n<<BigInt(format.f-1));}
+  function binary32ToBfloat16Raw(raw) {
+    raw = BigInt(raw);
+    var source = formatById("fp32"), target = formatById("bf16"), decoded = decode(source, raw);
+    if (decoded.kind === "NaN") return canonicalNan(target);
+    if (decoded.kind === "infinity") return rawFromFields(target, decoded.sign, maxE(target), 0);
+    if (decoded.kind === "zero") return rawFromFields(target, decoded.sign, 0, 0);
+    var upper = raw / 65536n, lower = raw % 65536n;
+    if (lower > 32768n || (lower === 32768n && upper % 2n)) upper += 1n;
+    return upper;
+  }
   GENERATORS.encode_special=function(level,rng){
     var format=chooseFormat(level,rng), values=level===1?["+0","-0"]:level===2?["+0","-0","+∞","-∞"]:["+0","-0","+∞","-∞","canonical NaN"];
     var value=rng.pick(values),raw=value==="canonical NaN"?canonicalNan(format):rawFromFields(format,value[0]==="-"?1:0,value.indexOf("∞")>=0?maxE(format):0,0);
@@ -438,6 +466,80 @@
     return makeQuestion("round_to_format",level,format,{value:rationalText(c.value)},prompt("Round the exact value to the format.",[formatSpec(format),"Exact value: "+rationalText(c.value),"Mode: nearest, ties to even"],"Give the resulting complete encoding."),[bitsField("bits","Rounded encoding",format,c.rounded.raw)],["neighbors: "+rationalText(c.lower.value)+" and "+rationalText(c.upper.value)+".",c.tie?"equal distances; retained parity selects "+rationalText(c.rounded.value)+".":"the nearer neighbor is "+rationalText(c.rounded.value)+".","encoding: "+pattern(format,c.rounded.raw,level>=4?"hex":"bits")+"."],[c.tie?"tie":"non-tie","winner-"+(c.rounded.raw===c.lower.raw?"lower":"upper")],{rawBits:c.rounded.raw,exactValue:rationalText(c.value),valueClass:c.rounded.kind,misconception:c.tie?"ties-always-up":"truncation"});
   };
   DERIVERS.round_to_format=function(p,format){return{bits:bits(roundToFormat(format,parseRational(p.value)).raw,format.bits)};};
+
+  function decodedResultText(decoded) {
+    return decoded.kind === "normal" || decoded.kind === "subnormal" ? compactExactText(decoded.value) : signedSpecial(decoded);
+  }
+  function bfloat16RoundingCases() {
+    var format = formatById("bf16"), one = decode(format, 0x3F80n).value;
+    return {
+      exact: { value: decode(format, 0x3FC0n).value, relation: "already exact" },
+      "non-tie": { value: add(one, rat(5,1024)), relation: "strictly nearer the upper neighbor" },
+      "tie-lower": { value: midpoint(decode(format,0x3F80n).value,decode(format,0x3F81n).value), relation: "midpoint; lower retained significand is even" },
+      "tie-upper": { value: midpoint(decode(format,0x3F81n).value,decode(format,0x3F82n).value), relation: "midpoint; upper retained significand is even" },
+      carry: { value: midpoint(decode(format,0x3FFFn).value,decode(format,0x4000n).value), relation: "midpoint; even endpoint carries into the next binade" },
+      underflow: { value: div(minSubnormal(format),rat(2)), relation: "zero/subnormal midpoint; zero is even" },
+      "negative-underflow": { value: neg(div(minSubnormal(format),rat(2))), relation: "negative zero/subnormal midpoint; signed zero is even" },
+      "normal-boundary": { value: midpoint(decode(format,0x007Fn).value,decode(format,0x0080n).value), relation: "subnormal/normal midpoint; smallest normal is even" },
+      overflow: { value: add(maxFinite(format),div(ulp(format,127),rat(2))), relation: "max-finite/infinity midpoint; the overflow endpoint is even" },
+      "negative-overflow": { value: neg(add(maxFinite(format),div(ulp(format,127),rat(2)))), relation: "negative max-finite/infinity midpoint; the overflow endpoint is even" }
+    };
+  }
+  GENERATORS.round_to_bfloat16=function(level,rng){
+    var format=formatById("bf16"),sourceFormat=formatById("fp32"),all=bfloat16RoundingCases();
+    var ids=level===1?["exact"]:level===2?["exact","non-tie"]:level===3?["non-tie","tie-lower","tie-upper"]:level===4?["tie-lower","tie-upper","carry","normal-boundary"]:["tie-lower","tie-upper","carry","underflow","negative-underflow","normal-boundary","overflow","negative-overflow"];
+    var caseId=rng.pick(ids),selected=all[caseId],sourceRaw=encodeExact(sourceFormat,selected.value),sourceKind=level>=4&&sourceRaw!==null&&rng.chance(.7)?"binary32":"rational";
+    var rounded=decode(format,roundToFormat(format,selected.value).raw),rows=[formatSpec(format)];
+    if(sourceKind==="binary32")rows.push("Binary32 source: 0x"+hex(sourceRaw,32));
+    else rows.push("Exact source: "+compactExactText(selected.value));
+    rows.push("Mode: nearest, ties to even");
+    var steps=["source value = "+compactExactText(selected.value)+"."];
+    if(sourceKind==="binary32"){
+      var integerRaw=binary32ToBfloat16Raw(sourceRaw),upper=sourceRaw/65536n,lower=sourceRaw%65536n;
+      if(integerRaw!==rounded.raw)throw new Error("binary32/bfloat16 integer oracle mismatch");
+      steps.push("binary32 upper half = 0x"+hex(upper,16)+", lower half = 0x"+hex(lower,16)+".");
+    }
+    steps.push(selected.relation+"; nearest-even gives "+decodedResultText(rounded)+".");
+    steps.push("bfloat16 encoding: 0x"+hex(rounded.raw,16)+".");
+    return makeQuestion("round_to_bfloat16",level,format,{sourceKind:sourceKind,value:rationalText(selected.value),sourceRaw:sourceRaw===null?null:String(sourceRaw)},prompt("Round exactly to bfloat16.",rows,"Give the complete bfloat16 encoding; do not merely discard binary32 low bits."),[bitsField("bits","bfloat16 encoding",format,rounded.raw)],steps,[caseId,sourceKind,"result-"+rounded.kind],{rawBits:rounded.raw,exactValue:rationalText(selected.value),valueClass:rounded.kind,misconception:sourceKind==="binary32"?"truncate-binary32":"ties-always-up"});
+  };
+  DERIVERS.round_to_bfloat16=function(p){
+    var format=formatById("bf16"),value=p.sourceKind==="binary32"?decode(formatById("fp32"),p.sourceRaw).value:parseRational(p.value);
+    return{bits:bits(roundToFormat(format,value).raw,format.bits)};
+  };
+
+  function sameDecodedValue(left,right) {
+    if(left.kind!==right.kind)return false;
+    if(left.kind==="NaN")return false;
+    if(left.kind==="zero"||left.kind==="infinity")return left.sign===right.sign;
+    return cmp(left.value,right.value)===0;
+  }
+  function binary16Bfloat16Round(value) {
+    var fp16=formatById("fp16"),bf16=formatById("bf16");
+    var left=decode(fp16,roundToFormat(fp16,value).raw),right=decode(bf16,roundToFormat(bf16,value).raw);
+    return{fp16:left,bf16:right,same:sameDecodedValue(left,right)};
+  }
+  GENERATORS.compare_binary16_bfloat16_rounding=function(level,rng){
+    var format=formatById("bf16"),cases={
+      "shared-exact":rat(3,2),
+      "shared-inexact":add(rat(1),pow2(-12)),
+      precision:rat(257),
+      midpoint:add(rat(1),pow2(-8)),
+      "binary16-overflow":rat(65520),
+      "binary16-zero":pow2(-130)
+    };
+    var ids=level===2?["shared-exact","shared-inexact"]:level===3?["shared-inexact","precision","midpoint"]:level===4?["shared-inexact","precision","midpoint","binary16-zero"]:Object.keys(cases);
+    var caseId=rng.pick(ids),value=cases[caseId],result=binary16Bfloat16Round(value);
+    return makeQuestion("compare_binary16_bfloat16_rounding",level,format,{value:rationalText(value)},prompt("Compare binary16 and bfloat16 rounding.",["Exact source: "+compactExactText(value),formatSpec(formatById("fp16")),formatSpec(format)],"Round independently with nearest-even; compare decoded values, not raw patterns."),[
+      bitsField("fp16","binary16 encoding",formatById("fp16"),result.fp16.raw),
+      bitsField("bf16","bfloat16 encoding",format,result.bf16.raw),
+      choiceField("relationship","Same exact value?",result.same?"same":"different",["same","different"])
+    ],["binary16 result = "+decodedResultText(result.fp16)+" (0x"+hex(result.fp16.raw,16)+").","bfloat16 result = "+decodedResultText(result.bf16)+" (0x"+hex(result.bf16.raw,16)+").","decoded results are "+(result.same?"the same exact value.":"different.")],[caseId,result.same?"same":"different",result.fp16.kind+"-"+result.bf16.kind],{rawBits:String(result.fp16.raw)+","+String(result.bf16.raw),exactValue:rationalText(value),valueClass:result.fp16.kind+","+result.bf16.kind,misconception:"same-width-same-layout"});
+  };
+  DERIVERS.compare_binary16_bfloat16_rounding=function(p){
+    var result=binary16Bfloat16Round(parseRational(p.value));
+    return{fp16:bits(result.fp16.raw,16),bf16:bits(result.bf16.raw,16),relationship:result.same?"same":"different"};
+  };
 
   GENERATORS.rounding_boundary_result=function(level,rng){
     var format=chooseFormat(level,rng),kind=rng.pick(level===3?["zero","normal"]:level===4?["zero","normal"]:["zero","normal","overflow"]),value,expected;
@@ -462,6 +564,31 @@
   };
   DERIVERS.ulp_spacing=function(p,format){return{spacing:rationalText(p.subnormal?minSubnormal(format):ulp(format,p.exponent))};};
 
+  function upwardSpacing(format,value) {
+    var raw=encodeExact(format,value,false);
+    if(raw===null)throw new Error("spacing value is not exact");
+    var next=decode(format,raw+1n);
+    if(!next.value)throw new Error("spacing successor is not finite");
+    return sub(next.value,value);
+  }
+  function spacingComparison(value) {
+    var fp16Spacing=upwardSpacing(formatById("fp16"),value),bf16Spacing=upwardSpacing(formatById("bf16"),value),ordering=cmp(fp16Spacing,bf16Spacing);
+    return{fp16:fp16Spacing,bf16:bf16Spacing,winner:ordering<0?"binary16":ordering>0?"bfloat16":"equal"};
+  }
+  GENERATORS.compare_binary16_bfloat16_spacing=function(level,rng){
+    var format=formatById("bf16"),exponents=level===2?[0,5]:level===3?[-14,-10,0,10]:level===4?[-20,-17,-14,0]:[-24,-20,-17,-14,0,15];
+    var exponent=rng.pick(exponents),value=pow2(exponent),result=spacingComparison(value);
+    return makeQuestion("compare_binary16_bfloat16_spacing",level,format,{exponent:exponent},prompt("Compare upward spacing at the same exact value.",["Shared value: 2^"+exponent+" = "+rationalText(value),formatSpec(formatById("fp16")),formatSpec(format)],"Give both exact successor gaps; at powers of two, use upward spacing."),[
+      rationalField("fp16","binary16 upward spacing",result.fp16),
+      rationalField("bf16","bfloat16 upward spacing",result.bf16),
+      choiceField("winner","Finer spacing",result.winner,["binary16","bfloat16","equal"])
+    ],["binary16 upward spacing = "+rationalText(result.fp16)+".","bfloat16 upward spacing = "+rationalText(result.bf16)+".","finer spacing: "+result.winner+"."],["e-"+exponent,result.winner,exponent<-14?"binary16-subnormal":"shared-normal"],{exactValue:rationalText(value),valueClass:exponent<-14?"subnormal/normal":"normal/normal",misconception:"binary16-always-finer"});
+  };
+  DERIVERS.compare_binary16_bfloat16_spacing=function(p){
+    var result=spacingComparison(pow2(p.exponent));
+    return{fp16:rationalText(result.fp16),bf16:rationalText(result.bf16),winner:result.winner};
+  };
+
   GENERATORS.adjacent_values=function(level,rng){
     var format=chooseFormat(level,rng),raw;
     if(level>=3&&rng.chance(0.4))raw=rawFromFields(format,0,1,0);
@@ -473,15 +600,60 @@
   DERIVERS.adjacent_values=function(p,format){var d=decode(format,p.raw),n=neighbors(format,d.value),target=p.direction==="predecessor"?n.lower:n.upper;return{value:rationalText(target.value)};};
 
   GENERATORS.format_extrema=function(level,rng){
-    var format=chooseFormat(level,rng),kinds=level===1?["smallest-subnormal","smallest-normal"]:["smallest-subnormal","smallest-normal","largest-finite","normal-exponent-min","normal-exponent-max"],kind=rng.pick(kinds),value;
-    if(kind==="smallest-subnormal")value=rationalText(minSubnormal(format));
-    else if(kind==="smallest-normal")value=rationalText(minNormal(format));
-    else if(kind==="largest-finite")value=rationalText(maxFinite(format));
-    else if(kind==="normal-exponent-min")value=String(1-format.bias);
-    else value=String(Number(maxE(format)-1n)-format.bias);
-    return makeQuestion("format_extrema",level,format,{kind:kind},prompt("Give the requested format endpoint.",[formatSpec(format),"Endpoint: "+kind.replace(/-/g," ")],"Use an exact fraction/integer."),[textField("answer","Exact endpoint",kind.indexOf("exponent")>=0?"integer":"rational",value)],["select the boundary field pattern.","decode using the "+(kind.indexOf("subnormal")>=0?"subnormal":"normal")+" rule.","endpoint = "+value+"."],[kind],{exactValue:value,misconception:"range-boundary"});
+    var format=chooseFormat(level,rng),kinds=level===1?["smallest-subnormal","smallest-normal"]:["smallest-subnormal","smallest-normal","largest-finite","normal-exponent-min","normal-exponent-max"],kind=rng.pick(kinds),value,endpoint=null,isExponent=kind.indexOf("exponent")>=0;
+    if(kind==="smallest-subnormal")endpoint=minSubnormal(format);
+    else if(kind==="smallest-normal")endpoint=minNormal(format);
+    else if(kind==="largest-finite")endpoint=maxFinite(format);
+    value=endpoint?rationalText(endpoint):kind==="normal-exponent-min"?String(1-format.bias):String(Number(maxE(format)-1n)-format.bias);
+    return makeQuestion("format_extrema",level,format,{kind:kind},prompt("Give the requested format endpoint.",[formatSpec(format),"Endpoint: "+kind.replace(/-/g," ")],"Use an exact integer, fraction, or power-of-two form."),[isExponent?integerField("answer","Exact endpoint",value):rationalField("answer","Exact endpoint",endpoint)],["select the boundary field pattern.","decode using the "+(kind.indexOf("subnormal")>=0?"subnormal":"normal")+" rule.","endpoint = "+(endpoint?compactExactText(endpoint):value)+"."],[kind],{exactValue:value,misconception:"range-boundary"});
   };
   DERIVERS.format_extrema=function(p,format){var value=p.kind==="smallest-subnormal"?rationalText(minSubnormal(format)):p.kind==="smallest-normal"?rationalText(minNormal(format)):p.kind==="largest-finite"?rationalText(maxFinite(format)):p.kind==="normal-exponent-min"?String(1-format.bias):String(Number(maxE(format)-1n)-format.bias);return{answer:value};};
+
+  function capabilityComparison(kind,exponent) {
+    var fp16=formatById("fp16"),bf16=formatById("bf16"),answer,detail;
+    if(kind==="max-finite"){answer="bfloat16";detail="maximum finite: binary16 "+compactExactText(maxFinite(fp16))+", bfloat16 "+compactExactText(maxFinite(bf16));}
+    else if(kind==="min-subnormal"){answer="bfloat16";detail="minimum positive subnormal: binary16 "+compactExactText(minSubnormal(fp16))+", bfloat16 "+compactExactText(minSubnormal(bf16));}
+    else if(kind==="normal-range"){answer="bfloat16";detail="normal exponents: binary16 −14..15, bfloat16 −126..127";}
+    else if(kind==="normal-precision"){answer="binary16";detail="normal precision: binary16 p=11, bfloat16 p=8";}
+    else if(kind==="consecutive-integers"){answer="binary16";detail="consecutive integers: binary16 through 2048, bfloat16 through 256";}
+    else{var spacing=spacingComparison(pow2(exponent));answer=spacing.winner;detail="at 2^"+exponent+": binary16 spacing "+rationalText(spacing.fp16)+", bfloat16 spacing "+rationalText(spacing.bf16);}
+    return{answer:answer,detail:detail};
+  }
+  GENERATORS.compare_binary16_bfloat16_capability=function(level,rng){
+    var format=formatById("bf16"),kinds=level===1?["max-finite","normal-precision"]:level===2?["max-finite","min-subnormal","normal-range","normal-precision","consecutive-integers"]:level===3?["normal-range","normal-precision","consecutive-integers","spacing"]:["max-finite","min-subnormal","normal-range","normal-precision","consecutive-integers","spacing"];
+    var kind=rng.pick(kinds),exponents=level>=4?[-20,-17,-14,0,10]:[-14,0,10],exponent=kind==="spacing"?rng.pick(exponents):0,result=capabilityComparison(kind,exponent);
+    var title=kind==="max-finite"?"Which format has the larger maximum finite magnitude?":kind==="min-subnormal"?"Which format reaches the smaller positive nonzero magnitude?":kind==="normal-range"?"Which format has the wider normal exponent range?":kind==="normal-precision"?"Which format has greater normal significand precision?":kind==="consecutive-integers"?"Which format represents more consecutive integers exactly?":"Which format has finer upward spacing at 2^"+exponent+"?";
+    return makeQuestion("compare_binary16_bfloat16_capability",level,format,{kind:kind,exponent:exponent},prompt(title,[formatSpec(formatById("fp16")),formatSpec(format)],"Choose using exact range, precision, or local-spacing facts."),[choiceField("answer","Format",result.answer,["binary16","bfloat16","equal"])],[result.detail+".","answer: "+result.answer+"."],[kind,kind==="spacing"?"e-"+exponent:"direct",result.answer],{exactValue:null,valueClass:null,misconception:"range-versus-precision"});
+  };
+  DERIVERS.compare_binary16_bfloat16_capability=function(p){return{answer:capabilityComparison(p.kind,p.exponent).answer};};
+
+  function distinguishes(format,left,right) {
+    return roundToFormat(format,left).raw!==roundToFormat(format,right).raw;
+  }
+  function meetsFormatRequirement(caseId,format) {
+    if(caseId==="integers-1000")return (1n<<BigInt(format.p))>=1000n&&cmp(maxFinite(format),rat(1000))>=0;
+    if(caseId==="range-2^100")return cmp(maxFinite(format),pow2(100))>=0;
+    if(caseId==="range-and-precision")return cmp(maxFinite(format),pow2(100))>=0&&distinguishes(format,rat(1),add(rat(1),pow2(-9)));
+    if(caseId==="shared-requirement")return cmp(maxFinite(format),pow2(10))>=0&&distinguishes(format,rat(1),add(rat(1),pow2(-7)));
+    return decode(format,roundToFormat(format,pow2(-100)).raw).kind!=="zero";
+  }
+  function requirementAnswer(caseId) {
+    var fp16=meetsFormatRequirement(caseId,formatById("fp16")),bf16=meetsFormatRequirement(caseId,formatById("bf16"));
+    return{fp16:fp16,bf16:bf16,answer:fp16&&bf16?"both":fp16?"binary16":bf16?"bfloat16":"neither"};
+  }
+  GENERATORS.choose_binary16_or_bfloat16=function(level,rng){
+    var format=formatById("bf16"),descriptions={
+      "integers-1000":"Every integer from 0 through 1000 must be exact.",
+      "range-2^100":"The format must represent 2^100 finitely; no finer resolution is required.",
+      "range-and-precision":"The same format must represent 2^100 finitely and distinguish 1 from 1+2^-9.",
+      "shared-requirement":"The format must represent 2^10 finitely and distinguish 1 from 1+2^-7.",
+      "tiny-nonzero":"The exact value 2^-100 must remain finite and nonzero."
+    };
+    var ids=level===2?["integers-1000","range-2^100"]:level===3?["integers-1000","range-2^100","shared-requirement"]:level===4?Object.keys(descriptions).slice(0,4):Object.keys(descriptions);
+    var caseId=rng.pick(ids),result=requirementAnswer(caseId);
+    return makeQuestion("choose_binary16_or_bfloat16",level,format,{caseId:caseId},prompt("Choose a format from exact numerical requirements.",[descriptions[caseId]],"Ignore hardware performance; test binary16 and bfloat16 independently."),[choiceField("answer","Satisfying format",result.answer,["binary16","bfloat16","both","neither"])],["binary16: "+(result.fp16?"passes all requirements.":"fails at least one requirement."),"bfloat16: "+(result.bf16?"passes all requirements.":"fails at least one requirement."),"answer: "+result.answer+"."],[caseId,result.answer],{exactValue:null,valueClass:null,misconception:"range-versus-precision-requirement"});
+  };
+  DERIVERS.choose_binary16_or_bfloat16=function(p){return{answer:requirementAnswer(p.caseId).answer};};
 
   function isExact(format,value){return encodeExact(format,value,false)!==null;}
   GENERATORS.rational_exactness=function(level,rng){
@@ -496,8 +668,29 @@
   };
   DERIVERS.integer_exactness=function(p,format){return{answer:isExact(format,rat(p.value))?"yes":"no"};};
 
+  GENERATORS.largest_consecutive_integer=function(level,rng){
+    var compare=level===4,format=compare?formatById("bf16"):level===3?rng.pick([formatById("fp16"),formatById("bf16")]):chooseFormat(level,rng);
+    if(compare){
+      var fp16=1n<<BigInt(formatById("fp16").p),bf16=1n<<BigInt(format.p);
+      return makeQuestion("largest_consecutive_integer",level,format,{compare:true},prompt("Give both consecutive-integer boundaries.",[formatSpec(formatById("fp16")),formatSpec(format)],"For each format, find the largest N such that every integer from 0 through N is exact."),[integerField("fp16","binary16 N",fp16),integerField("bf16","bfloat16 N",bf16)],["binary16: 2^11 = "+fp16+".","bfloat16: 2^8 = "+bf16+".","the next odd integer is the first missing one in each format."],["comparison","2048-versus-256"],{exactValue:String(fp16)+","+String(bf16),misconception:"fraction-bits-only"});
+    }
+    var threshold=1n<<BigInt(format.p);
+    return makeQuestion("largest_consecutive_integer",level,format,{compare:false},prompt("Find the consecutive-integer boundary.",[formatSpec(format)],"Give the largest N such that every integer from 0 through N is exactly representable."),[integerField("answer","Largest consecutive N",threshold)],["precision p = "+format.p+".","N = 2^p = "+threshold+".","N+1 = "+(threshold+1n)+" is not representable, although some larger integers are."],["single",format.id,"p-"+format.p],{exactValue:String(threshold),misconception:"largest-finite-versus-consecutive"});
+  };
+  DERIVERS.largest_consecutive_integer=function(p,format){
+    if(p.compare)return{fp16:String(1n<<BigInt(formatById("fp16").p)),bf16:String(1n<<BigInt(formatById("bf16").p))};
+    return{answer:String(1n<<BigInt(format.p))};
+  };
+
   function parseRational(text) {
     text=String(text).trim().replace(/\s+/g," ");
+    var power=text.match(/^(-?\d+)?\s*(?:×|\*)?\s*2\^(-?\d+)$/);
+    if(power){
+      var coefficient=power[1]===undefined||power[1]===""?1n:BigInt(power[1]),powerValue=pow2(Number(power[2]));
+      return mul(rat(coefficient),powerValue);
+    }
+    var signedPower=text.match(/^(-)2\^(-?\d+)$/);
+    if(signedPower)return neg(pow2(Number(signedPower[2])));
     var mixed=text.match(/^(-?\d+) ([0-9]+)\/([0-9]+)$/);
     if(mixed){var whole=BigInt(mixed[1]),den=BigInt(mixed[3]);return rat(whole*den+(whole<0n?-1n:1n)*BigInt(mixed[2]),den);}
     var fraction=text.match(/^(-?\d+)\/(\d+)$/); if(fraction)return rat(fraction[1],fraction[2]);
@@ -600,6 +793,7 @@
   function displayField(field){
     if(field.kind==="bits"){var format=formatById(field.formatId),raw=BigInt("0b"+field.value);return format.bits>=16?"0x"+hex(raw,format.bits):groupedBits(format,raw);}
     if(field.kind==="choice"){var option=field.options.find(function(item){return item.value===field.value;});return option?option.label:field.value;}
+    if(field.kind==="rational"&&field.display)return field.display;
     return field.value;
   }
   function diagnose(question,parts){
@@ -608,8 +802,9 @@
     if(question.familyId.indexOf("classify")>=0)return localizeGeneratedString("Inspect exponent and fraction reserved patterns; sign does not determine the class.");
     if(question.familyId.indexOf("subnormal")>=0)return localizeGeneratedString("Subnormals have no hidden one and use effective exponent 1−bias.");
     if(question.familyId.indexOf("decode")>=0||question.familyId.indexOf("encode")>=0)return localizeGeneratedString("Keep sign, biased exponent, hidden bit, and exact power-of-two scaling separate.");
-    if(question.familyId.indexOf("exactness")>=0)return localizeGeneratedString("Check reduced denominator, local spacing alignment, and range.");
-    if(["round_to_format","rounding_boundary_result","addition_changes_value","rounded_addition_result","absorption_threshold"].includes(question.familyId))return localizeGeneratedString("Compare exact neighbors and apply nearest-even; a half-ULP tie depends on retained parity.");
+    if(question.familyId.indexOf("exactness")>=0||question.familyId==="largest_consecutive_integer")return localizeGeneratedString("Check reduced denominator, local spacing alignment, range, and the 2^p consecutive-integer boundary.");
+    if(question.familyId.indexOf("binary16_bfloat16")>=0||question.familyId==="choose_binary16_or_bfloat16")return localizeGeneratedString("Test binary16 and bfloat16 independently; separate exponent range from significand precision.");
+    if(["round_to_format","round_to_bfloat16","rounding_boundary_result","addition_changes_value","rounded_addition_result","absorption_threshold"].includes(question.familyId))return localizeGeneratedString("Compare exact neighbors and apply nearest-even; a half-ULP tie depends on retained parity.");
     return localizeGeneratedString("Recheck the exact field relationship and target-format rounding.");
   }
 
@@ -722,17 +917,21 @@
 
   function runSelfTests(){
     var failures=[];function assert(name,condition){if(!condition)failures.push(name);}
-    assert("22 families",FAMILIES.length===22);assert("22 generators",Object.keys(GENERATORS).length===22);assert("22 derivers",Object.keys(DERIVERS).length===22);
-    var fp4=FORMATS[0],fp6=FORMATS[1],fp16=FORMATS[3],fp32=FORMATS[4];
+    assert("28 families",FAMILIES.length===28);assert("28 generators",Object.keys(GENERATORS).length===28);assert("28 derivers",Object.keys(DERIVERS).length===28);
+    var fp4=formatById("fp4"),fp6=formatById("fp6"),fp8=formatById("fp8"),fp16=formatById("fp16"),bf16=formatById("bf16"),fp32=formatById("fp32");
     assert("fp4 one",rationalText(decode(fp4,2).value)==="1");assert("fp4 subnormal",rationalText(decode(fp4,1).value)==="1/2");assert("fp4 infinity",decode(fp4,6).kind==="infinity");assert("fp4 nan",decode(fp4,7).kind==="NaN");
     assert("fp16 max",rationalText(maxFinite(fp16))==="65504");assert("fp32 integer threshold",isExact(fp32,rat(16777216))&&!isExact(fp32,rat(16777217)));assert("fp32 ulp",rationalText(ulp(fp32,20))==="1/8");
+    assert("bf16 fields",bf16.bits===16&&bf16.e===8&&bf16.f===7&&bf16.bias===127&&bf16.p===8);assert("bf16 min subnormal",cmp(minSubnormal(bf16),pow2(-133))===0);assert("bf16 min normal",cmp(minNormal(bf16),pow2(-126))===0);assert("bf16 max finite",cmp(maxFinite(bf16),mul(rat(255),pow2(120)))===0);assert("bf16 canonical nan",canonicalNan(bf16)===0x7FC0n);
+    assert("bf16 consecutive integers",isExact(bf16,rat(256))&&!isExact(bf16,rat(257))&&isExact(bf16,rat(258)));assert("bf16 round 257",roundToFormat(bf16,rat(257)).raw===0x4380n);assert("bf16 overflow tie",roundToFormat(bf16,add(maxFinite(bf16),pow2(119))).raw===0x7F80n);assert("bf16 signed boundaries",roundToFormat(bf16,neg(div(minSubnormal(bf16),rat(2)))).raw===0x8000n&&roundToFormat(bf16,neg(add(maxFinite(bf16),pow2(119)))).raw===0xFF80n);
+    assert("binary32 to bf16 tie lower",binary32ToBfloat16Raw(0x3F808000n)===0x3F80n);assert("binary32 to bf16 tie upper",binary32ToBfloat16Raw(0x3F818000n)===0x3F82n);assert("binary32 to bf16 nan",binary32ToBfloat16Raw(0x7F800001n)===0x7FC0n);
+    assert("format spacing normal",spacingComparison(rat(1)).winner==="binary16");assert("format spacing subnormal",spacingComparison(pow2(-20)).winner==="bfloat16");assert("format spacing equal",spacingComparison(pow2(-17)).winner==="equal");
     assert("tie even down",decode(fp4,roundToFormat(fp4,rat(5,4)).raw).value.n===1n);assert("underflow tie zero",decode(fp4,roundToFormat(fp4,rat(1,4)).raw).kind==="zero");assert("overflow tie",decode(fp16,roundToFormat(fp16,rat(65520)).raw).kind==="infinity");
-    assert("bits exact width",normalizeBits("0b0010",fp4)==="0010");assert("bits reject short",normalizeBits("10",fp4)===null);assert("fp16 hex",normalizeBits("0x3C00",fp16)===bits(0x3c00,16));assert("fraction parser",rationalText(parseRational("1 1/2"))==="3/2");
-    [fp4,fp6,FORMATS[2]].forEach(function(format){var limit=1n<<BigInt(format.bits);for(var raw=0n;raw<limit;raw+=1n){var d=decode(format,raw),rebuilt=rawFromFields(format,d.sign,d.exponent,d.fraction);assert(format.id+" fields "+raw,rebuilt===raw);if(d.value){var encoded=encodeExact(format,d.value,d.kind==="zero"&&d.sign);assert(format.id+" roundtrip "+raw,encoded===raw);}}});
+    assert("bits exact width",normalizeBits("0b0010",fp4)==="0010");assert("bits reject short",normalizeBits("10",fp4)===null);assert("fp16 hex",normalizeBits("0x3C00",fp16)===bits(0x3c00,16));assert("bf16 hex",normalizeBits("0x3FC0",bf16)===bits(0x3fc0,16));assert("fraction parser",rationalText(parseRational("1 1/2"))==="3/2");assert("power parser",cmp(parseRational("3×2^-133"),mul(rat(3),pow2(-133)))===0&&cmp(parseRational("-2^7"),rat(-128))===0);assert("compact exact",compactExactText(minSubnormal(bf16))==="2^-133"&&compactExactText(maxFinite(bf16))==="255×2^120");
+    [fp4,fp6,fp8,bf16].forEach(function(format){var limit=1n<<BigInt(format.bits);for(var raw=0n;raw<limit;raw+=1n){var d=decode(format,raw),rebuilt=rawFromFields(format,d.sign,d.exponent,d.fraction);assert(format.id+" fields "+raw,rebuilt===raw);if(d.value){var encoded=encodeExact(format,d.value,d.kind==="zero"&&d.sign);assert(format.id+" roundtrip "+raw,encoded===raw);}}});
     FAMILIES.forEach(function(family,index){family.levels.forEach(function(level){for(var sample=0;sample<80;sample+=1){try{var q=generateQuestion(family.id,level,(index+1)*100000+level*1000+sample,true),answers={};q.answer.fields.forEach(function(field){answers[field.id]=field.kind==="bits"?(formatById(field.formatId).bits>=16?"0x"+hex(BigInt("0b"+field.value),formatById(field.formatId).bits):field.value):field.value;});assert("canonical "+family.id+" "+level+" "+sample,checkQuestion(answers,q).correct);}catch(error){failures.push("generator "+family.id+":"+level+":"+sample+" "+error.message);}}});});
     var migrated=migrateLegacy({cells:{"decode:1":{attempts:3,correct:2,totalMs:500}}});assert("legacy totals",migrated.legacyCategoryTotals.decode.attempts===3);assert("fresh family cells",Object.keys(migrated.cells).length===0);
     if(failures.length){console.error("Floating-point self-tests failed",failures.slice(0,60),"total",failures.length);return{ok:false,failures:failures.slice(0,100)};}
-    console.info("Floating-point self-tests passed: 22 families, exhaustive FP4/FP6/FP8 field and finite round-trips, generated property sample");return{ok:true,failures:[]};
+    console.info("Floating-point self-tests passed: 28 families, exhaustive FP4/FP6/FP8/bfloat16 field and finite round-trips, generated property sample");return{ok:true,failures:[]};
   }
 
   window.runSelfTests=runSelfTests;

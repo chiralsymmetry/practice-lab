@@ -5,7 +5,7 @@ export default {
   text: {
     localeCode: "en",
     appTitle: "Floating Point Practice",
-    brandSubtitle: "Toy formats, IEEE-style fields, exact fractions, and the strange little rules of floats.",
+    brandSubtitle: "Toy formats, binary16, bfloat16, binary32, exact fractions, and the strange little rules of floats.",
     summary: {
       aria: "Progress summary",
       mastery: "Avg mastery",
@@ -85,24 +85,24 @@ export default {
         concept: "Small formats make floating-point values visible enough to decode exactly.",
         rules: "Normal values have an implicit leading 1. Subnormals do not.",
         example: "FP4 0001 = 1/2; FP4 0010 = 1; FP6 can also show values such as 3/2.",
-        format: "Enter an exact integer or fraction. Decimal and mixed forms like 1.5 or 1 1/2 are accepted when exact."
+        format: "Enter an exact integer, fraction, terminating decimal, mixed number, or power form such as 3×2^-133."
       },
       encode: {
         concept: "Encoding reverses decoding: choose sign, biased exponent, and fraction bits.",
         rules: "The generated values are representable in the shown format. NaN uses one representative NaN pattern.",
         example: "In FP4, value 1 encodes as 0010 and -0 encodes as 1000.",
-        format: "Enter the complete bit pattern. Hex is accepted for FP16 and FP32."
+        format: "Enter the complete bit pattern. Hex is accepted for FP16, bfloat16, and FP32."
       },
       spacing: {
         concept: "Within a power-of-two band, adjacent floating-point numbers are evenly spaced.",
         rules: "For normal values near 2^e, spacing is 2^(e - (precision bits - 1)).",
-        example: "FP32 near 2^20 has spacing 2^(20 - 23) = 1/8.",
+        example: "Near 1, binary16 spacing is 2^-10 while bfloat16 spacing is 2^-7; bfloat16 has much wider range.",
         format: "Enter an unbiased exponent or an exact spacing such as 1/8."
       },
       exactness: {
         concept: "Binary floating point represents fractions exactly only when the reduced denominator is a power of two.",
         rules: "Integers are exact while there are enough precision bits and the value is within range.",
-        example: "0.5 and 3/8 are exact; 0.1 is not. FP32 represents 16777216 exactly but not 16777217.",
+        example: "bfloat16 represents every integer through 256, but not 257; binary16 reaches 2048.",
         format: "Enter yes or no."
       },
       "will-change": {
