@@ -14,7 +14,7 @@ Mental Arithmetic
 
 ### Topic goal
 
-Develop fast, accurate head calculation with integers and exact percentages by building reusable strategies: recall facts, decompose by place value, bridge through round landmarks, compensate, distribute, double and halve, recover missing factors, and translate percentages into friendly fractions or component percentages.
+Develop fast, accurate head calculation with integers and exact percentages by building reusable strategies: recall facts, decompose by place value, bridge through round landmarks, compensate, distribute, double and halve, recover division relationships, translate percentages into friendly fractions or component percentages, and use rounding or bounds to judge scale.
 
 The learner should become better at choosing a short mental route, not merely more tolerant of long written arithmetic.
 
@@ -26,9 +26,12 @@ The topic includes:
 - subtraction as removal, compensation, or distance;
 - multiplication facts and strategy-based products;
 - exact integer division as a missing-factor problem;
+- quotient-and-remainder division of non-negative integers by positive integers, including reconstruction and one missing term;
 - complements to powers of ten and other explicit round targets;
 - exact percentages of integer bases;
 - inverse percentage relationships with one missing value;
+- estimates and bounds for integer sums, differences, products, and quotients;
+- comparison of an estimate with an exact result, including sign, interval, and decimal-order checks;
 - negative differences at later levels;
 - commutative, inverse, and distributive relationships where they directly support mental calculation.
 
@@ -45,8 +48,8 @@ All questions are intended to be solved mentally. Scratch work may be used, but 
 
 Do not include:
 
-- non-terminating or approximate division;
-- fractional, repeating-decimal, or rounded answers;
+- fractional, repeating-decimal, or decimal answer entry;
+- approximate or rounded answers outside the Estimation and Bounds category;
 - percentages whose required answer is not an integer;
 - compound interest, discounts, tax, tips, inflation, or financial word problems;
 - fractions except as an explanatory strategy for percentages;
@@ -58,14 +61,19 @@ Do not include:
 
 Applied money and economics belong in Everyday Economics. This topic presents abstract numbers and short neutral prompts.
 
+General modular arithmetic, congruences, residue classes, modular inverses, remainder cycles, and divisibility-rule drills belong in `number-theory-modular-arithmetic.md`. Byte conversions, byte addresses, offsets, word/page boundaries, and alignment belong in `programmer-low-level-numeracy.md`.
+
 ### Global notation
 
 - Display multiplication as `×`, not `*`, in learner-facing text.
 - Display division as `÷`, not `/`, except when a locale convention requires another unambiguous symbol.
 - A percentage question `p% of b` means `(p × b) ÷ 100`.
 - A complement is the non-negative amount `c` satisfying `value + c = target`.
+- Quotient-and-remainder division uses `dividend = divisor × quotient + remainder`, with a positive divisor and `0 ≤ remainder < divisor`.
 - “Next multiple of `m`” means the smallest multiple of `m` strictly greater than the given value. If the current value is already a multiple, the answer is `m`, not zero.
-- “Nearest” questions are excluded unless their tie rule is explicitly stated.
+- For an exact integer or rational `x` and positive integer unit `u`, “round to the nearest multiple of `u`” selects the integer multiple with least absolute distance. An exact halfway tie rounds away from zero. This is written `R_u(x)`.
+- “Round down to a multiple of `u`” means `u×floor(x/u)` and “round up” means `u×ceil(x/u)`, including for negative `x`.
+- An order-of-magnitude band for nonzero `x` is the unique decimal band `10^k ≤ |x| < 10^(k+1)`. Questions use the band or exponent `k`; they do not ask for a vaguely defined “nearest order of magnitude.” Zero is excluded.
 - Intermediate mental steps may be negative, but displayed operands remain non-negative except in families that explicitly introduce negative integers.
 
 ### Global answer conventions
@@ -78,11 +86,11 @@ The standard response mode is integer input.
 - Ordinary leading zeroes are accepted.
 - `-0` normalizes to `0`.
 - No units, percent sign, expression, or explanatory text is accepted in an integer field.
-- Answers must be exact. Equivalent rounded or approximate answers are not accepted.
+- Answers must be exact except where an Estimation and Bounds family defines a finite accepted set. Estimation acceptance is never inferred from display formatting or floating-point tolerance.
 
 Yes/no and single-choice controls should be rendered as controls rather than parsed free text. Multiple named fields are used when a family asks for more than one missing value.
 
-The implementation must use exact integers. Generated operands, intermediate values, and answers must remain within the implementation's exact integer range; using arbitrary-precision integers is preferred. A default learner-facing absolute-answer ceiling of `10,000,000` applies unless a family declares a lower limit.
+The implementation must use exact arithmetic. Non-integral quotients used internally by estimation must be stored as exact numerator/positive-denominator pairs and compared by cross multiplication, never binary floating point. Generated operands, intermediate values, answer endpoints, and reconstructed values must remain within the implementation's exact integer range; using arbitrary-precision integers is preferred. A default learner-facing absolute-answer ceiling of `10,000,000` applies unless a family declares a lower limit.
 
 ### Difficulty philosophy
 
@@ -96,6 +104,8 @@ Difficulty should increase through:
 - introducing plausible competing strategies or misconceptions;
 - retaining irrelevant place-value digits while changing a friendly part;
 - moving between a percentage and its fraction/decomposition.
+- distinguishing an exact result from a defensible estimate;
+- choosing tighter useful bounds without increasing written computation.
 
 Difficulty must not increase merely by adding digits, making every digit nonzero, increasing reading burden, or reducing response time. A larger problem may be easier than a smaller one when it has friendly structure; levels must be assigned from the intended mental route, not magnitude alone.
 
@@ -103,15 +113,17 @@ Difficulty must not increase merely by adding digits, making every digit nonzero
 
 Every question must include:
 
-`categoryId`, `subcategoryId`, `familyId`, `level`, `strategy`, `difficultyDimensions`, `misconceptionsTargeted`, `parameters`, `canonicalAnswer`, `workedSteps`, and `structuralSignature`.
+`categoryId`, `subcategoryId`, `familyId`, `level`, `strategy`, `difficultyDimensions`, `misconceptionsTargeted`, `parameters`, `canonicalAnswer`, `acceptedAnswerRule`, `workedSteps`, and `structuralSignature`.
+
+`acceptedAnswerRule` is `exact` for ordinary integer, choice, and named-field questions. Estimation families must store the more specific rule declared by that family.
 
 Generators must construct a solvable relationship around an intended strategy, render it, derive the answer independently, apply rejection rules, and only then present it. Pure uniform sampling from numeric ranges is permitted only for mixed mastery checks and must not dominate any category.
 
-A structural signature includes family, strategy, digit/place pattern, boundary crossed, inverse direction, sign class, and percentage decomposition. Exact operand values alone are not a sufficient signature. Avoid the same signature among the last 15 questions and the same rendered expression among the last 100.
+A structural signature includes family, strategy, digit/place pattern, boundary crossed, inverse or missing-term direction, sign class, quotient/remainder class, percentage decomposition, estimation operation, rounding direction/unit, and bound-width class where applicable. Exact operand values alone are not a sufficient signature. Avoid the same signature among the last 15 questions and the same rendered expression among the last 100.
 
 ### Global feedback policy
 
-Correct feedback gives the answer and a short efficient route. Incorrect feedback diagnoses a recognizable error when possible, then demonstrates the intended mental strategy. It must not merely restate `{expression} = {answer}`.
+Correct feedback gives the canonical answer and a short efficient route. For direct estimates it gives the canonical estimate, exact result, and accepted multiples. Incorrect feedback diagnoses a recognizable error when possible, then demonstrates the intended mental strategy. It must not merely restate `{expression} = {answer}`.
 
 Worked solutions should normally contain two or three mental steps. If the “worked solution” becomes conventional column arithmetic, the generated instance or family is unsuitable.
 
@@ -704,11 +716,11 @@ Core facts precede every strategy family. Distribution and double/half are intro
 
 ### Category purpose
 
-Train exact integer division as factor recovery, supported by multiplication facts, place-value scaling, and factor cancellation.
+Train division as factor recovery and as the unique decomposition of a non-negative dividend into a quotient and remainder, supported by multiplication facts, place-value scaling, and factor cancellation.
 
 ### Learn
 
-All division questions in this topic are exact:
+For exact quotients, look for a missing factor or transform dividend and divisor by the same factor:
 
 ```text
 144 ÷ 12 = 12 because 12 × 12 = 144
@@ -716,7 +728,14 @@ All division questions in this topic are exact:
 3,600 ÷ 25 = 14,400 ÷ 100 = 144
 ```
 
-Look for the missing factor or transform dividend and divisor by the same factor.
+When division is not exact, separate complete groups from the amount left:
+
+```text
+157 = 12 × 13 + 1
+so 157 ÷ 12 has quotient 13 and remainder 1
+```
+
+Always check `0 ≤ remainder < divisor`. Multiplication reconstructs the dividend in both exact and remainder cases.
 
 ### Prerequisites
 
@@ -724,13 +743,18 @@ Multiplication facts, multiplication strategies, and exact integer concepts.
 
 ### Category boundaries
 
-No remainder, rounding, recurring decimal, or fraction answer. “Divide by a fraction” is excluded.
+No recurring decimal or fraction answer and no division by a fraction. Approximate quotient questions belong only to Estimation and Bounds.
+
+Friendly divisibility recognition may appear only when it directly shortens the requested calculation, such as recognizing that a nearby multiple of 3, 5, 9, 10, 25, or 100 leaves a small remainder. Do not create standalone divisibility-rule drills here.
+
+General modular arithmetic—including congruence notation, negative-dividend Euclidean division, residue cycles, modular operations, inverses, proofs, and divisibility theory—belongs in `number-theory-modular-arithmetic.md`. Byte counts, byte conversions, addresses, offsets, and alignment division belong in `programmer-low-level-numeracy.md`.
 
 ### Subcategories
 
 1. Exact Quotients
 2. Factor and Scale Transformations
 3. Missing Factors and Divisors
+4. Quotients and Remainders
 
 ## 5.1 Subcategory: Exact Quotients
 
@@ -849,9 +873,118 @@ Transform dividend and divisor by a common factor, or factor the divisor into ea
 
 **Validation and coverage.** Substitute and assert exact equality. Balance missing position and underlying multiplication strategy.
 
+## 5.4 Subcategory: Quotients and Remainders
+
+### Skill and mental operation
+
+Find complete groups and the leftover amount, reconstruct the dividend from `d×q+r`, and recover one missing term when the visible terms determine it uniquely. The preferred mental route is a nearby known multiple plus a small adjustment, not written long division.
+
+### Common misconceptions
+
+- Reversing quotient and remainder.
+- Returning the remainder alone as the result of division.
+- Allowing `remainder = divisor` or a larger value instead of carrying another complete group.
+- Treating the divisor as allowed to be zero or negative.
+- Reconstructing the dividend as `d×(q+r)` rather than `d×q+r`.
+- For a missing divisor, using `(dividend÷quotient)-remainder` instead of `(dividend-remainder)÷quotient`.
+- Applying a remembered divisibility rule as the task rather than using a nearby divisible value to support the calculation.
+
+### Generation scope and difficulty dimensions
+
+Use non-negative dividends, divisors `2..100`, quotients `0..1000`, and remainders satisfying `0≤r<d`, subject to the topic answer ceiling. Levels 1–2 normally use divisors through 12. Later levels may use `15, 20, 25, 50, 75, 100` or another two-digit divisor only when a short multiplication, scaling, or near-multiple route exists.
+
+Difficulty varies by divisor fact fluency, quotient size, distance to the nearest friendly multiple, zero versus nonzero remainder, missing position, whether one scale adjustment is needed, and whether the remainder is close to `0` or `d-1`. Dense values requiring conventional long division are rejected.
+
+### Family `divide_quotient_remainder`
+
+**Learner task.** Calculate both the quotient and the canonical remainder.
+
+**Relationship to skill.** Repeatedly pairing the largest complete-group count with the leftover amount establishes the defining division relationship and the remainder bound.
+
+**Response mode.** Two named integer fields: `quotient` and `remainder`.
+
+**Template.** `Divide {dividend} by {divisor}. Give the quotient and remainder.`
+
+**Construction and placeholders.** Choose `d≥2`, `q≥0`, and `r` with `0≤r<d`, then set `n=dq+r`. `{dividend}=n` and `{divisor}=d`. At least 70% of instances have `r>0`; exact cases are retained to connect this family to Exact Quotients.
+
+**Derivation and accepted answers.** Canonical answer is the ordered named pair `(q,r)`. Each field uses the global integer parser. No swapped, expression, decimal, or alternate remainder representation is accepted.
+
+**Constraints and rejection.** For `q=0`, require `0<n<d`; keep these introductory cases below 10%. For `r>0`, the constructed multiple `dq` or the next multiple `d(q+1)` must be mentally accessible in at most three steps. Reject a case if a general divisibility test is the main task rather than support for locating that multiple.
+
+**Difficulty.** Level 1 uses fact-table divisors and a one-digit remainder. Level 2 uses quotients through 20 and remainders near either bound. Level 3 uses a round or landmark divisor. Level 4 uses a two-digit divisor with a decomposable multiple. Level 5 permits one place-value scaling step but no long division.
+
+**Feedback and distractors.** Show `n=d×q+r` and explicitly verify `0≤r<d`. Diagnose swapped fields, one-too-small quotient with remainder `r+d`, and one-too-large quotient with remainder `r-d`. Choice variants, if used, derive pairs from exactly those errors.
+
+**Examples.**
+
+1. `Divide 38 by 6. Give the quotient and remainder.` Answer `quotient 6, remainder 2`; `38=6×6+2`. Level 1.
+2. `Divide 157 by 12. Give the quotient and remainder.` Answer `quotient 13, remainder 1`; `157=12×13+1`. Level 3.
+3. `Divide 12,475 by 50. Give the quotient and remainder.` Answer `quotient 249, remainder 25`; `50×250=12,500`, so step back 50. Level 5.
+
+**Implementation and validation.** Independently compute `q=floor(n/d)` and `r=n-dq`; assert both match construction and `0≤r<d`. Coverage balances exact/non-exact cases, remainder bands, divisor structures, and use of the lower versus next multiple.
+
+### Family `division_reconstruct_dividend`
+
+**Learner task.** Reconstruct a dividend from a divisor, quotient, and remainder.
+
+**Relationship to skill.** Reconstruction makes the quotient-and-remainder relationship usable as a mental multiplication-plus-adjustment rather than a notation rule.
+
+**Response mode.** Integer input.
+
+**Template.** `A division has divisor {divisor}, quotient {quotient}, and remainder {remainder}. What is the dividend?`
+
+**Construction and derivation.** Choose valid `d,q,r` and calculate `n=dq+r`. The intended route uses a mastered multiplication strategy followed by one small addition.
+
+**Constraints and rejection.** Require `d≥2`, `q≥1`, and `0≤r<d`. At least two of `d`, `q`, and `r` must be nontrivial (`r=0` is allowed but below 20%). Reject products whose shortest route exceeds three multiplication steps before adding the remainder.
+
+**Difficulty.** Level 1 uses a core multiplication fact. Level 2 adds a nonzero remainder. Level 3 uses a landmark factor. Level 4 uses distribution or double/half. Level 5 uses one scale transformation and a small remainder.
+
+**Feedback.** Show `dividend=divisor×quotient+remainder`, multiply first, then add. Diagnose omission of the remainder and the erroneous product `d×(q+r)`.
+
+**Examples.**
+
+1. `A division has divisor 7, quotient 8, and remainder 3. What is the dividend?` Answer `59`; `7×8+3`. Level 1.
+2. `A division has divisor 25, quotient 16, and remainder 7. What is the dividend?` Answer `407`; `25×16=400`, then `+7`. Level 3.
+3. `A division has divisor 35, quotient 240, and remainder 19. What is the dividend?` Answer `8,419`; `35×24=840`, scale by 10, then add 19. Level 5.
+
+**Implementation and validation.** Recompute with exact integers and feed the result back through quotient-and-remainder division. Assert it returns the original `q,r`.
+
+### Family `division_qr_missing_term`
+
+**Learner task.** Find one missing dividend, divisor, quotient, or remainder in a valid quotient-and-remainder relationship.
+
+**Relationship to skill.** Varying the missing position tests whether the learner can invert `n=dq+r` while preserving the defining remainder constraint.
+
+**Response mode.** Integer input.
+
+**Templates.**
+
+- `? = {divisor} × {quotient} + {remainder}. Find the dividend.`
+- `{dividend} = ? × {quotient} + {remainder}. Find the divisor.`
+- `{dividend} = {divisor} × ? + {remainder}. Find the quotient.`
+- `{dividend} = {divisor} × {quotient} + ?. Find the remainder.`
+
+Every rendered prompt also states `The divisor is positive and 0 ≤ remainder < divisor.`
+
+**Construction and derivation.** Construct a valid tuple `(n,d,q,r)` before hiding exactly one term. Derive missing dividend as `dq+r`, divisor as `(n-r)/q`, quotient as `(n-r)/d`, or remainder as `n-dq`.
+
+**Uniqueness constraints.** Require `d≥2`, `q≥1`, and `0≤r<d` for every missing-term instance. Missing-divisor items require `q>0`; the numerator `n-r` must be exactly divisible by `q`. Missing quotient and remainder are non-negative integers. Hide only one term. These conditions make the displayed integer answer unique; any instance failing them is rejected.
+
+**Difficulty.** Level 2 hides dividend or remainder with fact-table values. Level 3 hides quotient. Level 4 hides divisor or mixes positions without a cue. Level 5 uses a landmark multiplication or scale route while retaining at most three meaningful steps.
+
+**Feedback and distractors.** Rearrange only the needed relationship and substitute the answer. Diagnose failure to subtract `r` before division, adding instead of subtracting `dq`, and values violating `r<d`. Multiple-choice distractors must come from those computations.
+
+**Examples.**
+
+1. `47 = 5 × 9 + ?. Find the remainder.` Answer `2`; `47-45`. Level 2.
+2. `83 = 9 × ? + 2. Find the quotient.` Answer `9`; `(83-2)÷9`. Level 3.
+3. `2,419 = ? × 32 + 19. Find the divisor.` Answer `75`; `(2,419-19)÷32=2,400÷32`. Level 5.
+
+**Implementation and validation.** Substitute the answer into the tuple, assert equality and `0≤r<d`, then independently perform division of `n` by `d` and assert the stored `q,r`. Long-run coverage balances all four missing positions; dividend reconstruction is lower-weight here because its dedicated family owns acquisition.
+
 ### Cross-family progression for Division
 
-Exact fact-family quotients precede factorization. Scale-both transformations follow landmark multiplication. Missing positions are interleaved only after the forward relationship is stable. Wrong answers should trigger the corresponding multiplication fact or strategy rather than simply a smaller dividend.
+Exact fact-family quotients precede factorization. Scale-both transformations follow landmark multiplication. Missing positions are interleaved only after the forward relationship is stable. Quotient-and-remainder calculation follows secure exact quotient facts; reconstruction precedes missing divisor or remainder. Wrong answers should trigger the corresponding multiplication fact or strategy rather than simply a smaller dividend.
 
 ## 6. Category: Complements
 
@@ -1187,7 +1320,268 @@ Benchmark percentages precede composites. Inverse base questions follow the corr
 
 If a learner computes 5% as one fifth, target paired 5%/20% questions. If components are chained from previous components, show two named component fields based on the same original base before returning to direct input.
 
-## 8. Topic-level cross-family progression
+## 8. Category: Estimation and Bounds
+
+### Category purpose
+
+Train quick scale judgment: replace awkward operands with useful nearby values, certify a result with lower and upper bounds, locate its decimal magnitude, compare an estimate with the exact result, and reject answers that cannot have the right sign or size.
+
+### Learn
+
+An estimate should make the arithmetic shorter while preserving the scale:
+
+```text
+398 + 205 ≈ 400 + 200 = 600
+49 × 198 ≈ 50 × 200 = 10,000
+1,980 ÷ 49 ≈ 2,000 ÷ 50 = 40
+```
+
+Bounds give a guarantee rather than a guess. With non-negative operands:
+
+```text
+400 ≤ 487 < 500 and 300 ≤ 326 < 400
+so 700 ≤ 487 + 326 < 900
+```
+
+For subtraction, a lower bound subtracts the larger upper bound of the second operand. For division by a positive number, a lower quotient uses a lower numerator and an upper denominator. Always check sign before magnitude. The UI states the reporting unit for a numeric estimate; accepted estimates are defined exactly below.
+
+### Prerequisites
+
+Place value, the four arithmetic operations, comparison of non-negative integers, and rounding to stated multiples.
+
+### Category boundaries
+
+This category estimates abstract integer arithmetic only. It does not introduce measured-data precision, significant figures, scientific notation calculations, statistical estimation, currency, or error propagation. Exact decimal or fractional quotient entry remains excluded.
+
+Remainder calculations belong to Division. General modular arithmetic belongs in `number-theory-modular-arithmetic.md`. Byte-size approximations, storage units, address ranges, and alignment bounds belong in `programmer-low-level-numeracy.md`.
+
+### Exact rounding and acceptance model
+
+All grading uses exact integer or rational arithmetic.
+
+- For any exact rational `x` and positive integer reporting unit `u`, `R_u(x)` is the nearest integer multiple of `u`; an exact halfway tie rounds away from zero.
+- Directed rounding uses mathematical floor and ceiling, not truncation toward zero.
+- A direct numeric-estimate item stores its exact result `x`, reporting unit `u`, intended rounded-operand estimate `E`, tolerance `T=max(u, |x|/10)`, and accepted set.
+- Its accepted set is exactly the integer multiples `y` of `u` satisfying `|y-x|≤T`, with `y>0` when `x>0` and `y<0` when `x<0`. If `x=0`, the only accepted answer is `0`. Endpoints are inclusive.
+- The generator requires `u≤|x|/5` for nonzero `x`, requires `E` to belong to the accepted set, and rejects an item with no accepted multiple. Thus the one-unit floor cannot produce an arbitrarily loose band.
+- Rational endpoint and distance comparisons are performed by cross multiplication. No epsilon, display precision, or host floating-point rounding is permitted.
+- Feedback displays the intended estimate `E` and the exact result, but another value in the declared accepted set is also correct. Metadata stores `acceptedAnswerRule`, `acceptedMinimumMultiple`, and `acceptedMaximumMultiple` in addition to `canonicalAnswer=E`.
+
+For bound, interval, comparison, order-of-magnitude, and impossibility families, only the explicitly derived choice or named endpoint pair is accepted. They do not use the numeric-estimate tolerance.
+
+### Common misconceptions
+
+- Treating an estimate as an arbitrary nearby guess.
+- Rounding every operand in the same direction without considering the operation.
+- Reversing a subtraction bound: using `aLow-bLow` as a guaranteed lower bound.
+- For quotient bounds, pairing the lower numerator with the lower denominator.
+- Losing the sign of a negative difference.
+- Assuming an estimate must equal the exact result.
+- Choosing a decimal band from the number of operands rather than the result's scale.
+- Accepting a product or quotient whose magnitude is impossible from simple bounds.
+
+### Subcategories
+
+1. Rounded Operation Estimates
+2. Constructed Bounds
+3. Intervals and Orders of Magnitude
+4. Estimate Checks
+
+## 8.1 Subcategory: Rounded Operation Estimates
+
+### Family `estimate_rounded_operation`
+
+**Learner task.** Estimate a sum, difference, product, or quotient by replacing operands with stated friendly multiples.
+
+**Relationship to skill.** The family trains deliberate selection and use of a short rounded computation while allowing a tightly defined range of defensible estimates.
+
+**Response mode.** Integer estimate input.
+
+**Template.** `Estimate {expression} by rounding {roundingInstruction}. Give a multiple of {reportingUnit}.`
+
+**Construction.** Choose the operation first, then friendly rounded operands `a'` and `b'`, nearby original operands `a,b`, and reporting unit `u`. The intended estimate is:
+
+- addition: `E=R_u(a'+b')`;
+- subtraction: `E=R_u(a'-b')`;
+- multiplication: `E=R_u(a'×b')`;
+- quotient: `E=R_u(a'/b')`, with `b'>0`.
+
+For quotient items, `a'/b'` may be rational internally but is rounded to the integer reporting unit by the exact tie rule. Original quotient operands are positive. Difference items may have a negative result.
+
+**Accepted answers.** Apply the category's exact accepted-set formula to the exact result `x` of the original expression. The prompt and Learn panel must expose the reporting unit and the ±10%-or-one-unit rule; a UI must not silently use a hidden tolerance. Integer forms follow the global parser.
+
+**Constraints and rejection.** The displayed rounded operands must reduce the route to at most two arithmetic steps. Reject sign changes between `E` and nonzero `x`, near-cancelling differences, zero divisors, a rounded divisor of zero, `u>|x|/5`, and cases in which rounding produces an estimate outside the accepted set. Quotient operands need not divide exactly because only an integer estimate is entered.
+
+**Difficulty.** Level 1 estimates sums/differences to tens. Level 2 introduces products with one rounded factor. Level 3 rounds both factors or a quotient's two operands. Level 4 removes one operand-level cue but states the rounding units. Level 5 mixes operations and permits negative differences while retaining a two-step estimate.
+
+**Feedback.** Show the rounded expression, intended estimate, exact result, and accepted multiples. Diagnose wrong rounding direction, an unrounded exact answer that violates the requested unit, sign loss, and product/quotient scale errors.
+
+**Examples.**
+
+1. `Estimate 398 + 205 by rounding each operand to the nearest hundred. Give a multiple of 100.` Intended answer `600`; exact result `603`; accepted multiples are `600` and `700`. Level 1.
+2. `Estimate 49 × 198 by rounding 49 to the nearest 10 and 198 to the nearest 100. Give a multiple of 1,000.` Intended answer `10,000`; exact result `9,702`; accepted multiples are `9,000` and `10,000`. Level 3.
+3. `Estimate 1,980 ÷ 49 by rounding to 2,000 ÷ 50. Give a multiple of 1.` Intended answer `40`; exact result is `1,980/49`; accepted integers are `37..44`. Level 4.
+
+**Implementation and validation.** Store the exact result as `(numerator, positive denominator)`. Independently derive `E`, `T`, and every accepted multiple. Assert the listed minimum and maximum multiples satisfy the inclusive inequalities and adjacent multiples do not. Coverage gives addition, subtraction, multiplication, and quotient each at least 20% of this family and balances rounding up/down combinations.
+
+## 8.2 Subcategory: Constructed Bounds
+
+### Family `estimate_select_bounds`
+
+**Learner task.** Choose a useful guaranteed lower and upper bound obtained by directed rounding.
+
+**Relationship to skill.** Bounds turn rough magnitude intuition into a check that can prove where an exact result must lie.
+
+**Response mode.** Single-choice. A controlled introductory variation uses two named integer fields, `lower` and `upper`, when the rounding units are supplied and both endpoints are integral.
+
+**Template.** `Using the stated operand bounds, which interval is guaranteed to contain {expression}?`
+
+**Derivation.** Let each non-negative operand have stored directed bounds `aL≤a≤aU` and `bL≤b≤bU`, with `0<bL` for division. Derive:
+
+| Operation | Guaranteed real interval |
+|---|---|
+| `a+b` | `[aL+bL, aU+bU]` |
+| `a-b` | `[aL-bU, aU-bL]` |
+| `a×b` | `[aL×bL, aU×bU]` |
+| `a÷b` | `[aL/bU, aU/bL]` |
+
+For an integer-endpoint quotient choice, display the conservative interval `[floor(aL/bU), ceil(aU/bL)]`. Endpoints are inclusive even when the supplied operand display uses a strict upper inequality.
+
+**Construction and usefulness constraints.** Bounds come from explicit friendly units, which may differ by operand. The correct interval must contain the exact rational result. It must be the unique narrowest certified interval among the choices, have width at most 30% of `max(1,|x|)` at Levels 1–3 and 50% at Levels 4–5, and make the bound arithmetic no longer than three mental steps.
+
+**Rejection rules.** Reject negative multiplicands, non-positive divisor lower bounds, reversed endpoints, an exact singleton interval except diagnostics, and bounds so loose that sign or decimal scale remains unresolved when that is the target. Do not ask the learner to enter fractional endpoints.
+
+**Difficulty.** Level 1 bounds sums using tens/hundreds. Level 2 adds differences and products. Level 3 introduces quotient bounds. Level 4 lets the learner choose between two operand-rounding units. Level 5 mixes a negative difference or competing intervals of similar width.
+
+**Distractors and feedback.** Distractors pair both lower bounds for subtraction, pair both lower values for quotient, reverse one directed rounding, or give a narrower but uncertified interval. Feedback names the monotonic direction of each operand and substitutes the endpoints.
+
+**Examples.**
+
+1. Given `400≤487≤500` and `300≤326≤400`, bound `487+326`. Answer `[700,900]`; add lower to lower and upper to upper. Level 1.
+2. Given `2,000≤2,041≤2,100` and `900≤987≤1,000`, bound `2,041-987`. Answer `[1,000,1,200]`; lower uses `2,000-1,000`. Level 2.
+3. Given `1,900≤1,980≤2,000` and `45≤49≤50`, give integer bounds for `1,980÷49`. Answer `[38,45]`; `floor(1,900/50)=38`, `ceil(2,000/45)=45`. Level 3.
+
+**Implementation and validation.** Verify containment with exact cross multiplication, unique choice correctness, width limits, and provenance of every distractor. Long-run coverage includes all four operations and all monotonic pairings.
+
+## 8.3 Subcategory: Intervals and Orders of Magnitude
+
+### Family `estimate_locate_interval`
+
+**Learner task.** Select a plausible, predeclared interval containing an operation's exact result without calculating it digit by digit.
+
+**Relationship to skill.** Locating a result between landmarks trains magnitude judgment separately from producing one preferred estimate.
+
+**Response mode.** Single-choice.
+
+**Template.** `Without calculating exactly, which interval contains {expression}?`
+
+**Construction and derivation.** Construct two to four disjoint integer intervals from friendly landmarks. Exactly one interval contains the exact integer or rational result; containment is inclusive at both endpoints. The correct interval must be certifiable by one rounded comparison or bound route stored in `workedSteps`.
+
+**Constraints and rejection.** Choices must be ordered, non-overlapping, and separated or assigned endpoints so no result can belong to two. The correct interval width is at most 25% of `max(1,|x|)` and not a singleton. Reject items whose only efficient route is exact written calculation.
+
+**Difficulty.** Level 1 locates sums/differences between round tens or hundreds. Level 2 uses products. Level 3 uses quotients. Level 4 uses closer adjacent intervals. Level 5 mixes sign or requires two-sided bounds.
+
+**Distractors and feedback.** Wrong intervals encode wrong sign, one place-value error, addition instead of multiplication, or reversed quotient scale. Feedback shows the shortest bound that places the result in the correct interval.
+
+**Examples.**
+
+1. `Which interval contains 487+326?` Choices `[600,699]`, `[700,899]`, `[900,1,099]`. Answer `[700,899]`; the sum is above 700 and below 900. Level 1.
+2. `Which interval contains 49×198?` Choices `[900,1,100]`, `[9,000,11,000]`, `[90,000,110,000]`. Answer `[9,000,11,000]`; use `50×200≈10,000`. Level 2.
+3. `Which interval contains 1,980÷49?` Choices `[3,5]`, `[35,44]`, `[300,500]`. Answer `[35,44]`; compare with `2,000÷50=40`. Level 3.
+
+**Implementation and validation.** Test exact containment for every choice and assert exactly one match. Validate the stored certificate independently and balance the correct choice position.
+
+### Family `estimate_order_magnitude`
+
+**Learner task.** Identify the decimal order-of-magnitude band of a nonzero result.
+
+**Relationship to skill.** Decimal-band recognition catches factor-of-ten mistakes before finer estimation.
+
+**Response mode.** Single-choice. At Levels 4–5 a choice may combine a sign label and one magnitude band.
+
+**Template.** `The value of {expression} lies in which order-of-magnitude band?` Controlled signed variation: `Which sign and order-of-magnitude band describe {expression}?`
+
+**Derivation and tie rule.** For exact nonzero result `x`, choose the unique integer `k` with `10^k≤|x|<10^(k+1)`. The correct choice is `[10^k,10^(k+1))` for the magnitude; sign is shown separately when relevant. A value exactly equal to `10^k` belongs to that band. There is no nearest-power tie.
+
+**Constraints and rejection.** Zero and results with `|x|<1` are excluded. Exponents are `0..7`; negative exponents are excluded because learner answers are not fractional. The result must be classifiable through a one- or two-step comparison, and adjacent-power boundary cases must be intentionally constructed rather than accidental.
+
+**Difficulty.** Level 1 uses addition and a result far from a boundary. Level 2 uses product/quotient scaling. Level 3 approaches a power-of-ten boundary. Level 4 includes negative differences and asks for sign plus band. Level 5 removes an explicit rounded-expression cue.
+
+**Distractors and feedback.** Offer the adjacent decimal bands and, where useful, a factor-of-two rather than factor-of-ten band. Feedback shows a lower and upper power-of-ten comparison.
+
+**Examples.**
+
+1. `The value of 640+275 lies in which band?` Answer `[100,1,000)`; it is below 1,000 and above 100. Level 1.
+2. `The value of 49×198 lies in which band?` Answer `[1,000,10,000)`; the exact product is below 10,000. Level 3.
+3. `State the sign and magnitude band of 980-12,400.` Answer `negative, [10,000,100,000)`; its magnitude is a little over 11,000. Level 4.
+
+**Implementation and validation.** Determine `k` with integer digit comparisons or exact rational cross multiplication. Assert lower inclusion, strict upper exclusion, unique choice, and deliberate coverage immediately below, at, and above powers of ten.
+
+## 8.4 Subcategory: Estimate Checks
+
+### Family `estimate_compare_exact`
+
+**Learner task.** Decide whether an exact result is less than, equal to, or greater than a supplied estimate.
+
+**Relationship to skill.** The comparison exposes the direction and effect of rounding rather than treating an estimate as an asserted exact answer.
+
+**Response mode.** Single-choice: `less than`, `equal to`, `greater than`.
+
+**Template.** `{expression} was estimated as {estimate}. Is the exact result less than, equal to, or greater than the estimate?`
+
+**Construction and derivation.** Construct operands around friendly rounded values so the comparison follows from one or two signed corrections. For quotient, compare exact `a/b` with estimate `E` by comparing `a` with `bE`; never convert to decimal.
+
+**Constraints and rejection.** All three outcomes must be generatable; equality is 10–20% of long-run coverage. Reject correction terms whose interaction is harder than calculating the original expression or cases where the estimate has the wrong sign, which belong to the impossibility family.
+
+**Difficulty.** Level 1 uses one rounded addend. Level 2 uses two corrections in a sum/difference. Level 3 uses a product. Level 4 uses quotient cross-multiplication. Level 5 uses competing correction directions with a short dominance argument.
+
+**Distractors and feedback.** The two wrong relations are the distractors. Feedback shows correction direction or the exact cross-product comparison and may then display the exact answer.
+
+**Examples.**
+
+1. `398+205 was estimated as 600. Is the exact result less than, equal to, or greater than the estimate?` Answer `greater than`; corrections are `-2+5=+3`. Level 1.
+2. `49×198 was estimated as 10,000. Is the exact result less than, equal to, or greater than the estimate?` Answer `less than`; both positive factors were rounded up. Level 3.
+3. `1,980÷49 was estimated as 40. Is the exact result less than, equal to, or greater than the estimate?` Answer `greater than`; `49×40=1,960<1,980`. Level 4.
+
+**Implementation and validation.** Compare exact integers or rationals, assert exactly one relation, and verify the stored correction proof. Balance relation and operation.
+
+### Family `estimate_rule_out_impossible`
+
+**Learner task.** Determine whether a named sign, magnitude, or bound check is sufficient to rule out a candidate answer.
+
+**Relationship to skill.** The family trains fast error detection without requiring the exact computation.
+
+**Response mode.** Yes/no.
+
+**Templates.**
+
+- `Can the sign check alone rule out {candidate} as the answer to {expression}?`
+- `Can the stated bound {lower}≤answer≤{upper} rule out {candidate}?`
+- `Can the stated order-of-magnitude band rule out {candidate}?`
+
+**Semantics and derivation.** Answer `yes` exactly when the candidate violates the named check: wrong required sign; outside an inclusive bound; or outside the half-open magnitude band. Answer `no` means only “this check does not rule it out,” not that the candidate is the exact answer. The Learn panel and feedback must state this distinction.
+
+**Constraints and rejection.** The named check must itself be valid for the expression. Yes and no cases are balanced. For no cases, candidate is inside the certified region and has the permitted sign; it need not equal the exact result. Reject candidates that require another unstated rule to classify or equal an interval endpoint whose inclusion is not visible.
+
+**Difficulty.** Level 1 uses sign. Level 2 uses a broad bound. Level 3 uses order of magnitude. Level 4 uses a tighter two-sided bound. Level 5 selects among sign, magnitude, and bound checks while keeping each check individually simple.
+
+**Feedback.** State only what the named check proves, then optionally compare with the exact result. Diagnose treating “not ruled out” as “correct.”
+
+**Examples.**
+
+1. `Can the sign check alone rule out 180 as the answer to 75-240?` Answer `yes`; the exact difference must be negative. Level 1.
+2. `Given 700≤487+326≤900, can this bound rule out 950?` Answer `yes`; 950 is above the inclusive upper bound. Level 2.
+3. `Given that |49×198| is in [1,000,10,000), can this magnitude check rule out 9,500?` Answer `no`; 9,500 is in the band, though the check does not prove it exact. Level 3.
+
+**Implementation and validation.** Validate the check certificate against the exact result, then classify the candidate solely against the stated check. Test inclusive bound endpoints and half-open magnitude endpoints explicitly.
+
+### Cross-family progression for Estimation and Bounds
+
+Introduce stated operand rounding before asking for bounds. Sum and difference estimates precede products and quotients. Constructed bounds then support interval location and impossible-answer checks. Order-of-magnitude checks remain coarse and should be interleaved with, not substituted for, tighter estimation. Comparison questions follow direct estimates so learners see how rounding direction affects error.
+
+Numeric estimate tolerance records fluency in producing a useful scale; bound and comparison families record logical correctness. Do not merge those mastery signals.
+
+## 9. Topic-level cross-family progression
 
 Recommended introduction order:
 
@@ -1198,20 +1592,24 @@ Recommended introduction order:
 5. exact division as missing factor;
 6. multi-addend grouping and missing arithmetic terms;
 7. landmark multiplication and factorized/scaled division;
-8. benchmark percentages, then composite and inverse percentages;
-9. optional near-square and percentage-swap strategies.
+8. quotient-and-remainder calculation, then reconstruction and missing terms;
+9. benchmark percentages, then composite and inverse percentages;
+10. stated rounding estimates, constructed bounds, and estimate checks;
+11. optional near-square and percentage-swap strategies.
 
 After acquisition, interleave inverse pairs:
 
 - addition and missing addend;
 - subtraction and missing term;
 - multiplication fact and exact quotient;
+- quotient/remainder calculation and dividend reconstruction;
 - complement and bridge addition;
-- benchmark percentage and missing base/percent.
+- benchmark percentage and missing base/percent;
+- rounded estimate and exact-result comparison.
 
 Strategy-choice questions should mix only already-mastered strategies. A high topic level does not unlock a family whose prerequisites are weak.
 
-## 9. Adaptive practice guidance
+## 10. Adaptive practice guidance
 
 ### Mastery dimensions
 
@@ -1226,8 +1624,10 @@ Track:
 - sign of subtraction result;
 - multiplication fact pair;
 - division factor structure;
+- quotient/remainder class and missing position;
 - complement target type;
-- percentage benchmark/decomposition.
+- percentage benchmark/decomposition;
+- estimation operation, rounding unit/direction, accepted-band width, bound type, and decimal magnitude band.
 
 Category-level cells may remain for navigation, but selection and feedback require these finer dimensions.
 
@@ -1251,11 +1651,19 @@ Latency expectations are learner-relative. Do not enforce universal countdowns o
 | Double/half product doubled or halved | changed only one factor | equality transformation item |
 | Quotient equals divisor | factor-role confusion | rewrite as missing multiplication factor |
 | Factorized division stops after one factor | incomplete factorization | two named division steps |
+| Remainder is at least the divisor | incomplete regrouping | same tuple with explicit `0≤r<d` check |
+| Reconstructed dividend omits remainder | treated `dq` as full dividend | multiplication-plus-remainder reconstruction |
+| Missing divisor uses `n÷q-r` | remainder removed after dividing | explicit `(n-r)÷q` item |
 | Complement is to wrong power of ten | target-scale confusion | side-by-side stated targets |
 | Next-multiple answer is zero on exact multiple | “strictly greater” missed | exact-multiple diagnostic |
 | 5% answer equals base÷5 | 5%/20% confusion | paired benchmark contrast |
 | Composite percentage applies second component to first | chained-base error | named components from original base |
 | Missing percentage answer is `base-part` | percent/difference confusion | benchmark ratio question |
+| Estimate has wrong reporting unit | exact/estimate format confusion | stated-unit rounding with visible accepted band |
+| Difference estimate has wrong sign | rounded away a sign change | sign check before magnitude |
+| Subtraction bound uses lower minus lower | bound-direction confusion | explicit lower-minus-upper comparison |
+| Quotient bound uses lower divisor for lower result | denominator-direction confusion | paired quotient-bound diagnostic |
+| “Not ruled out” treated as exact | possibility/correctness confusion | impossible-answer check with exact comparison |
 
 When an error spans several skills, select short prerequisite diagnostics instead of lowering all operand sizes indiscriminately.
 
@@ -1270,24 +1678,24 @@ Recommended adaptive mix:
 
 Easy anchor facts remain in spaced review but must not dominate. Optional specialized families (`multiply_near_square`, `percentage_swap_or_scale`) together should be at most 10% of total topic practice unless manually selected.
 
-## 10. Feedback requirements
+## 11. Feedback requirements
 
-Every instance stores a canonical answer, concise confirmation, worked mental route, and mappings for plausible wrong answers. Feedback should prefer a route the learner has already learned; alternative efficient routes may be mentioned but should not create a wall of methods.
+Every instance stores a canonical answer, an exact accepted-answer rule, concise confirmation, worked mental route, and mappings for plausible wrong answers. For a direct estimate, feedback distinguishes the intended canonical estimate from every other accepted estimate. Feedback should prefer a route the learner has already learned; alternative efficient routes may be mentioned but should not create a wall of methods.
 
 For a wrong answer:
 
 1. identify a specific likely error when evidence supports it;
 2. display the critical relationship or decomposition;
 3. show no more than three intermediate totals;
-4. end with the canonical answer.
+4. end with the canonical answer, or with the canonical estimate and accepted set for a direct-estimate item.
 
 The Learn panel opened from a question must show the active strategy and one structurally similar example, not only the broad category card.
 
-## 11. Implementation requirements
+## 12. Implementation requirements
 
 ### Numeric correctness
 
-Use exact integer arithmetic. Before display, assert every direct division and percentage component is integral. Do not generate a decimal answer and round it to fit the integer interface.
+Use exact integer arithmetic for ordinary families and exact numerator/positive-denominator pairs for non-integral quotients in Estimation and Bounds. Before display, assert every direct division outside estimation and every percentage component is integral. A quotient estimate may be rounded only by its declared family rule; do not generate a decimal answer and round it merely to fit the integer interface.
 
 ### Semantic generation and localization
 
@@ -1308,7 +1716,7 @@ The cost heuristic guides generation but does not claim that every learner uses 
 
 Given seed, family, level, and locale-independent settings, semantic generation is deterministic. Bounded rejection is limited to 100 attempts before a constructive fallback. Choice order is shuffled only after unique correctness is established.
 
-## 12. Automated validation
+## 13. Automated validation
 
 ### Per-instance checks
 
@@ -1323,19 +1731,24 @@ For every question:
 7. question wording uniquely identifies operand roles;
 8. any choice set has exactly one correct distinct answer;
 9. feedback uses the actual parameters;
-10. structural signature is complete.
+10. accepted-answer rules accept every declared answer and reject adjacent out-of-band forms;
+11. structural signature is complete.
 
 ### Exhaustive and property tests
 
 - Exhaust addition/subtraction operands through 100 for core identities and missing terms.
 - Exhaust multiplication facts `2..12` and their commuted forms.
 - Exhaust constructed exact division relationships through a configured small bound.
+- Exhaust valid quotient/remainder tuples through a configured small bound and round-trip every missing position.
 - Exhaust complements for every value below targets through 1000.
 - Exhaust benchmark percentages for bases through 1000 that meet divisibility constraints.
 - Property-test at least 10,000 deterministic seeds per family/level.
 - Round-trip every inverse relationship by substitution.
 - Verify transformed addition, subtraction, multiplication, and division routes equal direct arithmetic.
 - Verify percentage components sum to direct `(p×base)/100`.
+- Exhaust nearest-multiple cases immediately below, at, and above halfway ties for positive and negative values.
+- Property-test direct-estimate accepted-set endpoints and adjacent multiples using exact rational comparisons.
+- Verify every constructed bound contains the exact result and every interval/order choice is unique.
 
 ### Distribution tests
 
@@ -1347,8 +1760,11 @@ Large fixed-seed samples must verify:
 - negative subtraction results appear only at declared levels and target rates;
 - core multiplication facts are not dominated by `2,5,10`;
 - all landmark multipliers and division factor structures recur;
+- quotient/remainder practice balances zero/nonzero remainder, remainder bands, divisor structures, and missing positions;
 - complements cover low/middle/high remainder bands;
 - percentage answers and decompositions are balanced;
+- estimation balances all four operations, rounding directions, reporting units, comparison outcomes, interval positions, and power-of-ten boundary classes;
+- impossible-answer checks balance sign, inclusive bounds, half-open magnitude bands, and yes/no results;
 - identity, zero, and repeated rendered items remain below quotas;
 - specialized optional strategies do not crowd out fundamentals.
 
@@ -1356,7 +1772,7 @@ Large fixed-seed samples must verify:
 
 Test signs, surrounding whitespace, digit grouping by spaces/underscores/commas, leading zeroes, negative zero, and exact integer limits. Reject blank input, decimal points, scientific notation, fractions, percent signs in ordinary integer fields, extra words, and non-finite/out-of-range values.
 
-## 13. Coverage requirements
+## 14. Coverage requirements
 
 Over long practice:
 
@@ -1366,14 +1782,16 @@ Over long practice:
 - addition includes place value, bridge, compensation, and compatible grouping;
 - subtraction includes decomposition, equal compensation, counting up, and negative results;
 - multiplication covers the full core fact matrix and multiple extension strategies;
-- every division shown is exact and mentally factorable;
+- exact-quotient division is integral and mentally factorable; quotient-and-remainder division satisfies `0≤r<d`;
 - complements support later bridge/count-up skills;
 - percentages cover benchmark, composite, and inverse relationships;
+- estimation covers sums, differences, products, and quotients, with exact accepted sets or uniquely correct bounds/choices;
+- no estimation family depends on floating-point tolerances or an unstated rounding convention;
 - wrong-answer patterns influence selection at misconception level;
 - recent structural repetition is suppressed;
 - every family remains capable of producing many valuable instances.
 
-## 14. Topic-level quality checklist
+## 15. Topic-level quality checklist
 
 - [ ] Every family has a specific mental strategy or inverse relationship.
 - [ ] Levels are not defined only by operand ranges.
@@ -1382,19 +1800,23 @@ Over long practice:
 - [ ] Negative differences are introduced deliberately and graded as ordinary integers.
 - [ ] Multiplication facts track commuted pairs without displaying only one order.
 - [ ] Landmark multiplication operands make division/halving steps exact.
-- [ ] Every generated division has an integer quotient.
+- [ ] Exact-quotient families have integer quotients; remainder families reconstruct the dividend and enforce `0≤r<d`.
+- [ ] Every missing dividend, divisor, quotient, or remainder is uniquely determined.
 - [ ] Complements distinguish a stated target from the next strictly greater multiple.
 - [ ] Every generated percentage result and worked component is integral.
-- [ ] Percentage word problems and rounding remain outside this topic.
+- [ ] Percentage word problems remain outside this topic; rounding appears only in Estimation and Bounds.
+- [ ] Direct estimates have exact inclusive acceptance intervals, reporting-unit restrictions, and the declared halfway tie rule.
+- [ ] Bound, interval, comparison, magnitude, and impossibility questions have exactly one accepted semantic answer.
+- [ ] General modular arithmetic and programmer-specific byte/address/alignment numeracy remain in their named specifications.
 - [ ] Missing-term families have exactly one valid integer answer.
 - [ ] Feedback teaches a mental route and diagnoses recognizable errors.
 - [ ] Every family has three valid instantiated examples.
 - [ ] Property, distribution, parser, and inverse-round-trip tests pass.
 - [ ] Repeated practice improves fluency or strategy choice rather than written-algorithm endurance.
 
-## 15. Stable identifiers and recommended navigation
+## 16. Stable identifiers and recommended navigation
 
-Navigation may retain the six current category labels:
+Navigation should expose these seven category labels:
 
 - Addition
 - Subtraction
@@ -1402,5 +1824,6 @@ Navigation may retain the six current category labels:
 - Division
 - Complements
 - Percentages
+- Estimation and Bounds
 
 Stable family identifiers are the backticked names in this specification. Progress migration from the current category-by-level model should retain historical category attempts for display but begin new family/strategy mastery records without pretending old aggregate attempts identify a specific strategy weakness.

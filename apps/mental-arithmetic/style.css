@@ -364,16 +364,72 @@ label {
   margin-bottom: 8px;
 }
 
-.answer-row input {
-  flex: 1 1 260px;
+.answer-control input,
+.answer-pair input {
+  width: 100%;
   min-width: 0;
   font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
   font-size: 1.15rem;
 }
 
+.answer-control {
+  max-width: 420px;
+}
+
+.answer-pair {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 210px));
+  gap: 12px;
+}
+
+.choice-control {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.choice-control legend {
+  margin-bottom: 8px;
+  font-weight: 700;
+}
+
+.choice-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.choice-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 48px;
+  margin: 0 !important;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: #fbfcfb;
+  cursor: pointer;
+}
+
+.choice-option:has(input:checked) {
+  border-color: var(--blue);
+  background: var(--blue-soft);
+}
+
+.choice-option input {
+  width: 18px;
+  min-height: 18px;
+  flex: 0 0 auto;
+}
+
 .answer-row button {
   min-width: 92px;
   padding: 0 14px;
+}
+
+.answer-row {
+  margin-top: 12px;
 }
 
 .keypad {
@@ -718,6 +774,11 @@ tr:last-child td {
   .mode-row button,
   .answer-row button {
     flex: 1 1 120px;
+  }
+
+  .answer-pair,
+  .choice-options {
+    grid-template-columns: 1fr;
   }
 
   .prompt-expression {

@@ -34,6 +34,11 @@ export default {
       mastery: "0% nivå",
       masterySuffix: "nivå",
       answer: "Svar",
+      quotient: "Kvot",
+      remainder: "Rest",
+      chooseAnswer: "Välj ett svar",
+      reportingUnit: "Avrundningsenhet",
+      acceptanceBand: "godkänt intervall: ±10 % eller en enhet",
       check: "Rätta",
       next: "Nästa",
       skip: "Hoppa över",
@@ -70,7 +75,8 @@ export default {
       multiplication: { title: "Multiplikation" },
       division: { title: "Division" },
       complements: { title: "Komplement" },
-      percentages: { title: "Procent" }
+      percentages: { title: "Procent" },
+      estimation: { title: "Överslag och gränser" }
     },
     families: {
       add_place_values: {
@@ -199,6 +205,27 @@ export default {
         rules: "Använd dividend = divisor × kvot.",
         example: "? ÷ 8 = 7 ger 56; 56 ÷ ? = 7 ger 8"
       },
+      divide_quotient_remainder: {
+        subcategory: "Kvot och rest",
+        title: "Kvot och rest",
+        strategy: "hela grupper och det som blir över",
+        rules: "Hitta det största antalet hela grupper och kontrollera sedan att 0 ≤ rest < divisor.",
+        example: "157 = 12 × 13 + 1"
+      },
+      division_reconstruct_dividend: {
+        subcategory: "Kvot och rest",
+        title: "Återskapa dividenden",
+        strategy: "multiplicera och lägg till resten",
+        rules: "Använd dividend = divisor × kvot + rest.",
+        example: "25 × 16 + 7 = 407"
+      },
+      division_qr_missing_term: {
+        subcategory: "Kvot och rest",
+        title: "Saknad term med kvot och rest",
+        strategy: "vänd på division med rest",
+        rules: "Subtrahera resten innan du återskapar en saknad faktor.",
+        example: "2 419 = 75 × 32 + 19"
+      },
       complement_to_landmark: {
         subcategory: "Angivet riktmärke",
         title: "Komplement till ett riktmärke",
@@ -254,6 +281,48 @@ export default {
         strategy: "återskapa heltalsprocenten",
         rules: "Beräkna det exakta förhållandet mellan delen och helheten och multiplicera med 100.",
         example: "45 är hur många procent av 180? 25"
+      },
+      estimate_rounded_operation: {
+        subcategory: "Avrundade överslag",
+        title: "Avrundat överslag",
+        strategy: "ersätt med närliggande lätthanterliga tal",
+        rules: "Använd de visade avrundade operanderna och svarsenheten. Svar inom ±10 % från exakt värde, utvidgat till högst en svarsenhet, godkänns.",
+        example: "49 × 198 ≈ 50 × 200 = 10 000"
+      },
+      estimate_select_bounds: {
+        subcategory: "Konstruerade gränser",
+        title: "Välj garanterade gränser",
+        strategy: "riktade operandgränser",
+        rules: "Kombinera nedre och övre operandgränser i den riktning som operationen kräver.",
+        example: "2 000 − 1 000 ≤ 2 041 − 987 ≤ 2 100 − 900"
+      },
+      estimate_locate_interval: {
+        subcategory: "Intervall och storleksordning",
+        title: "Placera i ett rimligt intervall",
+        strategy: "placera mellan riktmärken",
+        rules: "Använd ett snabbt överslag för att placera resultatet i ett intervall.",
+        example: "1 980 ÷ 49 ligger mellan 40 och 49"
+      },
+      estimate_order_magnitude: {
+        subcategory: "Intervall och storleksordning",
+        title: "Storleksordning",
+        strategy: "decimalt storleksintervall",
+        rules: "Hitta det unika intervallet 10^k ≤ |resultat| < 10^(k+1).",
+        example: "49 × 198 ligger i [1 000, 10 000)"
+      },
+      estimate_compare_exact: {
+        subcategory: "Kontrollera överslag",
+        title: "Jämför överslag och exakt resultat",
+        strategy: "korrigeringens riktning",
+        rules: "Avgör om avrundningarna gör det exakta resultatet mindre, lika med eller större än överslaget.",
+        example: "398 + 205 är 3 större än överslaget 600"
+      },
+      estimate_rule_out_impossible: {
+        subcategory: "Kontrollera överslag",
+        title: "Uteslut ett omöjligt svar",
+        strategy: "kontrollera tecken, storlek eller gränser",
+        rules: "En misslyckad kontroll bevisar att svaret är omöjligt; en godkänd kontroll bevisar inte att svaret är exakt.",
+        example: "En negativ differens kan inte vara positiv 180"
       }
     },
     generatedReplacements: [
@@ -350,7 +419,30 @@ export default {
       missingFactor: "Hitta den saknade faktorn.",
       complement: "Hitta komplementet.",
       nextMultiple: "Hur mycket behövs till nästa strikt större multipel?",
-      missingPercent: "Hitta det saknade heltalsprocenttalet."
+      missingPercent: "Hitta det saknade heltalsprocenttalet.",
+      quotientRemainder: "Ange kvot och rest.",
+      reconstructDividend: "Återskapa dividenden.",
+      estimate: "Gör ett överslag i huvudet.",
+      bounds: "Välj garanterade gränser.",
+      interval: "Placera resultatet.",
+      magnitude: "Bestäm storleksordningen.",
+      compare: "Jämför det exakta resultatet med överslaget.",
+      ruleOut: "Kan kontrollen utesluta kandidaten?"
+    },
+    choices: {
+      yes: "Ja",
+      no: "Nej",
+      less: "Mindre än",
+      equal: "Lika med",
+      greater: "Större än",
+      estimate: "överslag",
+      positive: "positiv",
+      negative: "negativ"
+    },
+    checks: {
+      sign: "teckenkontroll",
+      bound: "gränskontroll",
+      magnitude: "storlekskontroll"
     },
     feedback: {
       correct: "Rätt",
@@ -358,6 +450,14 @@ export default {
       expected: "Förväntat",
       time: "Tid",
       integerOnly: "Skriv ett exakt heltal utan enhet eller uttryck.",
+      pairOnly: "Skriv både kvot och rest som heltal.",
+      chooseOne: "Välj ett svar.",
+      accepted: "Godkända",
+      step: "steg",
+      exact: "Exakt",
+      quotientRemainder: "Använd dividend = divisor × kvot + rest, där 0 ≤ rest < divisor.",
+      estimateUnit: "Använd den angivna avrundningsenheten och håll överslaget inom det godkända intervallet.",
+      notRuledOut: "Inte utesluten betyder bara att kontrollen tillåter kandidaten; det bevisar inte att den är exakt.",
       lostCarry: "Resultatet saknar en tiotal-, hundratal- eller tusentalsövergång.",
       compensation: "Du avrundade rätt men återställde inte den lilla förändringen.",
       omittedAddend: "Summan saknar en term; markera varje term när du grupperar.",

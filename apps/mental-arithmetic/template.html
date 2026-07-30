@@ -55,9 +55,25 @@
             <div id="questionPrompt" class="prompt" aria-live="polite"></div>
 
             <form id="answerForm" class="answer-form">
-              <label for="answerInput">{{practice.answer}}</label>
-              <div class="answer-row">
+              <div id="integerAnswerControl" class="answer-control">
+                <label for="answerInput">{{practice.answer}}</label>
                 <input id="answerInput" type="text" autocomplete="off" spellcheck="false" inputmode="numeric">
+              </div>
+              <div id="pairAnswerControl" class="answer-pair hidden">
+                <div>
+                  <label for="quotientInput">{{practice.quotient}}</label>
+                  <input id="quotientInput" type="text" autocomplete="off" spellcheck="false" inputmode="numeric">
+                </div>
+                <div>
+                  <label for="remainderInput">{{practice.remainder}}</label>
+                  <input id="remainderInput" type="text" autocomplete="off" spellcheck="false" inputmode="numeric">
+                </div>
+              </div>
+              <fieldset id="choiceAnswerControl" class="choice-control hidden">
+                <legend>{{practice.chooseAnswer}}</legend>
+                <div id="choiceOptions" class="choice-options"></div>
+              </fieldset>
+              <div class="answer-row">
                 <button id="submitBtn" class="primary" type="submit">{{practice.check}} <span class="key-symbol">↵</span></button>
                 <button id="nextBtn" type="button">{{practice.next}}</button>
                 <button id="skipBtn" type="button">{{practice.skip}}</button>

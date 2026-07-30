@@ -34,6 +34,11 @@ export default {
       mastery: "0% mastery",
       masterySuffix: "mastery",
       answer: "Answer",
+      quotient: "Quotient",
+      remainder: "Remainder",
+      chooseAnswer: "Choose one answer",
+      reportingUnit: "Reporting unit",
+      acceptanceBand: "accepted band: ±10% or one unit",
       check: "Check",
       next: "Next",
       skip: "Skip",
@@ -70,7 +75,8 @@ export default {
       multiplication: { title: "Multiplication" },
       division: { title: "Division" },
       complements: { title: "Complements" },
-      percentages: { title: "Percentages" }
+      percentages: { title: "Percentages" },
+      estimation: { title: "Estimation & Bounds" }
     },
     settings: {
       title: "Settings",
@@ -95,7 +101,30 @@ export default {
       missingFactor: "Recover the missing factor.",
       complement: "Find the complement.",
       nextMultiple: "How much reaches the next strictly greater multiple?",
-      missingPercent: "Find the missing integer percentage."
+      missingPercent: "Find the missing integer percentage.",
+      quotientRemainder: "Give the quotient and remainder.",
+      reconstructDividend: "Reconstruct the dividend.",
+      estimate: "Estimate mentally.",
+      bounds: "Choose guaranteed bounds.",
+      interval: "Locate the result.",
+      magnitude: "Identify the order of magnitude.",
+      compare: "Compare the exact result with the estimate.",
+      ruleOut: "Can this check rule out the candidate?"
+    },
+    choices: {
+      yes: "Yes",
+      no: "No",
+      less: "Less than",
+      equal: "Equal to",
+      greater: "Greater than",
+      estimate: "estimate",
+      positive: "positive",
+      negative: "negative"
+    },
+    checks: {
+      sign: "sign check",
+      bound: "bound check",
+      magnitude: "magnitude check"
     },
     feedback: {
       correct: "Correct",
@@ -103,6 +132,14 @@ export default {
       expected: "Expected",
       time: "Time",
       integerOnly: "Enter one exact integer with no units or expression.",
+      pairOnly: "Enter both quotient and remainder as integers.",
+      chooseOne: "Choose one answer.",
+      accepted: "Accepted",
+      step: "step",
+      exact: "Exact",
+      quotientRemainder: "Use dividend = divisor × quotient + remainder, with 0 ≤ remainder < divisor.",
+      estimateUnit: "Use the requested reporting unit and keep the estimate within the accepted band.",
+      notRuledOut: "Not ruled out means only that this check permits the candidate; it does not prove the candidate exact.",
       lostCarry: "The result is short by a place-value bridge; keep the carried ten, hundred, or thousand.",
       compensation: "You rounded correctly but did not undo the small change.",
       omittedAddend: "Your total omits one addend; mark each member after grouping it.",

@@ -127,13 +127,27 @@
     }
   }
 
+  function normalizePair(value) {
+    var parts;
+    if (value && typeof value === "object") {
+      parts = [value.quotient, value.remainder];
+    } else {
+      parts = String(value === undefined ? "" : value).trim().split(/[\s,;|]+/);
+    }
+    if (parts.length !== 2) return null;
+    var quotient = normalizeInteger(parts[0]);
+    var remainder = normalizeInteger(parts[1]);
+    return quotient === null || remainder === null ? null : quotient + "," + remainder;
+  }
+
   var CATEGORIES = [
     { id: "addition", title: "Addition" },
     { id: "subtraction", title: "Subtraction" },
     { id: "multiplication", title: "Multiplication" },
     { id: "division", title: "Division" },
     { id: "complements", title: "Complements" },
-    { id: "percentages", title: "Percentages" }
+    { id: "percentages", title: "Percentages" },
+    { id: "estimation", title: "Estimation & Bounds" }
   ];
 
   var FAMILY_DATA = [
@@ -155,6 +169,9 @@
     ["divide_factorized", "division", "Factor Transformations", "Factorized division", [2, 3, 4, 5], "divide by factors", "Factor the divisor and divide in two or three exact steps.", "1,800 ÷ 45 = ÷5 then ÷9 = 40"],
     ["divide_scale_both", "division", "Scale Transformations", "Scale both terms", [2, 3, 4, 5], "scale dividend and divisor equally", "Multiply or divide both terms by the same factor to make a friendly divisor.", "375 ÷ 25 = 1,500 ÷ 100 = 15"],
     ["division_missing_term", "division", "Missing Terms", "Missing division term", [1, 2, 3, 4, 5], "inverse division", "Use dividend = divisor × quotient.", "? ÷ 8 = 7 gives 56; 56 ÷ ? = 7 gives 8"],
+    ["divide_quotient_remainder", "division", "Quotients and Remainders", "Quotient and remainder", [1, 2, 3, 4, 5], "complete groups and leftover", "Find the largest complete-group count, then check 0 ≤ remainder < divisor.", "157 = 12 × 13 + 1"],
+    ["division_reconstruct_dividend", "division", "Quotients and Remainders", "Reconstruct the dividend", [1, 2, 3, 4, 5], "multiply then add remainder", "Use dividend = divisor × quotient + remainder.", "25 × 16 + 7 = 407"],
+    ["division_qr_missing_term", "division", "Quotients and Remainders", "Missing quotient/remainder term", [2, 3, 4, 5], "invert quotient-remainder division", "Subtract the remainder before recovering a missing factor.", "2,419 = 75 × 32 + 19"],
     ["complement_to_landmark", "complements", "Stated Landmark", "Complement to a landmark", [1, 2, 3, 4, 5], "complement to stated target", "Count up to the target named in the equation.", "637 + ? = 1,000 gives 363"],
     ["complement_next_multiple", "complements", "Next Multiple", "Complement to next multiple", [1, 2, 3, 4, 5], "strict next multiple", "The next multiple is strictly greater; an exact multiple needs a full step.", "200 to the next multiple of 100 needs 100, not 0"],
     ["complement_two_stage", "complements", "Decomposed Paths", "Two-stage complement", [2, 3, 4, 5], "count up in stages", "Jump to an intermediate round value, then to the final target.", "684 → 700 is 16; 700 → 1,000 is 300; total 316"],
@@ -162,7 +179,13 @@
     ["percentage_composite", "percentages", "Composite Percentages", "Composite percentage", [2, 3, 4, 5], "add or subtract benchmark components", "Compute every component from the original base, then combine.", "15% of 240 = 10% + 5% = 24 + 12 = 36"],
     ["percentage_swap_or_scale", "percentages", "Scaling and Commutativity", "Swap or scale percentage", [3, 4, 5], "swap p% of b to b% of p", "p% of b equals b% of p; use the friendlier direction.", "18% of 50 = 50% of 18 = 9"],
     ["percentage_missing_base", "percentages", "Inverse Percentages", "Missing percentage base", [2, 3, 4, 5], "recover the whole", "Use the inverse of the same benchmark percentage.", "25% of ? = 45; the whole is 45 × 4 = 180"],
-    ["percentage_missing_percent", "percentages", "Inverse Percentages", "Missing percentage rate", [2, 3, 4, 5], "recover the integer rate", "Find the exact part-to-whole ratio and multiply by 100.", "45 is what percent of 180? 25"]
+    ["percentage_missing_percent", "percentages", "Inverse Percentages", "Missing percentage rate", [2, 3, 4, 5], "recover the integer rate", "Find the exact part-to-whole ratio and multiply by 100.", "45 is what percent of 180? 25"],
+    ["estimate_rounded_operation", "estimation", "Rounded Operation Estimates", "Rounded operation estimate", [1, 2, 3, 4, 5], "replace with friendly nearby values", "Use the shown rounded operands and reporting unit. Answers within ±10% of exact, widened only to one reporting unit, are accepted.", "49 × 198 ≈ 50 × 200 = 10,000"],
+    ["estimate_select_bounds", "estimation", "Constructed Bounds", "Choose guaranteed bounds", [1, 2, 3, 4, 5], "directed operand bounds", "Pair lower and upper operand bounds in the direction required by the operation.", "2,000 − 1,000 ≤ 2,041 − 987 ≤ 2,100 − 900"],
+    ["estimate_locate_interval", "estimation", "Intervals and Magnitude", "Locate a plausible interval", [1, 2, 3, 4, 5], "locate between landmarks", "Use a quick rounded comparison to place the result in one interval.", "1,980 ÷ 49 is between 40 and 49"],
+    ["estimate_order_magnitude", "estimation", "Intervals and Magnitude", "Order of magnitude", [1, 2, 3, 4, 5], "decimal magnitude band", "Find the unique band 10^k ≤ |result| < 10^(k+1).", "49 × 198 lies in [1,000, 10,000)"],
+    ["estimate_compare_exact", "estimation", "Estimate Checks", "Compare estimate and exact result", [1, 2, 3, 4, 5], "signed rounding correction", "Track whether the rounding corrections make the exact result lower, equal, or higher.", "398 + 205 is 3 greater than the estimate 600"],
+    ["estimate_rule_out_impossible", "estimation", "Estimate Checks", "Rule out an impossible answer", [1, 2, 3, 4, 5], "sign, magnitude, or bound check", "A failed check proves an answer impossible; passing the check does not prove it exact.", "A negative difference cannot equal positive 180"]
   ];
 
   var FAMILIES = FAMILY_DATA.map(function (entry) {
@@ -195,12 +218,21 @@
     divide_factorized: ["divide_exact_quotient"],
     divide_scale_both: ["divide_exact_quotient"],
     division_missing_term: ["divide_exact_quotient"],
+    divide_quotient_remainder: ["divide_exact_quotient"],
+    division_reconstruct_dividend: ["divide_quotient_remainder"],
+    division_qr_missing_term: ["division_reconstruct_dividend"],
     complement_two_stage: ["complement_to_landmark"],
     percentage_benchmark: ["divide_exact_quotient"],
     percentage_composite: ["percentage_benchmark"],
     percentage_swap_or_scale: ["percentage_benchmark"],
     percentage_missing_base: ["percentage_benchmark"],
-    percentage_missing_percent: ["percentage_benchmark"]
+    percentage_missing_percent: ["percentage_benchmark"],
+    estimate_rounded_operation: ["add_place_values", "subtract_place_values"],
+    estimate_select_bounds: ["estimate_rounded_operation"],
+    estimate_locate_interval: ["estimate_rounded_operation"],
+    estimate_order_magnitude: ["estimate_rounded_operation"],
+    estimate_compare_exact: ["estimate_rounded_operation"],
+    estimate_rule_out_impossible: ["estimate_select_bounds"]
   };
 
   var GENERATORS = {};
@@ -236,9 +268,14 @@
 
   localizeStaticData();
 
-  function makeQuestion(familyId, level, strategy, parameters, title, expression, note, answer, workedSteps, signatureParts, misconceptions, cost) {
+  function makeQuestion(familyId, level, strategy, parameters, title, expression, note, answer, workedSteps, signatureParts, misconceptions, cost, response) {
     var family = familyById(familyId);
-    var canonical = BigInt(answer);
+    var responseConfig = response || {};
+    var responseMode = responseConfig.mode || "integer";
+    var canonical = responseMode === "integer" ? BigInt(answer).toString() : String(answer);
+    var magnitudeValue = responseConfig.magnitude === undefined
+      ? (responseMode === "integer" ? canonical : 0)
+      : responseConfig.magnitude;
     var mentalCost = Object.assign({ recalledFacts: 0, decompositions: 0, boundaryJumps: 0, intermediateTotals: workedSteps.length }, cost || {});
     var question = {
       categoryId: family.categoryId,
@@ -247,17 +284,24 @@
       level: level,
       strategy: strategy,
       difficultyDimensions: [
-        "magnitude-" + digitBand(canonical),
+        "magnitude-" + digitBand(magnitudeValue),
         level <= 2 ? "explicit-cue" : level >= 4 ? "cue-removed" : "mixed-cue"
-      ],
+      ].concat((signatureParts || []).slice(0, 3)),
       misconceptionsTargeted: misconceptions || [],
       parameters: parameters,
-      canonicalAnswer: canonical.toString(),
+      canonicalAnswer: canonical,
+      acceptedAnswerRule: responseConfig.acceptedAnswerRule || "exact",
+      responseMode: responseMode,
+      response: {
+        choices: responseConfig.choices || [],
+        acceptedAnswers: responseConfig.acceptedAnswers || [],
+        expectedDisplay: responseConfig.expectedDisplay || (responseMode === "integer" ? formatInteger(canonical) : String(answer))
+      },
       workedSteps: workedSteps,
       mentalCost: mentalCost,
-      structuralSignature: [familyId, strategy, digitBand(canonical)].concat(signatureParts || []).join("|"),
+      structuralSignature: [familyId, strategy, digitBand(magnitudeValue)].concat(signatureParts || []).join("|"),
       prompt: { title: title, expression: expression, note: note },
-      expected: canonical.toString()
+      expected: canonical
     };
     validateQuestion(question);
     return question;
@@ -295,6 +339,53 @@
 
   function pow10(exponent) {
     return Math.pow(10, exponent);
+  }
+
+  function floorToUnit(value, unit) {
+    return Math.floor(value / unit) * unit;
+  }
+
+  function ceilToUnit(value, unit) {
+    return Math.ceil(value / unit) * unit;
+  }
+
+  function roundRationalToUnit(numerator, denominator, unit) {
+    var sign = numerator < 0 ? -1 : 1;
+    var absolute = Math.abs(numerator);
+    var scaledDenominator = denominator * unit;
+    var lower = Math.floor(absolute / scaledDenominator);
+    var remainder = absolute - lower * scaledDenominator;
+    var rounded = remainder * 2 >= scaledDenominator ? lower + 1 : lower;
+    return sign * rounded * unit;
+  }
+
+  function rationalCompare(leftNumerator, leftDenominator, rightNumerator, rightDenominator) {
+    var difference = leftNumerator * rightDenominator - rightNumerator * leftDenominator;
+    return difference < 0 ? -1 : difference > 0 ? 1 : 0;
+  }
+
+  function operationSymbol(operation) {
+    return operation === "add" ? "+" : operation === "subtract" ? "−" : operation === "multiply" ? "×" : "÷";
+  }
+
+  function operationRational(operation, a, b) {
+    if (operation === "add") return { numerator: a + b, denominator: 1 };
+    if (operation === "subtract") return { numerator: a - b, denominator: 1 };
+    if (operation === "multiply") return { numerator: a * b, denominator: 1 };
+    return { numerator: a, denominator: b };
+  }
+
+  function formatRational(numerator, denominator) {
+    if (denominator === 1 || numerator % denominator === 0) return formatInteger(numerator / denominator);
+    return formatInteger(numerator) + "/" + formatInteger(denominator);
+  }
+
+  function formatInterval(lower, upper, halfOpen) {
+    return "[" + formatInteger(lower) + ", " + formatInteger(upper) + (halfOpen ? ")" : "]");
+  }
+
+  function makeChoice(value, label) {
+    return { value: String(value), label: String(label) };
   }
 
   function roundTargets(level) {
@@ -577,6 +668,109 @@
     return makeQuestion("division_missing_term", level, "inverse division", { dividend: dividend, divisor: divisor, quotient: quotient, missing: missing }, t("question.missing", "Find the missing integer."), expression, "Use dividend = divisor × quotient.", answer, [formatInteger(divisor) + " × " + formatInteger(quotient) + " = " + formatInteger(dividend)], ["missing-" + missing, "factor-" + digitBand(divisor)], ["factor-role-confusion"], { recalledFacts: 1 });
   };
 
+  GENERATORS.divide_quotient_remainder = function (level, rng) {
+    var divisorSets = {
+      1: [2, 3, 4, 5, 6, 7, 8, 9],
+      2: [4, 5, 6, 7, 8, 9, 10, 11, 12],
+      3: [12, 15, 20, 25, 50],
+      4: [12, 16, 18, 20, 24, 25, 40, 50],
+      5: [25, 35, 40, 50, 75, 100]
+    };
+    var divisor = rng.pick(divisorSets[level]);
+    var quotient = level === 1 && rng.chance(0.08) ? 0 : rng.int(1, level <= 2 ? 20 : level === 3 ? 60 : level === 4 ? 250 : 500);
+    var remainder = rng.chance(0.25) ? 0 : rng.int(1, divisor - 1);
+    if (quotient === 0 && remainder === 0) remainder = rng.int(1, divisor - 1);
+    var dividend = divisor * quotient + remainder;
+    var canonical = quotient + "," + remainder;
+    var expectedDisplay = t("practice.quotient", "Quotient") + " " + formatInteger(quotient) + ", " + t("practice.remainder", "Remainder").toLowerCase() + " " + formatInteger(remainder);
+    return makeQuestion(
+      "divide_quotient_remainder",
+      level,
+      "complete groups and leftover",
+      { dividend: dividend, divisor: divisor, quotient: quotient, remainder: remainder },
+      t("question.quotientRemainder", "Give the quotient and remainder."),
+      formatInteger(dividend) + " ÷ " + formatInteger(divisor),
+      "0 ≤ r < d",
+      canonical,
+      [
+        formatInteger(dividend) + " = " + formatInteger(divisor) + " × " + formatInteger(quotient) + " + " + formatInteger(remainder),
+        "0 ≤ " + formatInteger(remainder) + " < " + formatInteger(divisor)
+      ],
+      ["divisor-" + divisor, remainder === 0 ? "exact" : remainder < divisor / 3 ? "remainder-low" : remainder > divisor * 2 / 3 ? "remainder-high" : "remainder-middle"],
+      ["swapped-quotient-remainder", "remainder-not-canonical"],
+      { recalledFacts: 1, intermediateTotals: 2 },
+      { mode: "pair", magnitude: quotient, expectedDisplay: expectedDisplay }
+    );
+  };
+
+  GENERATORS.division_reconstruct_dividend = function (level, rng) {
+    var divisors = level <= 2 ? [3, 4, 5, 6, 7, 8, 9, 10, 12] : level === 3 ? [12, 15, 20, 25, 50] : level === 4 ? [16, 18, 20, 24, 25, 35, 50] : [25, 35, 40, 50, 75, 100];
+    var divisor = rng.pick(divisors);
+    var quotient = rng.int(2, level <= 2 ? 12 : level === 3 ? 40 : level === 4 ? 120 : 300);
+    var remainder = rng.chance(0.15) ? 0 : rng.int(1, divisor - 1);
+    var dividend = divisor * quotient + remainder;
+    return makeQuestion(
+      "division_reconstruct_dividend",
+      level,
+      "multiply then add remainder",
+      { dividend: dividend, divisor: divisor, quotient: quotient, remainder: remainder },
+      t("question.reconstructDividend", "Reconstruct the dividend."),
+      formatInteger(divisor) + " × " + formatInteger(quotient) + " + " + formatInteger(remainder),
+      t("practice.quotient", "Quotient") + " " + formatInteger(quotient) + "; " + t("practice.remainder", "Remainder").toLowerCase() + " " + formatInteger(remainder),
+      dividend,
+      [
+        formatInteger(divisor) + " × " + formatInteger(quotient) + " = " + formatInteger(divisor * quotient),
+        formatInteger(divisor * quotient) + " + " + formatInteger(remainder) + " = " + formatInteger(dividend)
+      ],
+      ["divisor-" + divisor, remainder === 0 ? "exact" : "nonzero-remainder"],
+      ["omitted-remainder", "multiplied-quotient-plus-remainder"],
+      { recalledFacts: 1, intermediateTotals: 2 }
+    );
+  };
+
+  GENERATORS.division_qr_missing_term = function (level, rng) {
+    var divisor = rng.pick(level <= 2 ? [3, 4, 5, 6, 7, 8, 9, 10, 12] : level === 3 ? [12, 15, 20, 25, 50] : [16, 20, 24, 25, 35, 40, 50, 75]);
+    var quotient = rng.int(2, level <= 2 ? 12 : level === 3 ? 40 : level === 4 ? 100 : 250);
+    var remainder = rng.int(0, divisor - 1);
+    var dividend = divisor * quotient + remainder;
+    var positions = level === 2 ? ["dividend", "remainder"] : level === 3 ? ["quotient", "remainder"] : ["dividend", "divisor", "quotient", "remainder"];
+    var missing = rng.pick(positions);
+    var expression;
+    var answer;
+    var step;
+    if (missing === "dividend") {
+      expression = "? = " + formatInteger(divisor) + " × " + formatInteger(quotient) + " + " + formatInteger(remainder);
+      answer = dividend;
+      step = formatInteger(divisor) + " × " + formatInteger(quotient) + " + " + formatInteger(remainder) + " = " + formatInteger(dividend);
+    } else if (missing === "divisor") {
+      expression = formatInteger(dividend) + " = ? × " + formatInteger(quotient) + " + " + formatInteger(remainder);
+      answer = divisor;
+      step = "(" + formatInteger(dividend) + " − " + formatInteger(remainder) + ") ÷ " + formatInteger(quotient) + " = " + formatInteger(divisor);
+    } else if (missing === "quotient") {
+      expression = formatInteger(dividend) + " = " + formatInteger(divisor) + " × ? + " + formatInteger(remainder);
+      answer = quotient;
+      step = "(" + formatInteger(dividend) + " − " + formatInteger(remainder) + ") ÷ " + formatInteger(divisor) + " = " + formatInteger(quotient);
+    } else {
+      expression = formatInteger(dividend) + " = " + formatInteger(divisor) + " × " + formatInteger(quotient) + " + ?";
+      answer = remainder;
+      step = formatInteger(dividend) + " − " + formatInteger(divisor * quotient) + " = " + formatInteger(remainder);
+    }
+    return makeQuestion(
+      "division_qr_missing_term",
+      level,
+      "invert quotient-remainder division",
+      { dividend: dividend, divisor: divisor, quotient: quotient, remainder: remainder, missing: missing },
+      t("question.missing", "Find the missing integer."),
+      expression,
+      "0 ≤ r < d",
+      answer,
+      [step],
+      ["missing-" + missing, "divisor-" + divisor],
+      ["remainder-not-removed", "remainder-bound-ignored"],
+      { recalledFacts: 1, intermediateTotals: 1 }
+    );
+  };
+
   GENERATORS.complement_to_landmark = function (level, rng) {
     var target = rng.pick(roundTargets(level));
     var complement = rng.int(1, Math.max(2, Math.floor(target * 0.8)));
@@ -694,28 +888,407 @@
     return makeQuestion("percentage_missing_percent", level, "recover percentage rate", { percent: percent, base: base, part: part }, t("question.missingPercent", "Find the missing integer percentage."), formatInteger(part) + " is what integer percent of " + formatInteger(base) + "?", "Enter the integer only; omit the % sign.", percent, [formatInteger(part) + " × 100 ÷ " + formatInteger(base) + " = " + percent], ["percent-" + percent, "scale-" + gcd(part, base)], ["difference-instead-of-rate"], { recalledFacts: 1 });
   };
 
+  function estimateCandidateAccepted(candidate, numerator, denominator, unit) {
+    var sameSign = numerator === 0 ? candidate === 0 : numerator > 0 ? candidate > 0 : candidate < 0;
+    var distanceTimesTen = 10 * Math.abs(candidate * denominator - numerator);
+    var toleranceTimesTen = Math.max(10 * unit * denominator, Math.abs(numerator));
+    return sameSign && candidate % unit === 0 && distanceTimesTen <= toleranceTimesTen;
+  }
+
+  function estimateAcceptedAnswers(numerator, denominator, unit) {
+    var center = roundRationalToUnit(numerator, denominator, unit);
+    var radius = Math.floor(Math.abs(numerator) / (10 * denominator * unit)) + 4;
+    var accepted = [];
+    for (var offset = -radius; offset <= radius; offset += 1) {
+      var candidate = center + offset * unit;
+      if (estimateCandidateAccepted(candidate, numerator, denominator, unit)) accepted.push(String(candidate));
+    }
+    return accepted;
+  }
+
+  function generateEstimateCore(level, rng, allowedOperations) {
+    var operations = allowedOperations || (level === 1 ? ["add", "subtract"] : level === 2 ? ["add", "subtract", "multiply"] : ["add", "subtract", "multiply", "divide"]);
+    for (var attempt = 0; attempt < 80; attempt += 1) {
+      var operation = rng.pick(operations);
+      var a;
+      var b;
+      var roundedA;
+      var roundedB;
+      var reportingUnit;
+      if (operation === "add" || operation === "subtract") {
+        var roundUnit = level <= 2 ? 10 : 100;
+        roundedA = roundUnit * rng.int(operation === "subtract" ? 12 : 5, level <= 2 ? 60 : 90);
+        roundedB = roundUnit * rng.int(3, operation === "subtract" ? Math.max(4, Math.floor(roundedA / roundUnit) - 6) : level <= 2 ? 50 : 70);
+        a = roundedA + rng.int(-Math.floor(roundUnit * 0.35), Math.floor(roundUnit * 0.35));
+        b = roundedB + rng.int(-Math.floor(roundUnit * 0.35), Math.floor(roundUnit * 0.35));
+        reportingUnit = roundUnit;
+        if (operation === "subtract" && level >= 5 && rng.chance(0.3)) {
+          var swap = a; a = b; b = swap;
+          swap = roundedA; roundedA = roundedB; roundedB = swap;
+        }
+      } else if (operation === "multiply") {
+        roundedA = rng.pick([20, 30, 40, 50, 60, 80, 100]);
+        roundedB = rng.pick(level <= 2 ? [40, 50, 80, 100] : [50, 100, 200, 250, 500]);
+        a = roundedA + rng.int(-3, 3);
+        b = roundedB + rng.int(-Math.min(12, Math.floor(roundedB / 10)), Math.min(12, Math.floor(roundedB / 10)));
+        reportingUnit = roundedA * roundedB >= 5000 ? 1000 : 100;
+      } else {
+        roundedB = rng.pick([10, 20, 25, 40, 50]);
+        var target = rng.int(10, level <= 3 ? 50 : 90);
+        roundedA = roundedB * target;
+        a = roundedA + rng.int(-Math.max(2, Math.floor(roundedB / 2)), Math.max(2, Math.floor(roundedB / 2)));
+        b = roundedB + rng.int(-Math.max(1, Math.floor(roundedB / 10)), Math.max(1, Math.floor(roundedB / 10)));
+        reportingUnit = 1;
+      }
+      if (a <= 0 || b <= 0 || (operation === "divide" && roundedB <= 0)) continue;
+      var exact = operationRational(operation, a, b);
+      if (exact.numerator === 0 || Math.abs(exact.numerator) < 5 * reportingUnit * exact.denominator) continue;
+      var rounded = operationRational(operation, roundedA, roundedB);
+      var estimate = roundRationalToUnit(rounded.numerator, rounded.denominator, reportingUnit);
+      var accepted = estimateAcceptedAnswers(exact.numerator, exact.denominator, reportingUnit);
+      if (!accepted.includes(String(estimate)) || !accepted.length) continue;
+      return {
+        operation: operation,
+        a: a,
+        b: b,
+        roundedA: roundedA,
+        roundedB: roundedB,
+        reportingUnit: reportingUnit,
+        exactNumerator: exact.numerator,
+        exactDenominator: exact.denominator,
+        estimate: estimate,
+        acceptedAnswers: accepted,
+        acceptedMinimumMultiple: Number(accepted[0]),
+        acceptedMaximumMultiple: Number(accepted[accepted.length - 1])
+      };
+    }
+    throw new Error("Could not construct bounded estimate");
+  }
+
+  function estimateExpression(core, includeRounded) {
+    var original = formatInteger(core.a) + " " + operationSymbol(core.operation) + " " + formatInteger(core.b);
+    if (!includeRounded) return original;
+    return original + " ≈ " + formatInteger(core.roundedA) + " " + operationSymbol(core.operation) + " " + formatInteger(core.roundedB);
+  }
+
+  GENERATORS.estimate_rounded_operation = function (level, rng) {
+    var core = generateEstimateCore(level, rng);
+    var exactText = formatRational(core.exactNumerator, core.exactDenominator);
+    var acceptedText = core.acceptedAnswers.length <= 5
+      ? core.acceptedAnswers.map(formatInteger).join(", ")
+      : formatInteger(core.acceptedAnswers[0]) + "–" + formatInteger(core.acceptedAnswers[core.acceptedAnswers.length - 1]) + "; " + t("feedback.step", "step") + " " + formatInteger(core.reportingUnit);
+    return makeQuestion(
+      "estimate_rounded_operation",
+      level,
+      "replace with friendly nearby values",
+      core,
+      t("question.estimate", "Estimate mentally."),
+      estimateExpression(core, true),
+      t("practice.reportingUnit", "Reporting unit") + ": " + formatInteger(core.reportingUnit) + "; " + t("practice.acceptanceBand", "accepted band: ±10% or one unit"),
+      core.estimate,
+      [
+        formatInteger(core.roundedA) + " " + operationSymbol(core.operation) + " " + formatInteger(core.roundedB) + " = " + formatInteger(core.estimate),
+        t("feedback.exact", "Exact") + " " + exactText + "; " + t("feedback.accepted", "Accepted") + " " + acceptedText
+      ],
+      ["operation-" + core.operation, "unit-" + core.reportingUnit, "rounding-mixed"],
+      ["wrong-reporting-unit", "wrong-sign", "magnitude-error"],
+      { decompositions: 1, intermediateTotals: 2 },
+      { acceptedAnswerRule: "explicit-estimate-set", acceptedAnswers: core.acceptedAnswers, magnitude: core.exactNumerator / core.exactDenominator, expectedDisplay: formatInteger(core.estimate) }
+    );
+  };
+
+  function boundData(level, rng) {
+    var core = generateEstimateCore(level, rng);
+    var unitA = core.operation === "multiply" ? 10 : core.operation === "divide" ? 50 : level <= 2 ? 10 : 100;
+    var unitB = core.operation === "multiply" ? (core.b >= 100 ? 50 : 10) : core.operation === "divide" ? 5 : level <= 2 ? 10 : 100;
+    var aLow = floorToUnit(core.a, unitA);
+    var aHigh = ceilToUnit(core.a, unitA);
+    var bLow = floorToUnit(core.b, unitB);
+    var bHigh = ceilToUnit(core.b, unitB);
+    if (aLow === aHigh) aHigh += unitA;
+    if (bLow === bHigh) bHigh += unitB;
+    if (core.operation === "divide" && bLow <= 0) bLow = unitB;
+    var lower;
+    var upper;
+    if (core.operation === "add") {
+      lower = aLow + bLow; upper = aHigh + bHigh;
+    } else if (core.operation === "subtract") {
+      lower = aLow - bHigh; upper = aHigh - bLow;
+    } else if (core.operation === "multiply") {
+      lower = aLow * bLow; upper = aHigh * bHigh;
+    } else {
+      lower = Math.floor(aLow / bHigh); upper = Math.ceil(aHigh / bLow);
+    }
+    return Object.assign(core, { aLow: aLow, aHigh: aHigh, bLow: bLow, bHigh: bHigh, lower: lower, upper: upper });
+  }
+
+  GENERATORS.estimate_select_bounds = function (level, rng) {
+    var data = boundData(level, rng);
+    var span = Math.max(1, data.upper - data.lower + 1);
+    var correctLabel = formatInterval(data.lower, data.upper, false);
+    var choices = rng.shuffle([
+      makeChoice("correct", correctLabel),
+      makeChoice("below", formatInterval(data.lower - span, data.upper - span, false)),
+      makeChoice("above", formatInterval(data.lower + span, data.upper + span, false))
+    ]);
+    var boundNote = formatInterval(data.aLow, data.aHigh, false) + "; " + formatInterval(data.bLow, data.bHigh, false);
+    return makeQuestion(
+      "estimate_select_bounds",
+      level,
+      "directed operand bounds",
+      Object.assign(data, { correctChoice: "correct" }),
+      t("question.bounds", "Choose guaranteed bounds."),
+      estimateExpression(data, false),
+      boundNote,
+      "correct",
+      [
+        formatInteger(data.lower) + " ≤ " + estimateExpression(data, false) + " ≤ " + formatInteger(data.upper),
+        correctLabel
+      ],
+      ["operation-" + data.operation, "bound-width-" + digitBand(span)],
+      ["same-direction-subtraction-bound", "denominator-direction"],
+      { decompositions: 1, intermediateTotals: 2 },
+      { mode: "choice", choices: choices, magnitude: data.exactNumerator / data.exactDenominator, expectedDisplay: correctLabel }
+    );
+  };
+
+  GENERATORS.estimate_locate_interval = function (level, rng) {
+    var core = generateEstimateCore(level, rng, level >= 3 ? ["add", "subtract", "multiply", "divide"] : level === 2 ? ["add", "subtract", "multiply"] : ["add", "subtract"]);
+    var exactValue = core.exactNumerator / core.exactDenominator;
+    var scale = pow10(Math.max(0, String(Math.max(1, Math.floor(Math.abs(exactValue)))).length - 1));
+    var lower = Math.floor(exactValue / scale) * scale;
+    var upper = lower + scale;
+    if (core.estimate < lower || core.estimate > upper) return GENERATORS.estimate_locate_interval(level, rng);
+    var previous = formatInterval(lower - scale, lower - 1, false);
+    var correct = formatInterval(lower, upper, false);
+    var next = formatInterval(upper + 1, upper + scale, false);
+    var choices = rng.shuffle([makeChoice("previous", previous), makeChoice("correct", correct), makeChoice("next", next)]);
+    return makeQuestion(
+      "estimate_locate_interval",
+      level,
+      "locate between landmarks",
+      Object.assign(core, { lower: lower, upper: upper, correctChoice: "correct" }),
+      t("question.interval", "Locate the result."),
+      estimateExpression(core, false),
+      t("question.estimate", "Estimate mentally."),
+      "correct",
+      [
+        estimateExpression(core, true) + " = " + formatInteger(core.estimate),
+        formatInteger(lower) + " ≤ " + estimateExpression(core, false) + " ≤ " + formatInteger(upper)
+      ],
+      ["operation-" + core.operation, "interval-scale-" + scale],
+      ["place-value-error", "wrong-sign"],
+      { decompositions: 1, intermediateTotals: 2 },
+      { mode: "choice", choices: choices, magnitude: exactValue, expectedDisplay: correct }
+    );
+  };
+
+  function magnitudeExponent(numerator, denominator) {
+    var absolute = Math.abs(numerator);
+    var exponent = 0;
+    while (absolute >= denominator * pow10(exponent + 1)) exponent += 1;
+    return exponent;
+  }
+
+  function magnitudeChoiceLabel(sign, exponent) {
+    return (sign < 0 ? t("choices.negative", "negative") + "; " : "") + formatInterval(pow10(exponent), pow10(exponent + 1), true);
+  }
+
+  GENERATORS.estimate_order_magnitude = function (level, rng) {
+    var core = generateEstimateCore(level, rng);
+    var exponent = magnitudeExponent(core.exactNumerator, core.exactDenominator);
+    var sign = core.exactNumerator < 0 ? -1 : 1;
+    var correctValue = "band-" + sign + "-" + exponent;
+    var choices = [-1, 0, 1].map(function (offset) {
+      var choiceExponent = Math.max(0, exponent + offset);
+      return makeChoice("band-" + sign + "-" + choiceExponent, magnitudeChoiceLabel(sign, choiceExponent));
+    }).filter(function (choice, index, all) {
+      return all.findIndex(function (other) { return other.value === choice.value; }) === index;
+    });
+    if (choices.length < 3) choices.push(makeChoice("band-" + sign + "-" + (exponent + 2), magnitudeChoiceLabel(sign, exponent + 2)));
+    choices = rng.shuffle(choices);
+    return makeQuestion(
+      "estimate_order_magnitude",
+      level,
+      "decimal magnitude band",
+      Object.assign(core, { exponent: exponent, sign: sign, correctChoice: correctValue }),
+      t("question.magnitude", "Identify the order of magnitude."),
+      estimateExpression(core, false),
+      "10^k ≤ |" + t("practice.answer", "answer").toLowerCase() + "| < 10^(k+1)",
+      correctValue,
+      [
+        estimateExpression(core, true) + " = " + formatInteger(core.estimate),
+        magnitudeChoiceLabel(sign, exponent)
+      ],
+      ["operation-" + core.operation, "exponent-" + exponent, sign < 0 ? "negative" : "positive"],
+      ["factor-of-ten-error", "wrong-sign"],
+      { decompositions: 1, intermediateTotals: 2 },
+      { mode: "choice", choices: choices, magnitude: core.exactNumerator / core.exactDenominator, expectedDisplay: magnitudeChoiceLabel(sign, exponent) }
+    );
+  };
+
+  GENERATORS.estimate_compare_exact = function (level, rng) {
+    var core = generateEstimateCore(level, rng);
+    var comparison = rationalCompare(core.exactNumerator, core.exactDenominator, core.estimate, 1);
+    var answer = comparison < 0 ? "less" : comparison > 0 ? "greater" : "equal";
+    var labels = {
+      less: t("choices.less", "Less than"),
+      equal: t("choices.equal", "Equal to"),
+      greater: t("choices.greater", "Greater than")
+    };
+    return makeQuestion(
+      "estimate_compare_exact",
+      level,
+      "signed rounding correction",
+      Object.assign(core, { relation: answer, correctChoice: answer }),
+      t("question.compare", "Compare the exact result with the estimate."),
+      estimateExpression(core, false) + " ? " + formatInteger(core.estimate),
+      t("feedback.exact", "Exact") + " ? " + t("choices.estimate", "estimate"),
+      answer,
+      [
+        estimateExpression(core, false) + " = " + formatRational(core.exactNumerator, core.exactDenominator),
+        formatRational(core.exactNumerator, core.exactDenominator) + " " + (comparison < 0 ? "<" : comparison > 0 ? ">" : "=") + " " + formatInteger(core.estimate)
+      ],
+      ["operation-" + core.operation, "relation-" + answer],
+      ["rounding-direction-error"],
+      { decompositions: 1, intermediateTotals: 2 },
+      {
+        mode: "choice",
+        choices: rng.shuffle([makeChoice("less", labels.less), makeChoice("equal", labels.equal), makeChoice("greater", labels.greater)]),
+        magnitude: core.exactNumerator / core.exactDenominator,
+        expectedDisplay: labels[answer]
+      }
+    );
+  };
+
+  GENERATORS.estimate_rule_out_impossible = function (level, rng) {
+    var core = generateEstimateCore(level, rng);
+    var exactValue = core.exactNumerator / core.exactDenominator;
+    var checkType = level === 1 ? "sign" : level === 2 ? "bound" : rng.pick(["sign", "bound", "magnitude"]);
+    if (checkType === "sign" && exactValue > 0 && core.operation !== "subtract") checkType = level >= 3 ? "magnitude" : "bound";
+    var ruledOut = rng.chance(0.5);
+    var candidate;
+    var note;
+    var checkLower = null;
+    var checkUpper = null;
+    var checkExponent = null;
+    var requiredSign = null;
+    if (checkType === "sign") {
+      requiredSign = exactValue < 0 ? -1 : 1;
+      candidate = (ruledOut ? -requiredSign : requiredSign) * Math.max(1, Math.abs(core.estimate));
+      note = t(requiredSign < 0 ? "choices.negative" : "choices.positive", requiredSign < 0 ? "negative" : "positive") + " " + t("practice.answer", "answer").toLowerCase();
+    } else if (checkType === "magnitude") {
+      var exponent = magnitudeExponent(core.exactNumerator, core.exactDenominator);
+      checkExponent = exponent;
+      var lowerMagnitude = pow10(exponent);
+      var upperMagnitude = pow10(exponent + 1);
+      candidate = ruledOut ? upperMagnitude * 2 : Math.max(lowerMagnitude, Math.min(upperMagnitude - 1, Math.abs(core.estimate)));
+      if (exactValue < 0) candidate *= -1;
+      note = magnitudeChoiceLabel(exactValue < 0 ? -1 : 1, exponent);
+    } else {
+      var acceptedNumbers = core.acceptedAnswers.map(Number);
+      var lower = Math.min.apply(null, acceptedNumbers);
+      var upper = Math.max.apply(null, acceptedNumbers);
+      checkLower = lower;
+      checkUpper = upper;
+      candidate = ruledOut ? upper + core.reportingUnit * 2 : core.estimate;
+      note = formatInterval(lower, upper, false);
+    }
+    var answer = ruledOut ? "yes" : "no";
+    var yesLabel = t("choices.yes", "Yes");
+    var noLabel = t("choices.no", "No");
+    return makeQuestion(
+      "estimate_rule_out_impossible",
+      level,
+      "sign, magnitude, or bound check",
+      Object.assign(core, { checkType: checkType, candidate: candidate, ruledOut: ruledOut, correctChoice: answer, checkLower: checkLower, checkUpper: checkUpper, checkExponent: checkExponent, requiredSign: requiredSign }),
+      t("question.ruleOut", "Can this check rule out the candidate?"),
+      estimateExpression(core, false) + " = " + formatInteger(candidate) + "?",
+      note,
+      answer,
+      [
+        t("checks." + checkType, checkType + " check") + ": " + note,
+        ruledOut ? yesLabel + " — " + formatInteger(candidate) + " ✕" : noLabel + " — " + formatInteger(candidate) + " ✓"
+      ],
+      ["check-" + checkType, ruledOut ? "ruled-out" : "not-ruled-out"],
+      ["not-ruled-out-means-exact", "wrong-sign", "magnitude-error"],
+      { recalledFacts: 1, intermediateTotals: 2 },
+      { mode: "choice", choices: rng.shuffle([makeChoice("yes", yesLabel), makeChoice("no", noLabel)]), magnitude: exactValue, expectedDisplay: ruledOut ? yesLabel : noLabel }
+    );
+  };
+
   function validateQuestion(question) {
-    ["categoryId", "subcategoryId", "familyId", "level", "strategy", "difficultyDimensions", "misconceptionsTargeted", "parameters", "canonicalAnswer", "workedSteps", "structuralSignature"].forEach(function (key) {
+    ["categoryId", "subcategoryId", "familyId", "level", "strategy", "difficultyDimensions", "misconceptionsTargeted", "parameters", "canonicalAnswer", "acceptedAnswerRule", "responseMode", "response", "workedSteps", "structuralSignature"].forEach(function (key) {
       if (question[key] === undefined || question[key] === null) throw new Error("Missing question metadata " + key);
     });
     if (!GENERATORS[question.familyId]) throw new Error("Missing generator " + question.familyId);
     if (!familyById(question.familyId).levels.includes(question.level)) throw new Error("Unsupported level");
     if (!question.prompt.expression || /\{[^}]+\}/.test(question.prompt.expression + question.prompt.title + question.prompt.note)) throw new Error("Invalid prompt");
-    var answer = BigInt(question.canonicalAnswer);
-    if (answer > ANSWER_LIMIT || answer < -ANSWER_LIMIT) throw new Error("Answer outside learner-facing ceiling");
     if (question.mentalCost.intermediateTotals > 4 || question.workedSteps.length > 4) throw new Error("Mental route too long");
-    var lastWorkedStep = String(question.workedSteps[question.workedSteps.length - 1]);
-    if (!lastWorkedStep.includes(question.canonicalAnswer) && !lastWorkedStep.includes(formatInteger(question.canonicalAnswer))) throw new Error("Worked route does not end at canonical answer");
-    if (normalizeInteger(question.canonicalAnswer) !== question.canonicalAnswer) throw new Error("Canonical parser failure");
-    if (BigInt(deriveExpected(question)) !== answer) throw new Error("Independent answer derivation failed");
-    if (question.familyId.indexOf("divide") >= 0 || question.familyId === "division_missing_term") {
-      var p = question.parameters;
+    if (!question.workedSteps.length) throw new Error("Missing worked route");
+    if (String(deriveExpected(question)) !== String(question.canonicalAnswer)) throw new Error("Independent answer derivation failed");
+    if (question.responseMode === "integer") {
+      var answer = BigInt(question.canonicalAnswer);
+      if (answer > ANSWER_LIMIT || answer < -ANSWER_LIMIT) throw new Error("Answer outside learner-facing ceiling");
+      if (normalizeInteger(question.canonicalAnswer) !== question.canonicalAnswer) throw new Error("Canonical parser failure");
+      var accepted = question.response.acceptedAnswers;
+      if (accepted.length) {
+        if (!accepted.includes(question.canonicalAnswer)) throw new Error("Canonical estimate is not accepted");
+        accepted.forEach(function (value) {
+          if (normalizeInteger(value) !== value) throw new Error("Invalid accepted estimate");
+        });
+      }
+    } else if (question.responseMode === "pair") {
+      if (normalizePair(question.canonicalAnswer) !== question.canonicalAnswer) throw new Error("Canonical pair parser failure");
+    } else if (question.responseMode === "choice") {
+      var values = question.response.choices.map(function (choice) { return choice.value; });
+      if (!values.includes(question.canonicalAnswer) || new Set(values).size !== values.length) throw new Error("Invalid choice set");
+    } else {
+      throw new Error("Unsupported response mode");
+    }
+    var p = question.parameters;
+    if (["divide_quotient_remainder", "division_reconstruct_dividend", "division_qr_missing_term"].includes(question.familyId)) {
+      if (p.divisor <= 0 || p.remainder < 0 || p.remainder >= p.divisor || p.dividend !== p.divisor * p.quotient + p.remainder) throw new Error("Invalid quotient-remainder relationship");
+    } else if (question.familyId.indexOf("divide") >= 0 || question.familyId === "division_missing_term") {
       if (p.dividend !== undefined && p.divisor !== undefined && p.quotient !== undefined && p.dividend !== p.divisor * p.quotient) throw new Error("Inexact division relationship");
     }
     if (question.categoryId === "percentages") {
       var percent = question.parameters.percent;
       var base = question.parameters.base;
       if (percent !== undefined && base !== undefined && (percent * base) % 100 !== 0) throw new Error("Nonintegral percentage");
+    }
+    if (question.categoryId === "estimation") {
+      if (!Number.isInteger(p.exactNumerator) || !Number.isInteger(p.exactDenominator) || p.exactDenominator <= 0) throw new Error("Invalid exact rational");
+      if (question.familyId === "estimate_rounded_operation") {
+        question.response.acceptedAnswers.forEach(function (candidate) {
+          if (!estimateCandidateAccepted(Number(candidate), p.exactNumerator, p.exactDenominator, p.reportingUnit)) throw new Error("Invalid accepted estimate");
+        });
+        var acceptedNumbers = question.response.acceptedAnswers.map(Number);
+        var minimum = Math.min.apply(null, acceptedNumbers);
+        var maximum = Math.max.apply(null, acceptedNumbers);
+        if (estimateCandidateAccepted(minimum - p.reportingUnit, p.exactNumerator, p.exactDenominator, p.reportingUnit)) throw new Error("Missing lower accepted estimate");
+        if (estimateCandidateAccepted(maximum + p.reportingUnit, p.exactNumerator, p.exactDenominator, p.reportingUnit)) throw new Error("Missing upper accepted estimate");
+      }
+      if (question.familyId === "estimate_select_bounds" || question.familyId === "estimate_locate_interval") {
+        if (p.lower * p.exactDenominator > p.exactNumerator || p.upper * p.exactDenominator < p.exactNumerator) throw new Error("Exact result outside interval");
+      }
+      if (question.familyId === "estimate_order_magnitude") {
+        var absoluteNumerator = Math.abs(p.exactNumerator);
+        if (absoluteNumerator < p.exactDenominator * pow10(p.exponent) || absoluteNumerator >= p.exactDenominator * pow10(p.exponent + 1)) throw new Error("Invalid magnitude band");
+      }
+      if (question.familyId === "estimate_compare_exact") {
+        var expectedRelation = rationalCompare(p.exactNumerator, p.exactDenominator, p.estimate, 1);
+        var relation = expectedRelation < 0 ? "less" : expectedRelation > 0 ? "greater" : "equal";
+        if (relation !== p.correctChoice) throw new Error("Invalid estimate comparison");
+      }
+      if (question.familyId === "estimate_rule_out_impossible") {
+        var violates = p.checkType === "sign"
+          ? Math.sign(p.candidate) !== p.requiredSign
+          : p.checkType === "bound"
+            ? p.candidate < p.checkLower || p.candidate > p.checkUpper
+            : Math.abs(p.candidate) < pow10(p.checkExponent) || Math.abs(p.candidate) >= pow10(p.checkExponent + 1);
+        if (violates !== p.ruledOut) throw new Error("Invalid impossibility check");
+      }
     }
   }
 
@@ -736,12 +1309,17 @@
     if (question.familyId === "multiply_landmark") return p.a * p.multiplier;
     if (["divide_exact_quotient", "divide_factorized", "divide_scale_both"].includes(question.familyId)) return p.quotient;
     if (question.familyId === "division_missing_term") return p.missing === "dividend" ? p.dividend : p.divisor;
+    if (question.familyId === "divide_quotient_remainder") return p.quotient + "," + p.remainder;
+    if (question.familyId === "division_reconstruct_dividend") return p.divisor * p.quotient + p.remainder;
+    if (question.familyId === "division_qr_missing_term") return p[p.missing];
     if (question.familyId === "complement_to_landmark") return p.target - p.value;
     if (question.familyId === "complement_next_multiple") return p.next - p.value;
     if (question.familyId === "complement_two_stage") return p.target - p.value;
     if (["percentage_benchmark", "percentage_composite", "percentage_swap_or_scale"].includes(question.familyId)) return p.base * p.percent / 100;
     if (question.familyId === "percentage_missing_base") return p.base;
     if (question.familyId === "percentage_missing_percent") return p.percent;
+    if (question.familyId === "estimate_rounded_operation") return p.estimate;
+    if (["estimate_select_bounds", "estimate_locate_interval", "estimate_order_magnitude", "estimate_compare_exact", "estimate_rule_out_impossible"].includes(question.familyId)) return p.correctChoice;
     throw new Error("No independent derivation for " + question.familyId);
   }
 
@@ -766,12 +1344,34 @@
   }
 
   function checkQuestion(answer, question) {
-    var normalized = normalizeInteger(answer);
+    var normalized;
+    if (question.responseMode === "pair") normalized = normalizePair(answer);
+    else if (question.responseMode === "choice") normalized = answer === undefined || answer === null ? null : String(answer);
+    else normalized = normalizeInteger(answer);
+    var correct = normalized !== null && (question.response.acceptedAnswers.length
+      ? question.response.acceptedAnswers.includes(normalized)
+      : normalized === question.canonicalAnswer);
+    var diagnosis;
+    if (normalized === null) {
+      diagnosis = question.responseMode === "pair"
+        ? t("feedback.pairOnly", "Enter both quotient and remainder as integers.")
+        : question.responseMode === "choice"
+          ? t("feedback.chooseOne", "Choose one answer.")
+          : t("feedback.integerOnly", "Enter one exact integer with no units or expression.");
+    } else if (question.responseMode === "integer") {
+      diagnosis = diagnose(question, BigInt(normalized));
+    } else if (question.familyId === "divide_quotient_remainder") {
+      diagnosis = t("feedback.quotientRemainder", "Use dividend = divisor × quotient + remainder, with 0 ≤ remainder < divisor.");
+    } else if (question.familyId === "estimate_rule_out_impossible" && question.canonicalAnswer === "no") {
+      diagnosis = t("feedback.notRuledOut", "Not ruled out means only that this check permits the candidate; it does not prove the candidate exact.");
+    } else {
+      diagnosis = t("feedback.route", "Use the shown mental route and keep each intermediate exact.");
+    }
     return {
-      correct: normalized !== null && normalized === question.canonicalAnswer,
+      correct: correct,
       normalized: normalized,
-      expected: question.canonicalAnswer,
-      diagnosis: normalized === null ? t("feedback.integerOnly", "Enter one exact integer with no units or expression.") : diagnose(question, BigInt(normalized)),
+      expected: question.response.expectedDisplay,
+      diagnosis: diagnosis,
       worked: question.workedSteps.join(" → ")
     };
   }
@@ -779,6 +1379,8 @@
   function diagnose(question, answer) {
     var expected = BigInt(question.canonicalAnswer);
     var p = question.parameters;
+    if (question.familyId === "estimate_rounded_operation") return t("feedback.estimateUnit", "Use the requested reporting unit and keep the estimate within the accepted band.");
+    if (question.familyId === "division_reconstruct_dividend" && answer === BigInt(p.divisor * p.quotient)) return t("feedback.quotientRemainder", "Use dividend = divisor × quotient + remainder, with 0 ≤ remainder < divisor.");
     if (question.familyId.indexOf("add_") === 0 && [10n, 100n, 1000n].includes(expected - answer)) return t("feedback.lostCarry", "The result is short by a place-value bridge; keep the carried ten, hundred, or thousand.");
     if (question.familyId === "add_compensate_round" && answer === BigInt(p.a + p.round)) return t("feedback.compensation", "You rounded correctly but did not undo the small change.");
     if (question.familyId === "add_compatible_group" && p.addends.some(function (value) { return BigInt(p.addends.reduce(function (sum, item) { return sum + item; }, 0) - value) === answer; })) return t("feedback.omittedAddend", "Your total omits one addend; mark each member after grouping it.");
@@ -1037,8 +1639,31 @@
     elements.questionPrompt.appendChild(title);
     elements.questionPrompt.appendChild(expression);
     elements.questionPrompt.appendChild(note);
+    elements.integerAnswerControl.classList.toggle("hidden", currentQuestion.responseMode !== "integer");
+    elements.pairAnswerControl.classList.toggle("hidden", currentQuestion.responseMode !== "pair");
+    elements.choiceAnswerControl.classList.toggle("hidden", currentQuestion.responseMode !== "choice");
+    elements.answerKeypad.classList.toggle("hidden", currentQuestion.responseMode === "choice");
     elements.answerInput.value = "";
+    elements.quotientInput.value = "";
+    elements.remainderInput.value = "";
     elements.answerInput.disabled = false;
+    elements.quotientInput.disabled = false;
+    elements.remainderInput.disabled = false;
+    elements.choiceOptions.innerHTML = "";
+    currentQuestion.response.choices.forEach(function (choice, index) {
+      var label = document.createElement("label");
+      label.className = "choice-option";
+      var input = document.createElement("input");
+      input.type = "radio";
+      input.name = "answerChoice";
+      input.value = choice.value;
+      input.id = "answerChoice" + index;
+      var text = document.createElement("span");
+      text.textContent = choice.label;
+      label.appendChild(input);
+      label.appendChild(text);
+      elements.choiceOptions.appendChild(label);
+    });
     elements.submitBtn.disabled = false;
     elements.submitBtn.innerHTML = t("practice.check", "Check") + " <span class=\"key-symbol\">↵</span>";
     elements.nextBtn.classList.add("hidden");
@@ -1046,7 +1671,10 @@
     elements.feedback.className = "feedback hidden";
     elements.pauseBtn.disabled = false;
     document.querySelector("[data-keypad-action=\"submit\"]").textContent = t("practice.check", "Check");
-    if (window.matchMedia && window.matchMedia("(pointer: fine)").matches) elements.answerInput.focus();
+    if (window.matchMedia && window.matchMedia("(pointer: fine)").matches) {
+      if (currentQuestion.responseMode === "integer") elements.answerInput.focus();
+      if (currentQuestion.responseMode === "pair") elements.quotientInput.focus();
+    }
   }
 
   function showFeedback(result, duration) {
@@ -1062,7 +1690,7 @@
     }
     var route = document.createElement("div");
     route.className = "worked-route";
-    route.textContent = (result.correct ? "" : t("feedback.expected", "Expected") + " " + formatInteger(result.expected) + ". ") + result.worked;
+    route.textContent = (result.correct ? "" : t("feedback.expected", "Expected") + " " + result.expected + ". ") + result.worked;
     elements.feedback.appendChild(route);
     var timing = document.createElement("span");
     timing.className = "feedback-time";
@@ -1077,11 +1705,23 @@
       startQuestion();
       return;
     }
-    var result = checkQuestion(elements.answerInput.value, currentQuestion);
+    var submittedAnswer;
+    if (currentQuestion.responseMode === "pair") {
+      submittedAnswer = { quotient: elements.quotientInput.value, remainder: elements.remainderInput.value };
+    } else if (currentQuestion.responseMode === "choice") {
+      var selected = elements.choiceOptions.querySelector("input:checked");
+      submittedAnswer = selected ? selected.value : null;
+    } else {
+      submittedAnswer = elements.answerInput.value;
+    }
+    var result = checkQuestion(submittedAnswer, currentQuestion);
     var duration = elapsedMs();
     recordResult(result, duration);
     answered = true;
     elements.answerInput.disabled = true;
+    elements.quotientInput.disabled = true;
+    elements.remainderInput.disabled = true;
+    elements.choiceOptions.querySelectorAll("input").forEach(function (input) { input.disabled = true; });
     elements.submitBtn.innerHTML = t("practice.next", "Next") + " <span class=\"key-symbol\">↵</span>";
     elements.nextBtn.classList.remove("hidden");
     elements.skipBtn.classList.add("hidden");
@@ -1348,15 +1988,18 @@
 
   function keypadClick(event) {
     var button = event.target.closest("button");
-    if (!button || elements.answerInput.disabled || pauseStartedAt) return;
+    var activeInput = document.activeElement === elements.remainderInput ? elements.remainderInput
+      : document.activeElement === elements.quotientInput ? elements.quotientInput
+        : elements.answerInput;
+    if (!button || activeInput.disabled || pauseStartedAt || currentQuestion.responseMode === "choice") return;
     if (button.dataset.keypadInsert !== undefined) {
-      var start = elements.answerInput.selectionStart === null ? elements.answerInput.value.length : elements.answerInput.selectionStart;
-      var end = elements.answerInput.selectionEnd === null ? start : elements.answerInput.selectionEnd;
-      elements.answerInput.value = elements.answerInput.value.slice(0, start) + button.dataset.keypadInsert + elements.answerInput.value.slice(end);
-      elements.answerInput.focus();
+      var start = activeInput.selectionStart === null ? activeInput.value.length : activeInput.selectionStart;
+      var end = activeInput.selectionEnd === null ? start : activeInput.selectionEnd;
+      activeInput.value = activeInput.value.slice(0, start) + button.dataset.keypadInsert + activeInput.value.slice(end);
+      activeInput.focus();
     }
-    if (button.dataset.keypadAction === "backspace") elements.answerInput.value = elements.answerInput.value.slice(0, -1);
-    if (button.dataset.keypadAction === "clear") elements.answerInput.value = "";
+    if (button.dataset.keypadAction === "backspace") activeInput.value = activeInput.value.slice(0, -1);
+    if (button.dataset.keypadAction === "clear") activeInput.value = "";
     if (button.dataset.keypadAction === "submit" || button.dataset.keypadAction === "next") elements.answerForm.requestSubmit();
   }
 
@@ -1394,7 +2037,8 @@
   function cacheElements() {
     [
       "practiceMain", "pauseBtn", "adaptiveModeBtn", "manualModeBtn", "questionCategory", "questionFamily", "questionLevel", "questionMastery",
-      "questionPrompt", "answerForm", "answerInput", "submitBtn", "nextBtn", "skipBtn", "feedback", "categorySelect", "familySelect", "levelSelect",
+      "questionPrompt", "answerForm", "answerInput", "quotientInput", "remainderInput", "integerAnswerControl", "pairAnswerControl",
+      "choiceAnswerControl", "choiceOptions", "answerKeypad", "submitBtn", "nextBtn", "skipBtn", "feedback", "categorySelect", "familySelect", "levelSelect",
       "metricMastery", "metricAccuracy", "metricStreak", "metricAvgTime", "summaryMastery", "summaryAccuracy", "summaryAttempts",
       "matrix", "statTotalAttempts", "statTotalCorrect", "statTotalTime", "statActiveCells", "weakList", "strongList",
       "enabledCategories", "dataBox", "learnGrid"
@@ -1460,8 +2104,8 @@
     function assert(name, condition) {
       if (!condition) failures.push(name);
     }
-    assert("26 families", FAMILIES.length === 26);
-    assert("26 generators", Object.keys(GENERATORS).length === 26);
+    assert("35 families", FAMILIES.length === 35);
+    assert("35 generators", Object.keys(GENERATORS).length === 35);
     for (var a = 0; a <= 100; a += 1) {
       for (var b = 0; b <= 100; b += 1) {
         assert("addition inverse " + a + ":" + b, a + b - a === b);
@@ -1477,6 +2121,16 @@
     for (var target = 10; target <= 1000; target *= 10) {
       for (var value = 0; value < target; value += 1) assert("complement " + target + ":" + value, value + (target - value) === target);
     }
+    for (var divisor = 2; divisor <= 25; divisor += 1) {
+      for (var dividend = 0; dividend <= 250; dividend += 1) {
+        var quotient = Math.floor(dividend / divisor);
+        var remainder = dividend - divisor * quotient;
+        assert("quotient remainder " + dividend + ":" + divisor, dividend === divisor * quotient + remainder && remainder >= 0 && remainder < divisor);
+      }
+    }
+    assert("positive halfway rounds away", roundRationalToUnit(25, 1, 10) === 30);
+    assert("negative halfway rounds away", roundRationalToUnit(-25, 1, 10) === -30);
+    assert("below halfway rounds down", roundRationalToUnit(24, 1, 10) === 20);
     [1, 2, 5, 10, 20, 25, 50, 75, 100].forEach(function (percent) {
       for (var base = 1; base <= 1000; base += 1) {
         if ((percent * base) % 100 === 0) assert("percentage " + percent + ":" + base, base * percent / 100 === (base / (100 / gcd(percent, 100))) * (percent / gcd(percent, 100)));
@@ -1489,7 +2143,15 @@
             var question = generateQuestion(family.id, level, (familyIndex + 1) * 100000 + level * 1000 + sample + 1, true);
             assert("canonical accepted " + family.id + ":" + level + ":" + sample, checkQuestion(question.canonicalAnswer, question).correct);
             assert("metadata " + family.id, question.strategy && question.workedSteps.length && question.mentalCost.intermediateTotals <= 4);
-            if (question.familyId.indexOf("divide") >= 0) assert("exact division " + family.id, Number.isInteger(question.parameters.dividend / question.parameters.divisor));
+            if (["divide_exact_quotient", "divide_factorized", "divide_scale_both", "division_missing_term"].includes(question.familyId)) assert("exact division " + family.id, Number.isInteger(question.parameters.dividend / question.parameters.divisor));
+            if (["divide_quotient_remainder", "division_reconstruct_dividend", "division_qr_missing_term"].includes(question.familyId)) {
+              assert("remainder bound " + family.id, question.parameters.remainder >= 0 && question.parameters.remainder < question.parameters.divisor);
+              assert("dividend reconstruction " + family.id, question.parameters.dividend === question.parameters.divisor * question.parameters.quotient + question.parameters.remainder);
+            }
+            if (question.familyId === "estimate_rounded_operation") {
+              assert("estimate canonical in set " + family.id, question.response.acceptedAnswers.includes(question.canonicalAnswer));
+              assert("estimate exact unit " + family.id, Number(question.canonicalAnswer) % question.parameters.reportingUnit === 0);
+            }
             if (question.categoryId === "percentages") assert("integral percent " + family.id, (question.parameters.percent * question.parameters.base) % 100 === 0);
           } catch (error) {
             failures.push("generator " + family.id + ":" + level + ":" + sample + " " + error.message);
@@ -1510,7 +2172,7 @@
       console.error("Mental arithmetic self-tests failed", failures.slice(0, 50), "total", failures.length);
       return { ok: false, failures: failures.slice(0, 100) };
     }
-    console.info("Mental arithmetic self-tests passed: 26 families and " + FAMILIES.reduce(function (count, family) { return count + family.levels.length * 100; }, 0) + " generated instances");
+    console.info("Mental arithmetic self-tests passed: 35 families and " + FAMILIES.reduce(function (count, family) { return count + family.levels.length * 100; }, 0) + " generated instances");
     return { ok: true, failures: [] };
   }
 
