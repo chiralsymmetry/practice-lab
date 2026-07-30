@@ -5,7 +5,7 @@ export default {
   text: {
     localeCode: "en",
     appTitle: "Electric Circuits",
-    brandSubtitle: "Generated circuit-analysis drills from SI units and DC networks through transients, AC, devices, op-amps, and practical limits.",
+    brandSubtitle: "Generated practice from schematic literacy and connectivity through DC, equivalents, transients, AC, devices, op-amps, and practical limits.",
     summary: {
       aria: "Progress summary",
       mastery: "Avg mastery",
@@ -140,7 +140,7 @@ export default {
     },
     learn: {
       title: "Learn",
-      intro: "Compact reminders for idealized DC circuit drills. These exercises ignore tolerance, heat, parasitics, and safety limits unless a question explicitly mentions them.",
+      intro: "Compact reminders from schematic reading through intermediate idealized circuit analysis. Exercises ignore tolerance, heat, parasitics, and safety limits unless explicitly stated.",
       concept: "Concept",
       rules: "Rule of thumb",
       example: "Example",

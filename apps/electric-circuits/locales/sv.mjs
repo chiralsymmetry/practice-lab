@@ -196,7 +196,7 @@ export default {
       ["sinusoid", "sinusvåg"]
     ],
     appTitle: "Elektriska kretsar",
-    brandSubtitle: "Genererade kretsanalysövningar från SI-enheter och DC-nät till transienter, AC, komponenter, operationsförstärkare och praktiska gränser.",
+    brandSubtitle: "Genererade övningar från schemaläsning och konnektivitet till DC, ekvivalenter, transienter, AC, komponenter, operationsförstärkare och praktiska gränser.",
     summary: {
       aria: "Sammanfattning av framsteg",
       mastery: "Snittstyrka",
@@ -331,7 +331,7 @@ export default {
     },
     learn: {
       title: "Lär",
-      intro: "Korta påminnelser för idealiserade DC-övningar. De här övningarna ignorerar tolerans, värme, parasiter och säkerhetsgränser om frågan inte uttryckligen nämner dem.",
+      intro: "Korta påminnelser från schemaläsning till idealiserad kretsanalys på mellannivå. Övningarna ignorerar tolerans, värme, parasiter och säkerhetsgränser om inget annat anges.",
       concept: "Begrepp",
       rules: "Tumregel",
       example: "Exempel",
