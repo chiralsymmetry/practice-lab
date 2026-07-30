@@ -57,7 +57,7 @@ specified** or **Deliberately excluded** below.
 
 ## Specified but not implemented
 
-The following 57 topic specs have no corresponding directory under `apps/`.
+The following 58 topic specs have no corresponding directory under `apps/`.
 They are the implementation backlog; they do not need another proposal document
 before implementation.
 
@@ -75,6 +75,7 @@ before implementation.
 - [Practical Cryptography](specs/practical-cryptography.md)
 - [Reverse Engineering and Code Recovery](specs/reverse-engineering-code-recovery.md)
 - [SQL and Relational Databases](specs/sql-relational-databases.md)
+- [System Design](specs/system-design.md)
 - [Unicode, Encodings, and Text](specs/unicode-encodings-text.md)
 
 ### Mathematics and data
