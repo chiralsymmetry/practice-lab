@@ -31,6 +31,9 @@ The topic includes:
 - automatic and temporary object lifetime;
 - dangling pointers/references and selected standard-container invalidation rules;
 - `std::move` as a cast, `std::unique_ptr`, `std::shared_ptr`, and deterministic destruction order;
+- block scope, shadowing, function-local statics, ordinary value copying, and simple special-member traces;
+- bounded content changes for `std::vector`, `std::string`, and ordered `std::map`;
+- fixed-width unsigned bitwise evaluation and selection of expressions that manipulate bit fields;
 - arrays, pointers to arrays/functions/members, aliases, and lambdas;
 - classification of ill-formed code, undefined behavior, unspecified behavior, and implementation-defined behavior.
 
@@ -45,7 +48,8 @@ Unless a snippet states otherwise:
 - execution occurs inside `int main()` after declarations shown at namespace scope;
 - ordinary output uses `std::cout` in decimal, without `std::boolalpha`, locale customization, or synchronization changes;
 - `std::uint8_t` questions are generated only in an environment where that optional typedef exists and has exactly eight value bits;
-- no assumption is made about `sizeof(int)`, signedness of plain `char`, byte order, allocator growth policy, or moved-from container contents;
+- `std::uint32_t` questions are generated only in an environment where that optional typedef exists, has exactly 32 value bits, and does not undergo integral promotion; validation checks `std::is_same_v<decltype(+std::uint32_t{}), std::uint32_t>`;
+- outside the explicit fixed-width bit-family constraints, no assumption is made about `sizeof(int)`; no question assumes the signedness of plain `char`, byte order, allocator growth policy, or moved-from container contents;
 - inputs and arithmetic are chosen to avoid signed overflow unless overflow is the explicit judgment target;
 - no threads, signals, volatile hardware, exceptions, macros, modules, coroutines, or compiler extensions are involved.
 
@@ -79,7 +83,7 @@ Do not include:
 - concepts, ranges, coroutines, designated initializers, spaceship operator, or other C++20+ features;
 - dependent-name lookup, SFINAE puzzles, ADL traps, or metaprogramming whose value is primarily compiler trivia;
 - dangling/UB snippets presented as if their observed compiler output were an answer;
-- output depending on plain-`char` signedness, integer width, container capacity growth, hash iteration order, address values, or moved-from contents.
+- output depending on plain-`char` signedness, unstated native-integer width, container capacity growth, hash iteration order, address values, or moved-from contents.
 
 Areas excluded here may be worthwhile advanced topics, but they do not belong in a compact everyday code-reading trainer.
 
@@ -120,7 +124,7 @@ Every instance stores:
 
 `categoryId`, `subcategoryId`, `familyId`, `level`, `cppStandard`, `questionKind`, `behaviorClass`, `concepts`, `misconceptionsTargeted`, `parameters`, `code`, `scaffold`, `canonicalAnswer`, `acceptedAnswers`, `workedTrace`, `compilerValidationMode`, and `structuralSignature`.
 
-Generation proceeds as:
+Development/build-time template and seed generation proceeds as:
 
 1. select a semantic skeleton and target misconception;
 2. choose values/types under the skeleton's proof obligations;
@@ -143,6 +147,8 @@ Compiler testing supplements, but does not replace, specification reasoning.
 - Every generated snippet must be reviewed against the normative family derivation; “both compilers agree” is insufficient evidence of portability.
 
 Recommended strict flags include `-std=c++17 -pedantic-errors -Wall -Wextra`; warnings must not be treated as errors unless the family explicitly tests ill-formedness rather than warning policy.
+
+Compiler execution and `static_assert` checks occur only while developing, generating, building, or testing the shipped question templates and seed corpus. The shipped app has no backend or dynamic compiler: it must not compile learner submissions or freshly generated C++ in the browser. Runtime question selection and grading use prevalidated semantic data and answers.
 
 ## 2. Category: Runtime State and Control
 
@@ -1458,17 +1464,480 @@ No most-vexing-parse puzzles, complex function-returning-function-pointer syntax
 
 Array/pointer binding precedes aliases. Function pointers precede member pointers. Lambda capture precedes higher-order copying. Dense syntax is introduced one binding layer at a time; difficulty may not be created by adding irrelevant parentheses or identifiers.
 
-## 8. Topic-level progression
+## 8. Category: Practical C++17 Operations
+
+### Category purpose
+
+Train rapid, reliable reading of common C++17 code that uses local scope, value objects, ordinary special-member operations, sequence containers, strings, ordered maps, and fixed-width bit manipulation.
+
+This category emphasizes final contents, object independence, and operation selection. It gives everyday syntax enough repeated practice without turning capacity policy, allocator behavior, or nonportable bit representations into trivia.
+
+### Learn
+
+An inner declaration can shadow an outer name without changing the outer object. A function-local `static` is initialized once, on the first execution of its declaration, and keeps its value across later calls.
+
+Copying a value object creates a distinct object. Assignment changes the target object; it does not make the target an alias. References and pointers are different because they can designate an existing object. For a generated trace class, read the displayed constructor and assignment bodies: its explicitly defined copy and move behavior, including any source change, is the rule for that class.
+
+`std::vector` preserves element order, and these questions ask only for contents after valid bounded operations. `std::string` positions are zero-based and its `pos, count` operations affect a bounded substring. `std::map<int,int>` with its default `std::less<int>` comparator iterates by ascending key, not by insertion order.
+
+For bit questions, every value and mask is a validated `std::uint32_t`. Work column by column: OR sets, AND with an inverted mask clears, XOR toggles, AND isolates, right shift aligns, and a clear-then-OR expression inserts a field.
+
+Answers use:
+
+- object fields as named values;
+- vector contents as `[e0, e1, ...]`;
+- strings in double quotes, with an index field or `not found` for lookup;
+- map contents as `[key:value, ...]` in iteration order;
+- 32-bit bit results as exactly eight uppercase hexadecimal digits with `0x`;
+- event traces as space-separated event tokens in execution order.
+
+### Prerequisites
+
+Straight-line execution, references versus values, basic lifetime/scope, and hexadecimal/binary place value. Copy/move event tracing assumes recognition of lvalues and `std::move`, but not advanced overload resolution.
+
+### Category boundaries
+
+- General dangling-handle, iterator-invalidation, smart-pointer, and base/member destruction questions remain in Lifetime and Ownership.
+- Value-copy questions use only scalar value members. They do not use owning raw pointers, reference members, custom allocators, polymorphism, slicing, or copy-on-write.
+- Container result questions do not retain iterators, pointers, or references across mutation and never ask about capacity or allocation.
+- String questions use ASCII characters only; byte offsets therefore match the displayed character positions.
+- Ordered-map questions use `std::map`, never `std::unordered_map`, and show the comparator whenever it is not the default.
+- Bit questions do not use signed operands, bit-fields, raw object representation, endianness, or shifts by a negative amount or by 32 or more.
+
+### Subcategories
+
+1. Block Scope and Static Locals
+2. Value Copies and Special Members
+3. Vector Contents
+4. String Operations
+5. Ordered Map Operations
+6. Fixed-Width Bit Operations
+
+### Common misconceptions
+
+- Treating a shadowing declaration as assignment to the outer object.
+- Reinitializing a function-local `static` on every call or using the later call's initializer.
+- Treating equal-valued objects as aliases.
+- Believing copy assignment rebinds one object to another.
+- Assuming `std::move` itself runs a move constructor or that every move must empty the source.
+- Predicting vector capacity/reallocation when only contents are requested.
+- Treating `erase(first, last)` as including `last`.
+- Counting the second argument of a string operation as an end position instead of a count.
+- Returning the last rather than first match from `string::find`.
+- Iterating a map in insertion order or letting duplicate `insert` overwrite an existing value.
+- Applying logical truth-table rules to bitwise operators.
+- Clearing with OR, toggling with AND, or inserting a field without first clearing its destination bits.
+
+## 8.1 Subcategory: Block Scope and Static Locals
+
+### Family `block_scope_shadow_trace`
+
+**Learner task.** Determine which object each same-spelled name denotes and report output or final outer values after nested blocks.
+
+**Response mode.** Exact output or one to three named scalar fields.
+
+**Template.**
+
+```cpp
+int {name} = {outerValue};
+{
+    int {name} = {innerExpression};
+    {innerStatements}
+    std::cout << {name} << ' ';
+}
+{outerStatements}
+std::cout << {name};
+```
+
+`{innerExpression}` is evaluated before the new local's declarator is complete and may use a differently named outer value. It must not rely on a same-name self-reference. `{innerStatements}` and `{outerStatements}` are zero to two bounded scalar updates.
+
+**Derivation.** Build a scope stack. On each declaration, add a new object to the current block; resolve each later use to the nearest active declaration. Pop inner objects at block exit, then continue using the outer binding.
+
+**Constraints and rejection.** One or two nested blocks; at most one shadowed spelling per block; all initializers are well-defined and all arithmetic fits. Reject uninitialized reads, confusing self-initialization such as `int x=x;`, declaration conditions, goto, and references whose target outlives the intended lesson.
+
+**Difficulty.** Level 1 one shadowed scalar and two reads. Level 2 inner and outer objects both mutate. Level 3 a third differently named value contributes to initialization. Level 4 two nested shadowing levels. Level 5 choose the binding used at labeled expressions before computing values.
+
+**Feedback.** Show a scope stack with a distinct object ID for each declaration, even though the source spelling is the same.
+
+**Examples.**
+
+1. `int x=4; {int x=9; std::cout<<x<<' ';} std::cout<<x;` Answer `9 4`. Level 1.
+2. `int n=3; {int n=5; n+=2; std::cout<<n<<' ';} n*=2; std::cout<<n;` Answer `7 6`. Level 2.
+3. `int x=2; {int y=x+3; {int x=y*2; std::cout<<x<<' ';} std::cout<<x<<' ';} std::cout<<x;` Answer `10 2 2`. Level 4.
+
+**Implementation and validation.** Represent declarations by unique IDs and resolve uses lexically before interpreting. Compile/run complete deterministic snippets under both compilers.
+
+### Family `static_local_trace`
+
+**Learner task.** Trace a function-local static across a bounded sequence of calls.
+
+**Response mode.** Exact output plus optional final returned values.
+
+**Template.**
+
+```cpp
+int step(int seed) {
+    static int value = {initializerUsingSeed};
+    {boundedUpdate}
+    return value;
+}
+
+int first = step({arg1});
+int second = step({arg2});
+{optionalThirdCall}
+std::cout << first << ' ' << second{optionalThirdOutput};
+```
+
+The first executed call and argument order are explicit. The initializer may use `seed`; later call arguments do not reinitialize `value`.
+
+**Derivation.** On the first call that reaches the declaration, evaluate the initializer once. Apply that call's update and return. On each later call, reuse the stored value, skip initialization, apply the update, and return.
+
+**Constraints and rejection.** One function-local `static int`; two or three calls in separate, visibly sequenced statements, with returned values stored before output. No recursion, threads, exceptions, dynamic initialization dependencies, static destruction output, references returned to the static, overflow, or hidden calls before the displayed sequence.
+
+**Difficulty.** Level 1 constant initializer and fixed update. Level 2 initializer uses the first call's argument. Level 3 update also uses each call argument. Level 4 declaration lies in a simple branch and only reached calls count. Level 5 infer the call arguments that produce a shown trace.
+
+**Feedback.** Show an initialization event only on the first reached call, followed by the persistent value after every update.
+
+**Examples.**
+
+1. `int next(){static int n=2; return n++;}` called three times in separate statements prints `2 3 4`. Level 1.
+2. `int next(int seed){static int n=seed; return n++;}` called with `5`, then `20`, prints `5 6`; `20` is not used to reinitialize `n`. Level 2.
+3. `int add(int x){static int total=x; total+=x; return total;}` called with `2`, `3`, `1` prints `4 7 8`. Level 3.
+
+**Implementation and validation.** The evaluator stores static state per generated function, distinct from call frames. Compile/run a fresh process per instance so validation does not leak state between questions.
+
+## 8.2 Subcategory: Value Copies and Special Members
+
+### Family `value_copy_independence_trace`
+
+**Learner task.** Distinguish copied objects from aliases and determine which object changes after member writes or whole-object assignment.
+
+**Response mode.** Named object-member fields plus optional relationship choice (`independent objects` or `aliases`).
+
+**Template.**
+
+```cpp
+struct Pair {
+    int first;
+    int second;
+};
+
+Pair a{{aFirst}, {aSecond}};
+{copyOrAliasDeclaration}
+{boundedWrites}
+```
+
+`{copyOrAliasDeclaration}` is one of `Pair b = a;`, `Pair b(a);`, `Pair b{a};`, `Pair& b = a;`, or `Pair* b = &a;`. Copy forms and alias forms are not mixed until Level 3.
+
+**Derivation.** Aggregate copy construction and copy assignment copy both scalar member values into a distinct target object. Later target writes do not affect the source. A reference or dereferenced pointer designates the existing source object, so a write through it reaches that source.
+
+**Constraints and rejection.** Struct/class has only one to three scalar value members and no user-defined special members in this family. Every object is initialized. At most three writes and one whole-object assignment. No pointer-valued/reference members, inheritance, slicing, lifetime failure, or comparison of object addresses.
+
+**Difficulty.** Level 1 one copy then one member write. Level 2 whole-object assignment followed by independent mutation. Level 3 copy and reference declarations contrasted. Level 4 pass/return by value reuses the mastered parameter rule. Level 5 choose which declaration would produce a requested final state.
+
+**Feedback.** Draw separate boxes for copied objects and one box with multiple arrows for aliases. Show whole-object assignment as member-value transfer, not binding transfer.
+
+**Examples.**
+
+1. `Pair a{2,5}; Pair b=a; b.first=9;` Answer `a={2,5}, b={9,5}`; independent objects. Level 1.
+2. `Pair a{1,4}; Pair b{8,7}; b=a; a.second=6;` Answer `a={1,6}, b={1,4}`. Level 2.
+3. `Pair a{3,6}; Pair b=a; Pair& r=a; b.second=1; r.first=8;` Answer `a={8,6}, b={3,1}`; `b` is independent and `r` aliases `a`. Level 3.
+
+**Implementation and validation.** Model object identity separately from member values. Compile/run content fields; do not infer independence merely from unequal final values.
+
+### Family `special_member_event_trace`
+
+**Learner task.** Put constructor, copy/move construction, copy/move assignment, and destruction events in execution order for a small class whose behavior is fully displayed.
+
+**Response mode.** Ordered sequence of exact event tokens, with optional final object values.
+
+**Fixed trace class.**
+
+```cpp
+struct Trace {
+    int value;
+
+    explicit Trace(int v) : value(v) {
+        std::cout << "ctor(" << value << ") ";
+    }
+    Trace(const Trace& other) : value(other.value) {
+        std::cout << "copy(" << value << ") ";
+    }
+    Trace(Trace&& other) : value(other.value) {
+        other.value = -1;
+        std::cout << "move(" << value << ") ";
+    }
+    Trace& operator=(const Trace& other) {
+        value = other.value;
+        std::cout << "copy=(" << value << ") ";
+        return *this;
+    }
+    Trace& operator=(Trace&& other) {
+        value = other.value;
+        other.value = -1;
+        std::cout << "move=(" << value << ") ";
+        return *this;
+    }
+    ~Trace() {
+        std::cout << "dtor(" << value << ") ";
+    }
+};
+```
+
+The class definition is always visible. `<utility>` is included for `std::move`.
+
+**Derivation.** Identify whether each declaration creates a new object or assigns an existing one. Select the displayed special member from the source expression's value category. Apply its body exactly, including the explicitly specified `other.value = -1`. At block exit, destroy constructed automatic objects in reverse construction order.
+
+**Constraints and rejection.** One block, one to three named objects, and at most two operations after construction. Use named source objects and explicit `std::move`; do not generate return-by-value, temporary materialization, optional copy-elision, self-assignment, inheritance, members with their own traces, exceptions, or standard-library moved-from state. This family's moved-from value is deterministic only because the displayed custom move operations explicitly assign `-1`.
+
+**Difficulty.** Level 1 direct construction and destruction. Level 2 copy construction. Level 3 copy assignment versus copy construction. Level 4 move construction or move assignment with explicit source change. Level 5 a short mixed sequence with reverse destruction.
+
+**Feedback.** For each statement label the operation (`construct new` or `assign existing`), source category, event token, and resulting values. Then show the destruction stack.
+
+**Examples.**
+
+1. `{ Trace a(4); Trace b=a; }` Answer `ctor(4) copy(4) dtor(4) dtor(4)`. Level 2.
+2. `{ Trace a(6); Trace b(std::move(a)); }` Answer `ctor(6) move(6) dtor(6) dtor(-1)`. Level 4.
+3. `{ Trace a(3); Trace b(7); Trace c(9); b=a; c=std::move(b); }` Answer `ctor(3) ctor(7) ctor(9) copy=(3) move=(3) dtor(3) dtor(-1) dtor(3)`. Level 5.
+
+**Implementation and validation.** Interpret the displayed bodies rather than relying on an implicit language model. Compile/run exact event streams under C++17 with optional elision not involved. Coverage balances all six event kinds.
+
+## 8.3 Subcategory: Vector Contents
+
+### Family `vector_content_trace`
+
+**Learner task.** Report the ordered `std::vector<int>` contents after bounded `push_back`, indexed assignment, `insert`, and `erase` operations.
+
+**Response mode.** Ordered integer sequence rendered `[e0, e1, ...]`.
+
+**Template.**
+
+```cpp
+std::vector<int> v = {{initialElements}};
+{operations}
+```
+
+Allowed operations are:
+
+- `v.push_back(value);`
+- `v[index] = value;`
+- `v.insert(v.begin() + index, value);`
+- `v.erase(v.begin() + index);`
+- `v.erase(v.begin() + first, v.begin() + last);`
+
+**Derivation.** Maintain only the logical element sequence. `push_back` appends; indexed assignment replaces one existing element; single-element `insert` places the new value before `index`; single-element `erase` removes that position; range erase removes the half-open interval `[first, last)`. Recompute later indices against the current sequence.
+
+**Constraints and rejection.** Initial size zero to six; one to four operations; every intermediate and final size is zero to eight. Every index/range is valid at the point of use, including `insert` at `size()` and an empty erase range only when its no-op behavior is the intended contrast. No stored iterator/reference/pointer, `reserve`, capacity query, custom allocator, element type with visible special members, or exception path. Reject traces where most operations are no-ops.
+
+**Difficulty.** Level 1 one `push_back` or indexed assignment. Level 2 one insert or erase. Level 3 two operations with shifted later indices. Level 4 range erase plus another mutation. Level 5 choose an operation sequence that produces a requested vector.
+
+**Feedback.** Show the vector after each operation and mark insertion boundaries or the half-open erased slice. Never mention or predict capacity.
+
+**Examples.**
+
+1. `std::vector<int> v{2,4}; v.push_back(7); v[0]=1;` Answer `[1, 4, 7]`. Level 1.
+2. `std::vector<int> v{1,3,4}; v.insert(v.begin()+1,2); v.erase(v.begin()+3);` Answer `[1, 2, 3]`. Level 3.
+3. `std::vector<int> v{0,1,2,3,4}; v.erase(v.begin()+1,v.begin()+4); v.insert(v.begin()+2,9);` Answer `[0, 4, 9]`. Level 4.
+
+**Implementation and validation.** Apply operations to an independent sequence model. Development/build validation compiles and runs complete snippets that print values with stable delimiters; it never asserts capacity or allocation count.
+
+## 8.4 Subcategory: String Operations
+
+### Family `string_content_and_lookup_trace`
+
+**Learner task.** Determine a bounded string result or the first-match position after `substr`, `find`, `insert`, `erase`, and `replace`.
+
+**Response mode.** Quoted short string, or an integer index/`not found`; multi-step questions may request both named fields.
+
+**Template.**
+
+```cpp
+std::string s = "{initialAscii}";
+{operations}
+```
+
+Allowed forms are:
+
+- `std::string part = s.substr(pos, count);`
+- `std::size_t found = s.find("{needle}");`
+- `s.insert(pos, "{text}");`
+- `s.erase(pos, count);`
+- `s.replace(pos, count, "{text}");`
+
+Each overload is used exactly as displayed. Whenever a `pos, count` pair appears, the second argument is a count rather than an ending index.
+
+**Derivation.** Index the current ASCII string from zero. `substr(pos,count)` returns up to `count` characters starting at `pos`; `find` returns the first starting index or `npos`; insert places text before `pos`; erase removes up to `count` characters from `pos`; replace removes that same bounded slice and inserts replacement text there.
+
+**Constraints and rejection.** Initial, intermediate, and final strings use printable ASCII letters/digits and have length zero to twelve. `pos <= size()` for `substr`/insert; mutation positions are valid; `count` is zero to six and may exceed the remaining suffix only in a deliberate “up to count” contrast. Needles have length one to four. Never grade the numeric representation of `std::string::npos`; render it canonically as `not found`. No Unicode, embedded null, iterator overloads, regex, locale, capacity, allocation, or invalid `at` access.
+
+**Difficulty.** Level 1 one lookup or substring. Level 2 one mutation. Level 3 overlapping possible matches or count beyond suffix. Level 4 two mutations with positions interpreted on current content. Level 5 choose an operation/arguments that produce a target string.
+
+**Feedback.** Draw zero-based indices above the current string and underline the selected half-open slice. For `find`, stop at the first match.
+
+**Examples.**
+
+1. `std::string s="planet"; auto part=s.substr(1,3);` Answer `"lan"`. Level 1.
+2. `std::string s="banana"; auto found=s.find("ana");` Answer `1`, the first matching position. Level 3.
+3. `std::string s="abcdef"; s.erase(1,2); s.insert(2,"XY"); s.replace(0,1,"Q");` Answer `"QdXYef"`. Level 4.
+
+**Implementation and validation.** Use a byte-string reference model restricted to ASCII and the exact listed overloads. Build-time snippets compare strings directly or print a symbolic `not found`; the browser grades precomputed semantic values.
+
+## 8.5 Subcategory: Ordered Map Operations
+
+### Family `ordered_map_trace`
+
+**Learner task.** Determine lookup results and final key/value pairs, including deterministic iteration order, after bounded map operations.
+
+**Response mode.** Found/not-found plus optional value fields, or ordered pairs rendered `[key:value, ...]`.
+
+**Template.**
+
+```cpp
+std::map<int, int> m = {{initialPairs}};
+{operations}
+```
+
+Allowed operations are:
+
+- `auto it = m.find(key);`
+- `int value = m.at(existingKey);`
+- `m.insert({key, value});`
+- `m[key] = value;`
+- `m[key] += delta;`
+- `for (const auto& [key, value] : m) { ... }`
+
+**Derivation.** Maintain one value per key. `find` observes without insertion. `at` reads an existing key. `insert` adds only when the key is absent and does not overwrite an existing mapped value. `operator[]` inserts a missing key with value-initialized `int` value `0` before assignment/compound assignment. Default `std::map<int,int>` iteration visits keys in ascending numeric order.
+
+**Constraints and rejection.** Zero to five initial unique keys and one to four operations; final size at most six; mapped-value arithmetic fits `int`. `at` is generated only for existing keys. Insert return objects are used only when their Boolean `second` result is explicitly asked. No custom comparator unless fully shown, unordered container, erasure, node handles, allocator behavior, pointer/reference retention, exception path, or iteration during mutation.
+
+**Difficulty.** Level 1 successful/failed `find` or `at`. Level 2 insertion followed by iteration. Level 3 duplicate `insert` versus `operator[]` update. Level 4 missing-key `operator[]` with compound assignment. Level 5 infer operations from final ordered pairs.
+
+**Feedback.** Show a sorted key table after each mutation. Call out whether an operation observes, inserts, or overwrites.
+
+**Examples.**
+
+1. `std::map<int,int> m{{2,20},{1,10}}; auto it=m.find(2);` Answer `found, value=20`; iteration is `[1:10, 2:20]`. Level 1.
+2. `std::map<int,int> m{{3,30},{1,10}}; m.insert({2,20}); m.insert({1,99});` Answer `[1:10, 2:20, 3:30]`; duplicate `insert` does not overwrite. Level 3.
+3. `std::map<int,int> m{{4,8},{1,2}}; m[3]+=5; m[1]=7;` Answer `[1:7, 3:5, 4:8]`; missing key `3` starts at `0`. Level 4.
+
+**Implementation and validation.** Use a sorted associative reference model and validate exact ordered pairs at development/build time. Distribution separately covers lookup miss, successful insert, duplicate insert, update, default insertion, and ordering.
+
+## 8.6 Subcategory: Fixed-Width Bit Operations
+
+### Fixed-width environment and answer format
+
+Every family in this subcategory uses `<cstdint>`, `<type_traits>`, and `std::uint32_t` operands. Validation also includes:
+
+```cpp
+static_assert(
+    std::is_same_v<decltype(+std::uint32_t{}), std::uint32_t>
+);
+```
+
+This pins the generated environment so operands remain an unsigned type with exactly 32 value bits after integral promotion. The learner sees the note `Assume std::uint32_t is an unpromoted 32-bit unsigned type in this validated C++17 environment.` Shift counts are in `[0,31]`. Results are materialized in `std::uint32_t` and answered as `0x00000000` through `0xFFFFFFFF`.
+
+### Family `uint32_bitwise_trace`
+
+**Learner task.** Evaluate actual C++ bitwise expressions over pinned `std::uint32_t` values.
+
+**Response mode.** Exact eight-digit uppercase hexadecimal string with `0x`; optional Boolean field for comparisons.
+
+**Template.**
+
+```cpp
+std::uint32_t value = std::uint32_t{{valueHex}};
+std::uint32_t mask = std::uint32_t{{maskHex}};
+std::uint32_t result = {expression};
+```
+
+`{expression}` is built from `value`, `mask`, `&`, `|`, `^`, `~`, `<<`, `>>`, parentheses, and at most one additional pinned `std::uint32_t` constant.
+
+**Derivation.** Expand operands to 32 bits. Apply AND/OR/XOR independently by position; complement all 32 positions; discard high bits shifted left beyond bit 31 and fill with zero; fill right shift with zero. Apply parentheses and C++ operator precedence exactly, then format all eight hexadecimal digits.
+
+**Constraints and rejection.** One to three bitwise operators; no signed operand or unsuffixed value that changes the common type; no arithmetic overflow reasoning, logical `&&`/`||`, shift count outside `[0,31]`, negative shift, implicit width, enum, bit-field, or signed right shift. Generate masks with visible pedagogical structure but do not let zero/all-ones masks dominate. When precedence is not the target, parenthesize.
+
+**Difficulty.** Level 1 one AND/OR/XOR with aligned nibbles. Level 2 complement or one shift. Level 3 masks cross nibble boundaries. Level 4 a parenthesized two-stage expression. Level 5 diagnose a precedence-based alternative or infer a missing mask.
+
+**Feedback.** Show aligned 32-bit or eight-nibble rows, name the C++ operator, and retain leading zeroes. Distinguish bitwise operators from logical operators.
+
+**Examples.**
+
+1. `std::uint32_t result=std::uint32_t{0x12345678} & std::uint32_t{0x00FF00FF};` Answer `0x00340078`. Level 1.
+2. `std::uint32_t result=~std::uint32_t{0x0F0F00FF};` Answer `0xF0F0FF00`. Level 2.
+3. `std::uint32_t result=(std::uint32_t{0x12345678} >> 4) ^ std::uint32_t{0x00F0000F};` Answer `0x01D34568`. Level 4.
+
+**Implementation and validation.** The independent evaluator uses mathematical unsigned 32-bit operations modulo `2^32`; it must not use host signed bit operators. Development/build validation compiles the pinned assertion and checks the result with `static_assert` for every generated structural signature or prebuilt seed.
+
+### Family `bit_expression_selection`
+
+**Learner task.** Choose the C++ expression that performs a requested set, clear, toggle, test, extract, or insert operation on pinned 32-bit unsigned data.
+
+**Response mode.** Single-choice among displayed C++ expressions.
+
+**Template.**
+
+```cpp
+std::uint32_t value = std::uint32_t{{valueHex}};
+std::uint32_t mask = std::uint32_t{{maskHex}};
+```
+
+Prompt variants and canonical expressions:
+
+| Intent | Exact semantics | Canonical expression |
+|---|---|---|
+| Set | Make every bit selected by `mask` equal to 1; preserve others. | `value \| mask` |
+| Clear | Make every bit selected by `mask` equal to 0; preserve others. | `value & ~mask` |
+| Toggle | Flip every bit selected by `mask`; preserve others. | `value ^ mask` |
+| Test | Are any bits selected by nonzero `mask` currently 1? | `(value & mask) != 0` |
+| Extract | Read a `width`-bit field beginning at `offset`. | `(value >> offset) & fieldMask` |
+| Insert | Replace that field with `fieldValue`; preserve all other bits. | `(value & ~(fieldMask << offset)) \| ((fieldValue & fieldMask) << offset)` |
+
+For extract/insert, `fieldMask` is a displayed precomputed `std::uint32_t` with its low `width` bits set, `width` is 1 to 8, `offset` is 0 to `32-width`, and `fieldValue` is a displayed `std::uint32_t`.
+
+**Derivation.** Translate the requested effect into per-bit invariants. For insertion, first clear exactly the destination field, limit the new value to the field width, shift it into position, then combine with OR.
+
+**Constraints and rejection.** The prompt must say whether a test means “any” or “all”; this family initially uses “any.” Masks are nonzero. Set/clear/toggle instances include both selected and unselected positions and normally make at least one visible change for the shown value. Field masks are precomputed without `(1u << 32)`. No macro, compound-assignment sequencing, signed literal, implicit-width `~`, endianness, or raw-storage interpretation.
+
+**Difficulty.** Level 1 choose set/clear/toggle for a single-bit mask. Level 2 multi-bit masks and test. Level 3 extract with supplied field mask. Level 4 insert with clear-then-combine structure. Level 5 select an expression from a requested before/after invariant rather than an operation verb.
+
+**Multiple-choice distractors.**
+
+- swap `|`, `&`, and `^` to represent set/retain/toggle confusion;
+- omit `~` in clear;
+- use `value == mask` or logical `&&` for test;
+- shift in the wrong direction or omit the post-shift field mask for extract;
+- OR a new field without clearing the old one;
+- omit `fieldValue & fieldMask`, allowing out-of-field bits to spill.
+
+Numerically equivalent distractors for the particular generated values must be rejected; correctness is checked over the declared operation's full allowed input domain, not only one lucky example.
+
+**Feedback.** State the invariant for selected and unselected bits. For insertion, show `clear destination → mask field value → shift → OR` as four labeled stages.
+
+**Examples.**
+
+1. Prompt: `Which expression sets every bit selected by mask?` Answer `value | mask`; `value ^ mask` is rejected because already-set bits would clear. Level 1.
+2. Prompt: `Which expression tests whether any selected bit is 1?` Answer `(value & mask) != 0`; `value && mask` tests whole-value truth, not bit overlap. Level 2.
+3. With `fieldMask=0x0000000F` and `offset=8`, prompt: `Which expression replaces bits 8–11 with fieldValue?` Answer `(value & ~(fieldMask << offset)) | ((fieldValue & fieldMask) << offset)`. Level 4.
+
+**Implementation and validation.** Generate expressions from typed ASTs. Prove the canonical expression and reject distractors by exhaustive evaluation across all selected/unselected bit combinations for set/clear/toggle/test and across all field values plus representative surrounding bits for extract/insert. Compile selected expressions and `static_assert` representative results during development/build only.
+
+### Cross-family progression for Practical C++17 Operations
+
+Shadowing precedes persistent statics. Independent aggregate copies precede explicit special-member events; construction versus assignment is isolated before move operations are added. Vector and string mutation start as separate content traces because their index/count vocabulary differs. Map lookup precedes insertion/update and then ordered iteration. Direct bitwise evaluation precedes expression selection; field extraction precedes insertion.
+
+Useful later interleavings are copy versus reference, vector versus string half-open ranges, duplicate map insertion versus indexed update, and bit-result evaluation versus operation selection. Do not combine container mutation with handle invalidation, special-member logging, or moved-from library objects in this practical category.
+
+## 9. Topic-level progression
 
 Recommended order:
 
-1. straight-line state, references, and basic `auto`;
-2. prefix/postfix in sequenced statements, pointer reseating, branches;
-3. short-circuiting, parameter modes, promotions, and non-template overloads;
-4. loops, alias topology, reference overloads, `decltype`, and basic lifetime;
-5. template deduction, forwarding references, initialization judgment;
-6. container invalidation, `std::move`, unique ownership;
-7. template ordering, shared ownership, destruction order;
+1. straight-line state, block scope/shadowing, references, value-copy independence, and basic `auto`;
+2. prefix/postfix in sequenced statements, static locals, pointer reseating, branches, and basic vector/string contents;
+3. short-circuiting, parameter modes, ordered-map operations, fixed-width bit evaluation, promotions, and non-template overloads;
+4. loops, alias topology, reference overloads, `decltype`, bit-expression selection, and basic lifetime;
+5. explicit special-member traces, template deduction, forwarding references, and initialization judgment;
+6. container invalidation, `std::move`, and unique ownership;
+7. template ordering, shared ownership, and general destruction order;
 8. member pointers, mutable lambdas, and higher-order callables;
 9. behavior classes beyond deterministic/UB.
 
@@ -1478,12 +1947,17 @@ Useful interleavings after acquisition:
 - value category with reference overload resolution;
 - forwarding deduction with perfect forwarding;
 - pointer reseating with pointer-parameter mode;
+- value copy with reference alias trace;
+- vector and string half-open range operations;
+- ordered-map duplicate insertion with assignment/update;
+- direct bitwise evaluation with expression selection;
+- explicit custom move traces with `std::move` expression category;
 - `std::move` expression category with move consumption;
 - callable declaration with overload target context.
 
 Keep undefined/unspecified classification separate from ordinary output until the learner understands that non-deterministic code has no single standard output.
 
-## 9. Adaptive practice guidance
+## 10. Adaptive practice guidance
 
 ### Mastery dimensions
 
@@ -1498,6 +1972,11 @@ Track:
 - alias topology;
 - control-transfer kind;
 - container/operation invalidation rule;
+- scope binding and static-local persistence;
+- copied-object versus alias relationship;
+- special-member event kind;
+- vector/string/map operation and index/range rule;
+- bit operation, mask shape, and field width/offset;
 - declaration binding layer;
 - misconception.
 
@@ -1527,6 +2006,16 @@ Multi-field answers update fields independently. Correct value with wrong type t
 | Moved-from string assumed empty | unspecified state | valid-operation judgment |
 | Unique pointer source still owns | copy model | owner timeline |
 | Vector iterator before erase marked invalid | “all mutation invalidates all” | before/at/after matching |
+| Outer object receives an inner shadow's update | shadowing treated as assignment | two-object scope stack |
+| Static local restarts from each call argument | static treated as automatic local | two-call initialization timeline |
+| Mutating a copied struct also changes its source | value copy treated as alias | copied boxes versus reference arrows |
+| Copy assignment answer includes construction | assignment treated as new object | paired copy-construction/copy-assignment trace |
+| Vector erase removes the element at `last` | half-open range treated as closed | marked `[first,last)` vector slice |
+| String count treated as an ending index | `pos,count` vocabulary confused | indexed substring/erase contrast |
+| Duplicate map `insert` overwrites | insertion confused with assignment | paired `insert`/`operator[]` update |
+| Map iteration follows insertion order | ordered map confused with sequence/hash table | ascending-key iteration trace |
+| Bit clear answer uses OR or plain AND | selected-bit invariant confused | set/clear/toggle expression contrast |
+| Field insertion only ORs shifted input | destination not cleared or field not masked | four-stage insert trace |
 | `const P` treated as pointer-to-const | alias textual substitution | alias expansion |
 | Mutable value capture changes external | closure copy confused with alias | closure/external fields |
 
@@ -1543,7 +2032,7 @@ Recommended mix:
 
 At least 80% of ordinary practice should be well-formed and well-defined. Judgment practice should balance its declared classes, but UB must not dominate. Long loop tracing should be rare after control-flow mastery; advanced practice should shift toward type/alias/lifetime reasoning.
 
-## 10. Feedback requirements
+## 11. Feedback requirements
 
 Every instance stores:
 
@@ -1561,11 +2050,13 @@ Feedback must:
 - state the implementation choice needed for implementation-defined cases;
 - identify expression value category before overload selection;
 - show object identity/lifetime separately from value;
+- show container/string contents after each bounded mutation and map keys in comparator order;
+- show bit masks at the fixed 32-bit width and preserve leading zeroes;
 - keep arithmetic incidental.
 
 Do not cite compiler agreement as the reason a rule is true.
 
-## 11. Implementation requirements
+## 12. Implementation requirements
 
 ### Semantic skeletons
 
@@ -1580,19 +2071,21 @@ Each instance can render:
 
 The learner view must not omit a declaration, include, namespace qualification, or enclosing scope that changes semantics. A visible note may replace repetitive fixed preamble only when exact.
 
+Generation/build tooling may compile the validation view and serialize its already validated semantic object and canonical answer into shipped assets. The shipped browser app selects and grades those assets (or uses the same deterministic semantic evaluator); it has no code-compilation endpoint and must never present compiler execution as occurring during learner interaction.
+
 ### Type representation
 
 Represent types structurally: base, cv qualifiers per level, pointer/reference/array/function/member layers. Render canonical text from structure. Do not parse compiler-specific pretty-function strings as the oracle.
 
 ### Runtime safety
 
-Only `deterministic` snippets may execute in automated tests. The runner must use time/resource limits. UB, unspecified-output, and implementation-defined-output snippets compile only as appropriate. Compile-error validation occurs in isolated files.
+Only `deterministic` snippets may execute in automated development/build/CI tests. The test runner must use time/resource limits. UB, unspecified-output, and implementation-defined-output snippets compile only as appropriate. Compile-error validation occurs in isolated files. None of these compiler processes are a shipped-app runtime dependency.
 
 ### Stable standard
 
 Every question metadata and exported progress includes `cppStandard: "c++17"`. Changing the standard requires new family versions or migration; it must not silently change answers to existing seeds.
 
-## 12. Automated validation
+## 13. Automated validation
 
 ### Per-instance checks
 
@@ -1608,6 +2101,9 @@ Every question metadata and exported progress includes `cppStandard: "c++17"`. C
 10. Choices are distinct with one correct answer.
 11. No requested result depends on excluded implementation properties.
 12. Feedback mentions actual identifiers/types/values.
+13. Container-content questions retain no handles and make no capacity/allocation assertion.
+14. Bit questions pass the fixed-width/no-promotion assertion and every shift count is valid.
+15. The serialized runtime artifact contains the prevalidated canonical answer and needs no compiler service.
 
 ### Exhaustive/property tests
 
@@ -1620,6 +2116,11 @@ Every question metadata and exported progress includes `cppStandard: "c++17"`. C
 - Test container invalidation skeletons only according to selected operation/position.
 - Round-trip owner-state models through move/copy/reset actions.
 - Compare destruction trace to generated construction graph.
+- Resolve shadowed declarations by object ID and reset each static-local test in a fresh process.
+- Round-trip aggregate-copy and explicit special-member traces through independent object/event models.
+- Exhaust every valid short vector operation/range and bounded ASCII string operation.
+- Compare ordered-map state and iteration with a sorted key/value reference model.
+- Exhaust representative 32-bit nibble/mask patterns and field widths/offsets; prove expression-selection distractors non-equivalent.
 - Property-test at least 10,000 seeds per family/level, with compilation samples for every structural signature and full compilation in CI where affordable.
 
 ### Sanitizers and diagnostics
@@ -1638,10 +2139,15 @@ Verify:
 - overload winner labels and ranking reasons balance;
 - deterministic lifetime cases are not drowned out by dangling cases;
 - vector/list invalidation rules both recur;
+- practical vector operations and shifted-index patterns balance;
+- every string operation and found/not-found path recurs;
+- map lookup, insertion, duplicate insertion, update, default insertion, and ordered iteration recur;
+- set, clear, toggle, test, extract, and insert bit intents recur;
+- scope/static and copy/special-member operation kinds balance;
 - capture modes and callable copy/reference modes vary;
 - superficial identifier/constant variation does not satisfy structural diversity.
 
-## 13. Coverage requirements
+## 14. Coverage requirements
 
 Across long-run practice:
 
@@ -1653,15 +2159,21 @@ Across long-run practice:
 - overload exercises expose the full candidate pipeline in increasing depth;
 - lifetime exercises include safe and unsafe contrasts;
 - moved-from unspecified contents are never assigned a fixed answer;
+- shadowed locals and persistent statics are practiced as distinct storage/binding rules;
+- value-copy exercises separate independent objects from aliases;
+- explicit special-member traces cover construction, copy, move, assignment, and destruction without optional-elision or unspecified-source-state dependencies;
+- vector, string, and map questions cover all listed operations with bounded current-state indices;
+- ordered-map answers use comparator order and never hash iteration order;
+- bit questions use the pinned unsigned fixed-width environment and cover both result computation and expression selection;
 - declarations progress by binding layers, not visual intimidation;
-- compiler validation covers all safe/code-form families on GCC and Clang;
+- development/build compiler validation covers all safe/code-form families on GCC and Clang;
 - adaptive selection operates at semantic-rule/misconception level.
 
-## 14. Topic-level quality checklist
+## 15. Topic-level quality checklist
 
 - [ ] ISO C++17 is visible and stored in every instance.
 - [ ] Runtime-output snippets are deterministic, well-formed, and well-defined.
-- [ ] No answer depends on compiler extensions, ABI, integer width, char signedness, capacity growth, addresses, or moved-from contents.
+- [ ] No answer depends on compiler extensions, ABI, unstated native-integer width, char signedness, capacity growth, addresses, or moved-from contents.
 - [ ] Behavior judgments distinguish five canonical classes.
 - [ ] UB snippets are never executed for validation.
 - [ ] Compile-error snippets isolate one diagnostic rule.
@@ -1672,16 +2184,24 @@ Across long-run practice:
 - [ ] Overload families establish viability before ranking/tie-breaking.
 - [ ] Forwarding questions show both deduced `T` and collapsed parameter type.
 - [ ] Container invalidation uses a whitelisted standard rule.
+- [ ] Practical vector/string/map result questions use valid bounded operations and ask only deterministic logical contents/lookups.
+- [ ] No practical container question depends on capacity growth, allocation, retained invalid handles, or hash iteration.
 - [ ] `std::move` is never described as moving by itself.
 - [ ] Moved-from valid-but-unspecified state is represented correctly.
+- [ ] Custom move traces derive source state only from the displayed user-defined move body.
+- [ ] Static-local traces initialize once in a fresh per-instance process and never ask about static destruction.
+- [ ] Copied objects and aliases are represented with separate object identities.
+- [ ] Bit operands are pinned unsigned `std::uint32_t`, masks/results show 32 bits, and all shift counts are valid.
+- [ ] Bit-expression choices implement the requested invariant beyond the one displayed sample value.
 - [ ] Member construction/destruction follows declaration order.
+- [ ] Compiler and `static_assert` validation is development/build/CI-only; the shipped browser app requires no backend or dynamic compiler.
 - [ ] Every family has three valid examples, rejection rules, feedback, and automated validation.
 - [ ] Randomized constants/names do not masquerade as pedagogical variety.
 - [ ] Repeated practice improves code-reading judgment rather than compiler-trivia recall.
 
-## 15. Stable identifiers and recommended navigation
+## 16. Stable identifiers and recommended navigation
 
-The UI may retain the current six category labels:
+The UI retains the existing six category labels and adds the seventh:
 
 - Runtime State & Control
 - Aliasing & Parameters
@@ -1689,5 +2209,6 @@ The UI may retain the current six category labels:
 - Overloads & Templates
 - Lifetime & Ownership
 - Declarations & Callables
+- Practical C++17 Operations
 
 Stable family identifiers are the backticked names in this specification. Existing category/level history can remain visible, but new mastery records must use family, semantic rule, behavior class, and misconception dimensions.

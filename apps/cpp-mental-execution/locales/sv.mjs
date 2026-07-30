@@ -42,6 +42,7 @@ export default {
       choose: "Välj…",
       pauseText: "Tidtagningen är stoppad för den här frågan.",
       resume: "Fortsätt",
+      scaffold: "nödvändiga headers och main() ingår",
       controlsAria: "Övningskontroller",
       masteryMetric: "Nivå",
       accuracyMetric: "Träffsäkerhet",
@@ -72,7 +73,8 @@ export default {
       types: { title: "Typer och konverteringar", short: "Typ" },
       resolution: { title: "Overloads och templates", short: "Anrop" },
       lifetime: { title: "Livstid och ägarskap", short: "Liv" },
-      declarations: { title: "Deklarationer och callables", short: "Dekl" }
+      declarations: { title: "Deklarationer och callables", short: "Dekl" },
+      practical: { title: "Praktiska C++17-operationer", short: "Praktiskt" }
     },
     learnCards: {
       runtime: {

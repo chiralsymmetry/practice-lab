@@ -42,6 +42,7 @@ export default {
       choose: "Choose…",
       pauseText: "The timer is stopped for this question.",
       resume: "Resume",
+      scaffold: "required headers and main() supplied",
       controlsAria: "Practice controls",
       masteryMetric: "Mastery",
       accuracyMetric: "Accuracy",
@@ -72,7 +73,8 @@ export default {
       types: { title: "Types & Conversions", short: "Type" },
       resolution: { title: "Overloads & Templates", short: "Call" },
       lifetime: { title: "Lifetime & Ownership", short: "Life" },
-      declarations: { title: "Declarations & Callables", short: "Decl" }
+      declarations: { title: "Declarations & Callables", short: "Decl" },
+      practical: { title: "Practical C++17 Operations", short: "Practical" }
     },
     learnCards: {
       runtime: {

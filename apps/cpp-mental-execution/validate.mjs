@@ -13,7 +13,7 @@ const context = { window: {}, document: { addEventListener() {} }, console };
 vm.createContext(context);
 vm.runInContext(script, context);
 const api = context.window.PracticeLabCppMentalExecution;
-if (!api || api.families.length !== 39) throw new Error("Expected all 39 C++ question families.");
+if (!api || api.families.length !== 48) throw new Error("Expected all 48 C++ question families.");
 
 const compilers = ["g++", "clang++"];
 const flags = ["-std=c++17", "-pedantic-errors", "-Wall", "-Wextra"];
@@ -32,6 +32,7 @@ const safe = String.raw`
 #include <cstdint>
 #include <iterator>
 #include <list>
+#include <map>
 #include <memory>
 #include <string>
 #include <type_traits>
@@ -56,6 +57,39 @@ struct S {
 
 int inc(int x) { return x + 1; }
 template<class F> int apply_value(F f, int x) { return f(x); }
+
+int persistent_step(int seed) {
+  static int value = seed;
+  return value++;
+}
+
+struct Pair {
+  int first;
+  int second;
+};
+
+std::vector<int> practical_events;
+struct PracticalTrace {
+  int value;
+  explicit PracticalTrace(int v) : value(v) { practical_events.push_back(1); }
+  PracticalTrace(const PracticalTrace& other) : value(other.value) { practical_events.push_back(2); }
+  PracticalTrace(PracticalTrace&& other) : value(other.value) {
+    other.value = -1;
+    practical_events.push_back(3);
+  }
+  PracticalTrace& operator=(const PracticalTrace& other) {
+    value = other.value;
+    practical_events.push_back(4);
+    return *this;
+  }
+  PracticalTrace& operator=(PracticalTrace&& other) {
+    value = other.value;
+    other.value = -1;
+    practical_events.push_back(5);
+    return *this;
+  }
+  ~PracticalTrace() { practical_events.push_back(6); }
+};
 
 int main() {
   int a = 3, b = 5;
@@ -142,6 +176,65 @@ int main() {
   auto stateful = [n = 0](int n0) mutable { return n0 + ++n; };
   assert(apply_value(stateful, 10) == 11);
   assert(apply_value(stateful, 10) == 11);
+
+  int outer = 4;
+  int inner = 0;
+  {
+    int outer = 9;
+    inner = outer;
+  }
+  assert(outer == 4 && inner == 9);
+  assert(persistent_step(5) == 5);
+  assert(persistent_step(20) == 6);
+
+  Pair source{2, 5};
+  Pair copied = source;
+  copied.first = 9;
+  assert(source.first == 2 && copied.first == 9);
+  Pair& pair_alias = source;
+  pair_alias.second = 7;
+  assert(source.second == 7 && copied.second == 5);
+
+  practical_events.clear();
+  {
+    PracticalTrace first(3);
+    PracticalTrace second = first;
+    PracticalTrace third(9);
+    third = std::move(second);
+    assert(first.value == 3 && second.value == -1 && third.value == 3);
+  }
+  assert((practical_events == std::vector<int>{1, 2, 1, 5, 6, 6, 6}));
+
+  std::vector<int> practical_vector{0, 1, 2, 3, 4};
+  practical_vector.erase(practical_vector.begin() + 1, practical_vector.begin() + 4);
+  practical_vector.insert(practical_vector.begin() + 1, 9);
+  assert((practical_vector == std::vector<int>{0, 9, 4}));
+
+  std::string practical_string = "abcdef";
+  practical_string.erase(1, 2);
+  practical_string.insert(2, "XY");
+  practical_string.replace(0, 1, "Q");
+  assert(practical_string == "QdXYef");
+  assert(std::string("banana").find("ana") == 1);
+
+  std::map<int, int> practical_map{{4, 8}, {1, 2}};
+  practical_map[3] += 5;
+  practical_map[1] = 7;
+  practical_map.insert({1, 99});
+  assert(practical_map.at(1) == 7 && practical_map.at(3) == 5);
+  auto map_it = practical_map.begin();
+  assert(map_it->first == 1);
+  ++map_it;
+  assert(map_it->first == 3);
+
+  static_assert(std::is_same_v<decltype(+std::uint32_t{}), std::uint32_t>);
+  constexpr std::uint32_t bits = std::uint32_t{0x12345678};
+  constexpr std::uint32_t mask = std::uint32_t{0x00FF00FF};
+  static_assert((bits & mask) == std::uint32_t{0x00340078});
+  constexpr std::uint32_t field_mask = std::uint32_t{0x0000000F};
+  constexpr std::uint32_t inserted =
+    (bits & ~(field_mask << 8)) | ((std::uint32_t{5} & field_mask) << 8);
+  static_assert(inserted == std::uint32_t{0x12345578});
 }
 `;
 

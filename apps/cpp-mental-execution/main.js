@@ -98,7 +98,8 @@
     { id: "types", title: "Types & Conversions" },
     { id: "resolution", title: "Overloads & Templates" },
     { id: "lifetime", title: "Lifetime & Ownership" },
-    { id: "declarations", title: "Declarations & Callables" }
+    { id: "declarations", title: "Declarations & Callables" },
+    { id: "practical", title: "Practical C++17 Operations" }
   ];
 
   var FAMILY_DATA = [
@@ -145,7 +146,17 @@
     ["data_member_pointer", "declarations", "Data member pointers", "Datamedlemspekare", [2,3,4,5], "Data member pointer", "Datamedlemspekare", "Select the object, then apply the member pointer with .* or ->*.", "Välj objektet och applicera sedan medlemspekaren med .* eller ->*."],
     ["member_function_pointer", "declarations", "Member function pointers", "Medlemsfunktionspekare", [3,4,5], "Member function pointer", "Medlemsfunktionspekare", "Match the full cv-qualified member-function type before invoking it.", "Matcha hela den cv-kvalificerade medlemsfunktionstypen före anrop."],
     ["lambda_capture_trace", "declarations", "Lambda capture", "Lambdacapture", [2,3,4,5], "Lambda capture", "Lambdacapture", "Keep closure members separate from referenced external objects.", "Håll closure-medlemmar åtskilda från externa objekt som refereras."],
-    ["callable_selection_and_invoke", "declarations", "Callable composition", "Callable-komposition", [3,4,5], "Callable invocation", "Callable-anrop", "Track whether the helper copies or aliases the callable before invoking it.", "Följ om hjälpfunktionen kopierar eller aliaserar callable-objektet före anrop."]
+    ["callable_selection_and_invoke", "declarations", "Callable composition", "Callable-komposition", [3,4,5], "Callable invocation", "Callable-anrop", "Track whether the helper copies or aliases the callable before invoking it.", "Följ om hjälpfunktionen kopierar eller aliaserar callable-objektet före anrop."],
+
+    ["block_scope_shadow_trace", "practical", "Block scope and static locals", "Blockscope och statiska lokaler", [1,2,3,4,5], "Scope & shadowing", "Scope och skuggning", "Resolve each use to the nearest active declaration; shadowing creates a different object.", "Knyt varje användning till närmaste aktiva deklaration; skuggning skapar ett annat objekt."],
+    ["static_local_trace", "practical", "Block scope and static locals", "Blockscope och statiska lokaler", [1,2,3,4,5], "Static local state", "Statiskt lokalt tillstånd", "A function-local static initializes once and preserves its value across later calls.", "En funktionslokal static initieras en gång och bevarar värdet mellan senare anrop."],
+    ["value_copy_independence_trace", "practical", "Value copies and special members", "Värdekopior och specialmedlemmar", [1,2,3,4,5], "Value copy or alias", "Värdekopia eller alias", "A copied object has independent identity; a reference still denotes the source object.", "Ett kopierat objekt har egen identitet; en referens betecknar fortfarande källobjektet."],
+    ["special_member_event_trace", "practical", "Value copies and special members", "Värdekopior och specialmedlemmar", [1,2,3,4,5], "Special-member events", "Specialmedlemshändelser", "Distinguish construction from assignment, then destroy automatic objects in reverse order.", "Skilj konstruktion från tilldelning och förstör sedan automatiska objekt i omvänd ordning."],
+    ["vector_content_trace", "practical", "Vector contents", "Vectorinnehåll", [1,2,3,4,5], "Vector operations", "Vectoroperationer", "Track logical element order after bounded mutation; do not predict capacity.", "Följ elementens logiska ordning efter begränsade ändringar; förutsäg inte capacity."],
+    ["string_content_and_lookup_trace", "practical", "String operations", "Strängoperationer", [1,2,3,4,5], "String operations", "Strängoperationer", "String positions are zero-based and pos,count uses a count, not an ending index.", "Strängpositioner börjar på noll och pos,count använder ett antal, inte ett slutindex."],
+    ["ordered_map_trace", "practical", "Ordered map operations", "Ordnade map-operationer", [1,2,3,4,5], "Ordered map", "Ordnad map", "std::map lookup, insertion, update, and iteration follow unique keys in comparator order.", "Uppslagning, infogning, uppdatering och iteration i std::map följer unika nycklar i jämförelseordning."],
+    ["uint32_bitwise_trace", "practical", "Fixed-width bit operations", "Bitoperationer med fast bredd", [1,2,3,4,5], "32-bit bitwise result", "32-bitars bitresultat", "Evaluate bitwise operators over the stated pinned unsigned 32-bit type.", "Beräkna bitoperatorer över den angivna fixerade 32-bitars osignerade typen."],
+    ["bit_expression_selection", "practical", "Fixed-width bit operations", "Bitoperationer med fast bredd", [1,2,3,4,5], "Choose a bit expression", "Välj ett bituttryck", "Match set, clear, toggle, test, extract, and insert intents to their per-bit invariants.", "Matcha sätt, rensa, växla, testa, extrahera och infoga mot deras bitvisa invarianta egenskaper."]
   ];
 
   var FAMILIES = FAMILY_DATA.map(function (row) {
@@ -191,6 +202,11 @@
     return { id: id, label: label, kind: kind || "text", value: String(value), aliases: aliases || [] };
   }
   function intField(id, value) { return textField(id, id, value, "integer"); }
+  function sequenceField(id, label, values) {
+    var rendered = "[" + values.join(", ") + "]";
+    return textField(id, label, rendered, "sequence", [values.join(" "), values.join(","), values.join(", ")]);
+  }
+  function hex32(value) { return "0x" + (value >>> 0).toString(16).toUpperCase().padStart(8, "0"); }
   function typeField(id, label, value, extra) {
     var pool = ["int", "const int", "int&", "const int&", "int&&", "const int&&", "double", "bool", "int*", "const int*", "int* const", "const int* const"];
     (extra || []).forEach(function (item) { if (!pool.includes(item)) pool.push(item); });
@@ -607,6 +623,95 @@
     return makeQuestion("callable_selection_and_invoke",level,{code:"template<class F>\nint apply(F f, int x) { return f(x); }\nauto f = [n=0](int x) mutable { return x + (++n); };\nint a = apply(f, 10);\nint b = apply(f, 10);",fields:[intField("a",11),intField("b",11)],steps:["Each apply call copies original f with n=0","each copy increments its own n to 1","both calls return 11"],signature:"callable-copy",misconceptions:["callable-copy-shares-state"]});
   };
 
+  GENERATORS.block_scope_shadow_trace=function(level,rng){
+    var a=rng.int(2,7),b=rng.int(4,9),k=rng.int(1,4),which=progressive(level,rng,4,1);
+    if(which===0)return makeQuestion("block_scope_shadow_trace",level,{code:"int x = "+a+";\nint inside = 0;\n{\n  int x = "+b+";\n  inside = x;\n}\nint after = x;",fields:[intField("inside",b),intField("after",a)],steps:[L("The inner declaration creates a second x.","Den inre deklarationen skapar ett andra x."),L("Leaving the block reveals the outer x again.","När blocket lämnas blir yttre x synligt igen.")],signature:"one-shadow",misconceptions:["shadow-is-assignment"]});
+    if(which===1)return makeQuestion("block_scope_shadow_trace",level,{code:"int x = "+a+";\nint inner = 0;\n{\n  int x = "+b+";\n  x += "+k+";\n  inner = x;\n}\nx *= 2;",fields:[intField("x",a*2),intField("inner",b+k)],steps:[L("Only the inner x receives the addition.","Bara det inre x får additionen."),L("After block exit, x names the outer object.","Efter blockslutet betecknar x det yttre objektet.")],signature:"mutate-both",misconceptions:["shadow-is-assignment"]});
+    if(which===2)return makeQuestion("block_scope_shadow_trace",level,{code:"int x = "+a+";\nint y = "+b+";\nint inner = 0;\n{\n  int x = y + "+k+";\n  y = x - 1;\n  inner = x;\n}\nx += y;",fields:[intField("x",a+b+k-1),intField("y",b+k-1),intField("inner",b+k)],steps:[L("The inner x starts from y, not from outer x.","Det inre x startar från y, inte från yttre x."),L("The final x += y updates the outer x.","Det sista x += y uppdaterar yttre x.")],signature:"dependent-shadow",misconceptions:["nearest-declaration"]});
+    return makeQuestion("block_scope_shadow_trace",level,{code:"int x = "+a+";\nint middle = 0;\nint inner = 0;\n{\n  int x = "+(a+k)+";\n  middle = x;\n  {\n    int x = middle + "+b+";\n    inner = x;\n  }\n}\nint outer = x;",fields:[intField("middle",a+k),intField("inner",a+k+b),intField("outer",a)],steps:[L("Each block pushes a distinct x binding.","Varje block lägger till en separat x-bindning."),L("Bindings are removed in reverse block order.","Bindningarna tas bort i omvänd blockordning.")],signature:"double-shadow",misconceptions:["nearest-declaration"]});
+  };
+
+  GENERATORS.static_local_trace=function(level,rng){
+    var start=rng.int(2,7),a=rng.int(1,4),b=rng.int(2,5),which=progressive(level,rng,4,1),code,values,steps;
+    if(which===0){code="int next() {\n  static int n = "+start+";\n  return n++;\n}\nint a = next();\nint b = next();\nint c = next();";values=[start,start+1,start+2];steps=[L("n initializes once.","n initieras en gång."),L("Each postfix increment stores the next persistent value.","Varje postfixinkrement lagrar nästa bestående värde.")];}
+    else if(which===1){code="int next(int seed) {\n  static int n = seed;\n  return n++;\n}\nint a = next("+start+");\nint b = next("+(start+9)+");";values=[start,start+1];steps=[L("The first call supplies the initializer.","Det första anropet ger initieringsvärdet."),L("The later seed is ignored for initialization.","Det senare seed-värdet ignoreras vid initieringen.")];}
+    else if(which===2){code="int add(int x) {\n  static int total = x;\n  total += x;\n  return total;\n}\nint a = add("+a+");\nint b = add("+b+");\nint c = add(1);";values=[2*a,2*a+b,2*a+b+1];steps=[L("total initializes from the first argument, then that call adds it again.","total initieras från första argumentet och samma anrop adderar det igen."),L("Later calls reuse total.","Senare anrop återanvänder total.")];}
+    else{code="int step(int x) {\n  if (x < 0) return -1;\n  static int n = 10;\n  n += x;\n  return n;\n}\nint a = step(-1);\nint b = step("+a+");\nint c = step("+b+");";values=[-1,10+a,10+a+b];steps=[L("The first call returns before reaching the static declaration.","Det första anropet returnerar innan static-deklarationen nås."),L("n initializes on the first reached declaration.","n initieras första gången deklarationen nås.")];}
+    return makeQuestion("static_local_trace",level,{code:code,fields:[sequenceField("returns",L("Return values","Returvärden"),values)],steps:steps,signature:"static-"+which,note:L("Enter the returned values in call order.","Ange returvärdena i anropsordning."),misconceptions:["static-reinitializes"]});
+  };
+
+  GENERATORS.value_copy_independence_trace=function(level,rng){
+    var a=rng.int(1,6),b=rng.int(4,9),k=rng.int(1,4),which=progressive(level,rng,3,1),prefix="struct Pair { int first; int second; };\n";
+    if(which===0)return makeQuestion("value_copy_independence_trace",level,{code:prefix+"Pair a{"+a+", "+b+"};\nPair copy = a;\ncopy.first += "+k+";",fields:[intField("a.first",a),intField("a.second",b),intField("copy.first",a+k),intField("copy.second",b)],steps:[L("copy construction creates a distinct Pair.","Kopieringskonstruktion skapar ett separat Pair-objekt."),L("The write reaches copy only.","Skrivningen når bara copy.")],signature:"copy-construct",misconceptions:["copy-is-alias"]});
+    if(which===1)return makeQuestion("value_copy_independence_trace",level,{code:prefix+"Pair a{"+a+", "+b+"};\nPair copy{8, 9};\ncopy = a;\na.second += "+k+";",fields:[intField("a.first",a),intField("a.second",b+k),intField("copy.first",a),intField("copy.second",b)],steps:[L("Copy assignment transfers both member values.","Kopieringstilldelning överför båda medlemsvärdena."),L("The two objects remain independent afterward.","Objekten förblir oberoende därefter.")],signature:"copy-assign",misconceptions:["assignment-rebinds-object"]});
+    return makeQuestion("value_copy_independence_trace",level,{code:prefix+"Pair a{"+a+", "+b+"};\nPair copy = a;\nPair& alias = a;\ncopy.second -= "+k+";\nalias.first += "+k+";",fields:[intField("a.first",a+k),intField("a.second",b),intField("copy.first",a),intField("copy.second",b-k)],steps:[L("copy owns a separate pair of members.","copy äger ett separat medlemspar."),L("alias denotes a, so its write changes a.","alias betecknar a, så dess skrivning ändrar a.")],signature:"copy-vs-alias",misconceptions:["copy-is-alias"]});
+  };
+
+  GENERATORS.special_member_event_trace=function(level,rng){
+    var a=rng.int(2,7),b=rng.int(8,12),which=progressive(level,rng,5,1);
+    var definition="struct Trace {\n  int value;\n  explicit Trace(int v) : value(v) { std::cout << \"ctor(\" << value << \") \"; }\n  Trace(const Trace& other) : value(other.value) { std::cout << \"copy(\" << value << \") \"; }\n  Trace(Trace&& other) : value(other.value) { other.value = -1; std::cout << \"move(\" << value << \") \"; }\n  Trace& operator=(const Trace& other) { value = other.value; std::cout << \"copy=(\" << value << \") \"; return *this; }\n  Trace& operator=(Trace&& other) { value = other.value; other.value = -1; std::cout << \"move=(\" << value << \") \"; return *this; }\n  ~Trace() { std::cout << \"dtor(\" << value << \") \"; }\n};\n\n";
+    var body,events,signature;
+    if(which===0){body="{\n  Trace a("+a+");\n}";events=["ctor("+a+")","dtor("+a+")"];signature="direct";}
+    else if(which===1){body="{\n  Trace a("+a+");\n  Trace b = a;\n}";events=["ctor("+a+")","copy("+a+")","dtor("+a+")","dtor("+a+")"];signature="copy-construct";}
+    else if(which===2){body="{\n  Trace a("+a+");\n  Trace b("+b+");\n  b = a;\n}";events=["ctor("+a+")","ctor("+b+")","copy=("+a+")","dtor("+a+")","dtor("+a+")"];signature="copy-assign";}
+    else if(which===3){body="{\n  Trace a("+a+");\n  Trace b(std::move(a));\n}";events=["ctor("+a+")","move("+a+")","dtor("+a+")","dtor(-1)"];signature="move-construct";}
+    else{body="{\n  Trace a("+a+");\n  Trace b("+b+");\n  b = std::move(a);\n}";events=["ctor("+a+")","ctor("+b+")","move=("+a+")","dtor("+a+")","dtor(-1)"];signature="move-assign";}
+    return makeQuestion("special_member_event_trace",level,{code:definition+body,fields:[sequenceField("events",L("Event sequence","Händelseföljd"),events)],steps:[L("A declaration constructs a new object; operator= assigns an existing object.","En deklaration konstruerar ett nytt objekt; operator= tilldelar ett befintligt objekt."),L("The displayed move body explicitly sets the source to -1.","Den visade move-kroppen sätter uttryckligen källan till -1."),L("Block locals are destroyed in reverse construction order.","Blocklokaler förstörs i omvänd konstruktionsordning.")],signature:signature,note:L("Enter event tokens in execution order.","Ange händelsetoken i körordning."),misconceptions:["construction-vs-assignment"]});
+  };
+
+  GENERATORS.vector_content_trace=function(level,rng){
+    var a=rng.int(0,5),b=rng.int(6,10),c=rng.int(11,15),d=rng.int(16,20),e=rng.int(21,25),which=progressive(level,rng,5,1),code,values,steps;
+    if(which===0){code="std::vector<int> v{"+a+", "+b+"};\nv.push_back("+c+");\nv[0] = "+d+";";values=[d,b,c];steps=[L("push_back appends at the end.","push_back lägger till sist."),L("Indexed assignment replaces one existing element.","Indexerad tilldelning ersätter ett befintligt element.")];}
+    else if(which===1){code="std::vector<int> v{"+a+", "+c+"};\nv.insert(v.begin() + 1, "+b+");";values=[a,b,c];steps=[L("insert places the new value before index 1.","insert placerar det nya värdet före index 1.")];}
+    else if(which===2){code="std::vector<int> v{"+a+", "+b+", "+c+", "+d+"};\nv.erase(v.begin() + 1);\nv[1] = "+e+";";values=[a,e,d];steps=[L("erase removes the old index 1.","erase tar bort det gamla index 1."),L("Later indices use the shortened vector.","Senare index använder den förkortade vektorn.")];}
+    else if(which===3){code="std::vector<int> v{"+a+", "+b+", "+c+", "+d+", "+e+"};\nv.erase(v.begin() + 1, v.begin() + 4);\nv.insert(v.begin() + 1, "+c+");";values=[a,c,e];steps=[L("The half-open range removes indices 1, 2, and 3.","Det halvöppna intervallet tar bort index 1, 2 och 3."),L("Insertion uses the current vector.","Infogningen använder den aktuella vektorn.")];}
+    else{code="std::vector<int> v{"+a+", "+b+", "+c+"};\nv.push_back("+d+");\nv.insert(v.begin() + 1, "+e+");\nv.erase(v.begin() + 2);\nv[3] = "+b+";";values=[a,e,c,b];steps=[L("Track contents after each operation; indices shift after insert and erase.","Följ innehållet efter varje operation; index flyttas efter insert och erase."),L("Capacity is irrelevant to the requested contents.","Capacity saknar betydelse för det efterfrågade innehållet.")];}
+    return makeQuestion("vector_content_trace",level,{code:code,fields:[sequenceField("v",L("Final v","Slutligt v"),values)],steps:steps,signature:"vector-"+which,note:L("Enter the final vector contents in order.","Ange vektorns slutliga innehåll i ordning."),misconceptions:["stale-container-index"]});
+  };
+
+  GENERATORS.string_content_and_lookup_trace=function(level,rng){
+    var which=progressive(level,rng,5,1),code,field,steps,signature;
+    if(which===0){var bases=["planet","window","coding"],base=rng.pick(bases),pos=rng.int(1,2),count=rng.int(2,3),part=base.slice(pos,pos+count);code="std::string s = \""+base+"\";\nstd::string part = s.substr("+pos+", "+count+");";field=textField("part","part",part,"text",["\""+part+"\""]);steps=[L("Start at the zero-based position and take at most count characters.","Börja vid den nollbaserade positionen och ta högst count tecken.")];signature="substr";}
+    else if(which===1){var found=rng.int(0,2)===0?-1:1,needle=found<0?"xyz":"ana";code="std::string s = \"banana\";\nstd::size_t found = s.find(\""+needle+"\");";field=textField("found",L("First match","Första träff"),found<0?"not found":found,"text",found<0?["npos",L("not found","hittades inte")]:[]);steps=[found<0?L("The needle does not occur; report not found, not a numeric npos.","Söksträngen finns inte; ange hittades inte, inte ett numeriskt npos."):L("find returns the first overlapping match at index 1.","find returnerar den första överlappande träffen vid index 1.")];signature=found<0?"find-miss":"find-overlap";}
+    else if(which===2){var inserted=rng.pick(["XY","42","go"]);code="std::string s = \"abcd\";\ns.insert(2, \""+inserted+"\");";var insertedResult="ab"+inserted+"cd";field=textField("s","s",insertedResult,"text",["\""+insertedResult+"\""]);steps=[L("insert places text before the current position 2.","insert placerar text före den aktuella positionen 2.")];signature="insert";}
+    else if(which===3){code="std::string s = \"abcdef\";\ns.erase(1, 2);\ns.replace(1, 2, \"XY\");";field=textField("s","s","aXYf","text",["\"aXYf\""]);steps=[L("erase removes b and c, leaving adef.","erase tar bort b och c och lämnar adef."),L("replace removes de and inserts XY.","replace tar bort de och infogar XY.")];signature="erase-replace";}
+    else{code="std::string s = \"abcdef\";\ns.erase(1, 2);\ns.insert(2, \"XY\");\ns.replace(0, 1, \"Q\");";field=textField("s","s","QdXYef","text",["\"QdXYef\""]);steps=[L("Every position is interpreted on the current string.","Varje position tolkas på den aktuella strängen."),L("The successive contents are adef, adXYef, QdXYef.","Det stegvisa innehållet är adef, adXYef, QdXYef.")];signature="combined";}
+    return makeQuestion("string_content_and_lookup_trace",level,{code:code,fields:[field],steps:steps,signature:signature,note:L("Give the requested string or lookup result.","Ange den efterfrågade strängen eller sökresultatet."),misconceptions:["position-count-is-end"]});
+  };
+
+  GENERATORS.ordered_map_trace=function(level,rng){
+    var a=rng.int(2,5),b=rng.int(6,9),which=progressive(level,rng,5,1),code,fields,steps,signature,pairs;
+    if(which===0){var hit=rng.int(0,2)!==0,key=hit?2:3;code="std::map<int, int> m{{2, "+a+"}, {1, "+b+"}};\nauto it = m.find("+key+");";fields=[choiceField("lookup",L("Lookup","Uppslagning"),hit?"found":"not found",[{value:"found",label:L("found","hittad")},{value:"not found",label:L("not found","hittades inte")}])];if(hit)fields.push(intField("value",a));steps=[hit?L("find locates key 2 without inserting.","find hittar nyckel 2 utan att infoga."):L("find misses key 3 and does not insert it.","find missar nyckel 3 och infogar den inte.")];signature=hit?"find-hit":"find-miss";}
+    else if(which===1){code="std::map<int, int> m{{3, "+b+"}, {1, "+a+"}};\nm.insert({2, 5});";pairs=["1:"+a,"2:5","3:"+b];fields=[sequenceField("m",L("Iteration order","Iterationsordning"),pairs)];steps=[L("The new key is inserted.","Den nya nyckeln infogas."),L("Range-for visits ascending keys 1, 2, 3.","Range-for besöker stigande nycklar 1, 2, 3.")];signature="insert";}
+    else if(which===2){code="std::map<int, int> m{{3, "+b+"}, {1, "+a+"}};\nm.insert({2, 5});\nm.insert({1, 99});";pairs=["1:"+a,"2:5","3:"+b];fields=[sequenceField("m",L("Iteration order","Iterationsordning"),pairs)];steps=[L("insert adds missing key 2.","insert lägger till den saknade nyckeln 2."),L("Duplicate insert does not overwrite key 1.","En duplicerad insert skriver inte över nyckel 1.")];signature="duplicate-insert";}
+    else if(which===3){code="std::map<int, int> m{{4, "+b+"}, {1, "+a+"}};\nm[3] += 5;\nm[1] = 7;";pairs=["1:7","3:5","4:"+b];fields=[sequenceField("m",L("Iteration order","Iterationsordning"),pairs)];steps=[L("Missing key 3 is inserted with int value 0, then gains 5.","Den saknade nyckeln 3 infogas med int-värdet 0 och ökas sedan med 5."),L("operator[] assignment updates key 1.","Tilldelning via operator[] uppdaterar nyckel 1.")];signature="default-insert-update";}
+    else{code="std::map<int, int> m{{5, "+a+"}, {2, "+b+"}};\nm[4] = 8;\nm.insert({1, 3});\nm[5] += 2;";pairs=["1:3","2:"+b,"4:8","5:"+(a+2)];fields=[sequenceField("m",L("Iteration order","Iterationsordning"),pairs)];steps=[L("Assignment inserts key 4 and insert adds key 1.","Tilldelning infogar nyckel 4 och insert lägger till nyckel 1."),L("Iteration sorts by key, not insertion order.","Iteration sorterar efter nyckel, inte infogningsordning.")];signature="mixed-map";}
+    return makeQuestion("ordered_map_trace",level,{code:code,fields:fields,steps:steps,signature:signature,note:L("Report the lookup or the key:value pairs in iteration order.","Ange uppslagningen eller nyckel:värde-paren i iterationsordning."),misconceptions:["map-insertion-order"]});
+  };
+
+  GENERATORS.uint32_bitwise_trace=function(level,rng){
+    var values=[0x12345678,0xA5A50F0F,0x0F0F00FF,0xC33055AA],masks=[0x00FF00FF,0x0FF00FF0,0x3333CCCC,0xF00000F0],value=values[rng.int(0,values.length-1)]>>>0,mask=masks[rng.int(0,masks.length-1)]>>>0,which=progressive(level,rng,5,1),expression,result,signature,steps;
+    if(which===0){expression="value & mask";result=(value&mask)>>>0;signature="and";steps=[L("AND keeps only positions that are 1 in both rows.","AND behåller bara positioner som är 1 i båda raderna.")];}
+    else if(which===1){expression="value | mask";result=(value|mask)>>>0;signature="or";steps=[L("OR sets every position selected by either row.","OR sätter varje position som väljs av någon rad.")];}
+    else if(which===2){expression="value ^ mask";result=(value^mask)>>>0;signature="xor";steps=[L("XOR sets positions where the two rows differ.","XOR sätter positioner där de två raderna skiljer sig.")];}
+    else if(which===3){expression="~value";result=(~value)>>>0;signature="not";steps=[L("Complement flips all 32 positions, including leading zeroes.","Komplement växlar alla 32 positioner, inklusive inledande nollor.")];}
+    else{var shift=rng.int(1,7);expression="(value >> "+shift+") ^ mask";result=((value>>>shift)^mask)>>>0;signature="shift-xor";steps=[L("Unsigned right shift fills with zero.","Osignerat högerskift fyller med noll."),L("Apply XOR after the shift.","Utför XOR efter skiftet.")];}
+    var code="#include <cstdint>\n#include <type_traits>\nstatic_assert(std::is_same_v<decltype(+std::uint32_t{}), std::uint32_t>);\n\nstd::uint32_t value = std::uint32_t{"+hex32(value)+"};\nstd::uint32_t mask = std::uint32_t{"+hex32(mask)+"};\nstd::uint32_t result = "+expression+";";
+    return makeQuestion("uint32_bitwise_trace",level,{code:code,fields:[textField("result","result",hex32(result),"text")],steps:steps.concat([L("Materialize and format exactly 32 unsigned bits.","Materialisera och formatera exakt 32 osignerade bitar.")]),signature:signature,note:L("Assume the validated uint32_t condition shown. Give eight hex digits.","Anta det visade validerade uint32_t-villkoret. Ange åtta hexsiffror."),validation:"development/build dual-compiler static_assert fixture",misconceptions:["logical-vs-bitwise"]});
+  };
+
+  GENERATORS.bit_expression_selection=function(level,rng){
+    var which=progressive(level,rng,6,1,2),correct,choices,prompt,extra="",signature;
+    if(which===0){correct="value | mask";choices=[correct,"value & mask","value ^ mask","value & ~mask"];prompt=L("Which expression sets every bit selected by mask?","Vilket uttryck sätter varje bit som väljs av mask?");signature="set";}
+    else if(which===1){correct="value & ~mask";choices=[correct,"value | mask","value ^ mask","value & mask"];prompt=L("Which expression clears every bit selected by mask?","Vilket uttryck rensar varje bit som väljs av mask?");signature="clear";}
+    else if(which===2){correct="value ^ mask";choices=[correct,"value | mask","value & mask","value & ~mask"];prompt=L("Which expression toggles every bit selected by mask?","Vilket uttryck växlar varje bit som väljs av mask?");signature="toggle";}
+    else if(which===3){correct="(value & mask) != 0";choices=[correct,"value && mask","value == mask","(value | mask) != 0"];prompt=L("Which expression tests whether any selected bit is 1?","Vilket uttryck testar om någon vald bit är 1?");signature="test-any";}
+    else if(which===4){correct="(value >> offset) & fieldMask";choices=[correct,"(value << offset) & fieldMask","value >> (offset & fieldMask)","(value & fieldMask) >> offset"];prompt=L("Which expression extracts the field beginning at offset?","Vilket uttryck extraherar fältet som börjar vid offset?");extra="\nstd::uint32_t fieldMask = std::uint32_t{0x0000000F};\nint offset = 8;";signature="extract";}
+    else{correct="(value & ~(fieldMask << offset)) | ((fieldValue & fieldMask) << offset)";choices=[correct,"value | (fieldValue << offset)","(value & ~(fieldMask << offset)) | (fieldValue & fieldMask)","(value & ~fieldMask) | (fieldValue << offset)"];prompt=L("Which expression replaces the field beginning at offset?","Vilket uttryck ersätter fältet som börjar vid offset?");extra="\nstd::uint32_t fieldMask = std::uint32_t{0x0000000F};\nstd::uint32_t fieldValue = std::uint32_t{0x00000005};\nint offset = 8;";signature="insert";}
+    var code="#include <cstdint>\n#include <type_traits>\nstatic_assert(std::is_same_v<decltype(+std::uint32_t{}), std::uint32_t>);\n\nstd::uint32_t value = std::uint32_t{0xA5A55A5A};\nstd::uint32_t mask = std::uint32_t{0x0000000F};"+extra;
+    return makeQuestion("bit_expression_selection",level,{code:code,fields:[choiceField("expression",L("Expression","Uttryck"),correct,rng.shuffle(choices))],steps:signature==="insert"?[L("Clear the destination field first.","Rensa målfältet först."),L("Mask and shift fieldValue, then combine with OR.","Maskera och skifta fieldValue och kombinera sedan med OR.")]:[L("Apply the requested invariant independently at each selected bit.","Tillämpa den efterfrågade invarianten separat på varje vald bit.")],signature:signature,title:L("Choose the C++ bit expression.","Välj C++-uttrycket för bitoperationen."),note:prompt,validation:"development/build dual-compiler static_assert fixture",misconceptions:["bit-operation-selection"]});
+  };
+
   function generateQuestion(familyId, level, seed, bypassRecent) {
     var family=familyById(familyId), generator=GENERATORS[family.id];
     if(!generator)throw new Error("Missing generator: "+family.id);
@@ -692,7 +797,7 @@
     startedAt=Date.now();pausedMs=0;answered=false;renderAll();if(activeInput&&window.matchMedia&&window.matchMedia("(pointer: fine)").matches)activeInput.focus();
   }
   function renderPrompt(){
-    elements.questionPrompt.innerHTML='<div class="standard-note">ISO C++17</div><div class="prompt-title">'+escapeHtml(currentQuestion.prompt.title)+'</div><pre class="prompt-code"><code>'+escapeHtml(currentQuestion.code)+'</code></pre><div class="prompt-note">'+escapeHtml(currentQuestion.prompt.note)+'</div>';
+    elements.questionPrompt.innerHTML='<div class="standard-note">ISO C++17 · '+escapeHtml(t("practice.scaffold","required headers and main() supplied"))+'</div><div class="prompt-title">'+escapeHtml(currentQuestion.prompt.title)+'</div><pre class="prompt-code"><code>'+escapeHtml(currentQuestion.code)+'</code></pre><div class="prompt-note">'+escapeHtml(currentQuestion.prompt.note)+'</div>';
   }
   function renderAnswerControls(){
     elements.answerControls.innerHTML="";activeInput=null;
@@ -769,13 +874,13 @@
 
   function runSelfTests(){
     var failures=[];function assert(name,condition){if(!condition)failures.push(name);}
-    assert("39 families",FAMILIES.length===39);assert("39 generators",Object.keys(GENERATORS).length===39);
+    assert("48 families",FAMILIES.length===48);assert("48 generators",Object.keys(GENERATORS).length===48);
     var specFields=["categoryId","subcategoryId","familyId","level","cppStandard","questionKind","behaviorClass","concepts","misconceptionsTargeted","parameters","code","scaffold","canonicalAnswer","acceptedAnswers","workedTrace","compilerValidationMode","structuralSignature"];
     FAMILIES.forEach(function(family,index){family.levels.forEach(function(level){for(var sample=0;sample<60;sample+=1){try{var question=generateQuestion(family.id,level,(index+1)*100000+level*1000+sample,true),answers={};question.answer.fields.forEach(function(field){answers[field.id]=field.value;});assert("canonical "+family.id+":"+level+":"+sample,checkQuestion(answers,question).correct);specFields.forEach(function(key){assert("metadata "+family.id+" "+key,question[key]!==undefined);});assert("standard "+family.id,question.cppStandard==="c++17");assert("code "+family.id,Boolean(question.code));if(question.behaviorClass!=="deterministic")assert("unsafe not run "+family.id,!question.compilerValidationMode.includes("compile-and-run"));}catch(error){failures.push("generator "+family.id+":"+level+":"+sample+" "+error.message);}}});});
     var behaviorSeen={};for(var i=0;i<500;i+=1){var q=generateQuestion("expression_behavior_classification",5,i,true);behaviorSeen[q.behaviorClass]=true;}BEHAVIORS.forEach(function(kind){assert("behavior coverage "+kind,behaviorSeen[kind]);});
     var migrated=migrateLegacy({cells:{"runtime:1":{attempts:3,correct:2,totalMs:500}}});assert("legacy totals",migrated.legacyCategoryTotals.runtime.attempts===3);assert("fresh family cells",Object.keys(migrated.cells).length===0);
     if(failures.length){console.error("C++ mental-execution self-tests failed",failures.slice(0,80),"total",failures.length);return{ok:false,failures:failures.slice(0,120)};}
-    console.info("C++ mental-execution self-tests passed: 39 families, five behavior classes, generated canonical-answer and metadata sample");
+    console.info("C++ mental-execution self-tests passed: 48 families, five behavior classes, generated canonical-answer and metadata sample");
     return{ok:true,failures:[]};
   }
 
