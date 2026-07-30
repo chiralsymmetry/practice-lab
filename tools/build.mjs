@@ -1,42 +1,72 @@
+const categories = [
+  {
+    id: "computing-operations",
+    title: "Computing and operations",
+  },
+  {
+    id: "mathematics-data",
+    title: "Mathematics and data",
+  },
+  {
+    id: "science-engineering-spatial-reasoning",
+    title: "Science, engineering, and spatial reasoning",
+  },
+  {
+    id: "business",
+    title: "Business",
+  },
+  {
+    id: "languages-humanities-other-practice",
+    title: "Languages, humanities, and other practice",
+  },
+];
+
 const apps = [
   {
     id: "programmer-low-level-numeracy",
+    categoryId: "computing-operations",
     sourceDir: "apps/programmer-low-level-numeracy",
     outputBase: "programmer-low-level-numeracy",
     locales: ["en", "sv"],
   },
   {
     id: "mental-arithmetic",
+    categoryId: "mathematics-data",
     sourceDir: "apps/mental-arithmetic",
     outputBase: "mental-arithmetic",
     locales: ["en", "sv"],
   },
   {
     id: "everyday-economics",
+    categoryId: "business",
     sourceDir: "apps/everyday-economics",
     outputBase: "everyday-economics",
     locales: ["en", "sv"],
   },
   {
     id: "floating-point-practice",
+    categoryId: "computing-operations",
     sourceDir: "apps/floating-point-practice",
     outputBase: "floating-point-practice",
     locales: ["en", "sv"],
   },
   {
     id: "cpp-mental-execution",
+    categoryId: "computing-operations",
     sourceDir: "apps/cpp-mental-execution",
     outputBase: "cpp-mental-execution",
     locales: ["en", "sv"],
   },
   {
     id: "japanese-numbers-dates",
+    categoryId: "languages-humanities-other-practice",
     sourceDir: "apps/japanese-numbers-dates",
     outputBase: "japanese-numbers-dates",
     locales: ["en", "sv"],
   },
   {
     id: "electric-circuits",
+    categoryId: "science-engineering-spatial-reasoning",
     sourceDir: "apps/electric-circuits",
     outputBase: "electric-circuits",
     locales: ["en", "sv"],
@@ -120,8 +150,14 @@ async function buildApp(app) {
 }
 
 async function buildIndex() {
-  const rows = [];
+  const appsByCategory = new Map(categories.map((category) => [category.id, []]));
+
   for (const app of apps) {
+    const categoryApps = appsByCategory.get(app.categoryId);
+    if (!categoryApps) {
+      throw new Error(`${app.id}: unknown launcher category ${app.categoryId}`);
+    }
+
     const locales = [];
     for (const code of app.locales) {
       const locale = await loadLocale(app, code);
@@ -134,8 +170,18 @@ async function buildIndex() {
       const label = locale.code === "en" ? "English" : locale.code;
       return `<a href="${escapeHtml(href)}">${escapeHtml(label)}</a>`;
     }).join(" ");
-    rows.push(`<li><h2><a href="${escapeHtml(primary.href)}">${escapeHtml(title)}</a></h2><p>${escapeHtml(subtitle)}</p><p class="links">${links}</p></li>`);
+    categoryApps.push(`<li><h3><a href="${escapeHtml(primary.href)}">${escapeHtml(title)}</a></h3><p>${escapeHtml(subtitle)}</p><p class="links">${links}</p></li>`);
   }
+
+  const sections = categories.map((category) => {
+    const categoryApps = appsByCategory.get(category.id);
+    return `<section aria-labelledby="${escapeHtml(category.id)}">
+      <h2 id="${escapeHtml(category.id)}">${escapeHtml(category.title)}</h2>
+      <ul>
+        ${categoryApps.join("\n        ")}
+      </ul>
+    </section>`;
+  });
 
   const html = `<!doctype html>
 <html lang="en">
@@ -146,23 +192,24 @@ async function buildIndex() {
   <style>
     :root { color-scheme: light; font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: #1f2933; background: #f4f0e8; }
     body { margin: 0; }
-    main { width: min(920px, calc(100vw - 32px)); margin: 0 auto; padding: 48px 0; }
+    main { width: min(1040px, calc(100vw - 32px)); margin: 0 auto; padding: 48px 0 64px; }
     h1 { margin: 0 0 8px; font-size: clamp(2rem, 6vw, 4rem); line-height: 1; }
     p { color: #52606d; line-height: 1.55; }
-    ul { display: grid; gap: 12px; margin: 32px 0 0; padding: 0; list-style: none; }
-    li { padding: 18px 20px; border: 1px solid #d8cfc1; border-radius: 8px; background: #fffaf1; }
-    h2 { margin: 0 0 6px; font-size: 1.2rem; }
+    .intro { max-width: 720px; margin-bottom: 0; }
+    section { margin-top: 40px; }
+    section h2 { margin: 0; padding-bottom: 10px; border-bottom: 2px solid #d8cfc1; font-size: clamp(1.25rem, 3vw, 1.65rem); }
+    ul { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); gap: 12px; margin: 14px 0 0; padding: 0; list-style: none; }
+    li { display: flex; flex-direction: column; padding: 18px 20px; border: 1px solid #d8cfc1; border-radius: 8px; background: #fffaf1; }
+    h3 { margin: 0 0 6px; font-size: 1.2rem; }
     a { color: #0f5f72; font-weight: 800; text-decoration-thickness: 0.12em; text-underline-offset: 0.16em; }
-    .links { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 0; }
+    .links { display: flex; flex-wrap: wrap; gap: 10px; margin-top: auto; margin-bottom: 0; padding-top: 4px; }
   </style>
 </head>
 <body>
   <main>
     <h1>Practice Lab</h1>
-    <p>Small offline practice apps for programmer-adjacent skills and adjacent numeracy. Each app stores progress locally in your browser.</p>
-    <ul>
-      ${rows.join("\n      ")}
-    </ul>
+    <p class="intro">Small offline practice apps for programmer-adjacent skills and adjacent numeracy. Each app stores progress locally in your browser.</p>
+    ${sections.join("\n    ")}
   </main>
 </body>
 </html>
