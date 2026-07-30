@@ -24,10 +24,12 @@ The topic includes:
 
 - unit prices and offer comparison;
 - compatible metric or US customary quantity conversions used in unit pricing;
-- discounts, sales tax, and successive percentage adjustments;
+- discounts, fictional flat taxes, tips/gratuities, surcharges, and successive percentage adjustments;
+- shared-bill totals and equal or proportional allocation under an explicitly stated policy;
 - absolute change, percent change, and inverse percent-change questions;
 - simple interest and annually compounded interest;
 - nominal prices, cumulative inflation, and purchasing power;
+- base-100 index interpretation and conversion between index values and percent changes;
 - recurring subscription totals, common-horizon comparisons, effective monthly cost, and break-even duration;
 - expected monetary value for explicitly stated finite outcomes;
 - break-even prices or probabilities in simple expected-value decisions.
@@ -49,7 +51,7 @@ Do not include:
 - recommendations to buy, invest, borrow, insure, subscribe, or gamble;
 - current prices, tax laws, inflation figures, interest rates, or exchange rates;
 - currency conversion;
-- progressive taxes, deductions, exemptions, tips, tariffs, or tax-inclusive legal conventions;
+- progressive taxes, deductions, exemptions, tariffs, mandatory-gratuity law, or tax-inclusive legal conventions;
 - APR/APY conversion, daily compounding, variable rates, loan amortization, payments, fees not explicitly stated, or present-value discounting;
 - investment volatility, utility functions, risk aversion, variance, portfolio theory, or “guaranteed return” language;
 - CPI basket construction, hedonic adjustment, wage indexes, or macroeconomic forecasting;
@@ -57,6 +59,20 @@ Do not include:
 - expected-value claims about one individual trial;
 - fractional physical quantities requiring domain-specific measurement precision;
 - hidden assumptions about when a fee, discount, tax, interest credit, or free month occurs.
+
+Simplified loan balances and totals do not receive a separate family: fixed-rate
+simple/compound balance arithmetic is already trained by Interest, while a
+stated sequence of fixed payments is already trained by Subscriptions. Loan
+amortization, APR/APY, repayment schedules, and product comparisons remain
+excluded because they require materially different assumptions and could be
+mistaken for borrowing guidance.
+
+Warranty and insurance labels likewise do not create a separate expected-value
+family. The existing finite-outcome, comparison, and break-even families already
+train that arithmetic without implying that expected value alone determines
+whether protection is appropriate. Generated exercises must use neutral
+fictional options rather than recommending or evaluating a real warranty or
+insurance product.
 
 ### Normative quantitative model
 
@@ -108,6 +124,26 @@ If a real-world convention could reasonably require stage rounding, the prompt m
 - Expected value is `Σ probability × net outcome`.
 - When rewards are gross and a certain cost is separate, subtract the cost once after summing expected gross rewards.
 - A `0` outcome must be shown when its probability is needed to complete the distribution.
+
+#### Shared charges and allocation
+
+- Every tip/gratuity, surcharge, and tax rate names its exact base.
+- Unless the prompt states otherwise, percentage charges are computed from
+  unrounded eligible subtotals and all displayed allocations are rounded only
+  through the declared cent-allocation rule.
+- An equal split divides the complete bill total by the stated number of people.
+- A proportional split assigns each person a fraction equal to that person's
+  eligible subtotal divided by the group eligible subtotal.
+- When minor units do not divide exactly, the prompt must state a deterministic
+  remainder policy; allocated shares must sum exactly to the bill total.
+
+#### Base-100 indexes
+
+- An index with base value `100` represents the base-period level.
+- With positive index values, percent change from index `a` to index `b` is
+  `(b-a)/a × 100%`; `b-100` is a percentage change only when `a=100`.
+- Index points and percentage points are different units. A move from `120` to
+  `126` is `6` index points but a `5%` increase.
 
 ### Units and localization
 
@@ -880,19 +916,27 @@ today-value purchasing power = future nominal amount ÷ (1+i)^years
 
 Inflation compounds. A nominal amount increasing at the same rate as prices has unchanged purchasing power in this simplified model.
 
+A base-100 index expresses a level relative to its base period. An index of
+`125` is `25%` above the base-period level, but a later move from `125` to `130`
+is a `4%` increase, not `5%`, because `125` is the comparison base.
+
 ### Prerequisites
 
 Percent change and annual compounding.
 
 ### Category boundaries
 
-Rates are fictional constants. Do not call a generated figure a forecast or a measured CPI result. No basket weighting, substitution effects, taxes, wages, or investment advice.
+Rates and indexes are fictional. Do not call a generated figure a forecast or
+a measured CPI result. Index questions interpret supplied values only; they do
+not construct baskets or infer why an index moved. No basket weighting,
+substitution effects, taxes, wages, or investment advice.
 
 ### Subcategories
 
 1. Future Nominal Prices
 2. Cumulative Inflation
 3. Purchasing Power and Real Change
+4. Base-100 Index Interpretation
 
 ### Common misconceptions
 
@@ -901,6 +945,8 @@ Rates are fictional constants. Do not call a generated figure a forecast or a me
 - Multiplying rather than dividing to convert future money to today's purchasing power.
 - Subtracting inflation rate from nominal growth rate as an exact multi-year result.
 - Treating cumulative inflation as annual rate times years in compound questions.
+- Treating an index-point difference as a percent change from a non-100 base.
+- Treating an index value as a currency amount or as an annual rate.
 
 ## 6.1 Subcategory: Future Nominal Prices
 
@@ -1004,9 +1050,185 @@ Rates are fictional constants. Do not call a generated figure a forecast or a me
 
 **Implementation and validation.** Exact rational factor, rounded percent. Generate subtraction-approximation distractor and ensure distinct.
 
+## 6.4 Subcategory: Base-100 Index Interpretation
+
+### Family `base_100_index_interpret`
+
+#### Learner task
+
+Convert between fictional base-100 index values, changes in index points, and
+percent changes over a stated pair of periods.
+
+#### Relationship to the skill
+
+Repeated practice makes the learner identify the correct reference index before
+dividing, rather than treating every index value or point movement as a percent.
+This is a distinct interpretation skill from compounding a supplied inflation
+rate.
+
+#### Response mode
+
+One named decimal-number field labeled `index points` or one named percent
+field. Level 4 may use two named fields, `indexPointChange` and `percentChange`,
+so the two units remain explicit.
+
+#### Question templates
+
+- `The fictional {indexName} uses {basePeriod}=100. Its value in {targetPeriod} is {targetIndex}. How many percent is the indexed level above or below the base-period level?`
+- `The fictional {indexName} moves from {startIndex} in {startPeriod} to {endIndex} in {endPeriod}. What is the percent change over that interval?`
+- `The fictional {indexName} moves from {startIndex} to {endIndex}. Give both the change in index points and the percent change.`
+- `The fictional {indexName} is {startIndex}. After a {percentChange} change, what is the new index value?`
+
+#### Placeholder definitions
+
+- `{indexName}` is a neutral generated label such as `Household Cost Index A`;
+  it never names a real index, provider, jurisdiction, or tradable product.
+- `{basePeriod}`, `{startPeriod}`, `{endPeriod}`, and `{targetPeriod}` are
+  ordered fictional year or quarter labels. The target/end period is later than
+  the base/start period; no annualization is implied.
+- `{targetIndex}`, `{startIndex}`, and `{endIndex}` are positive exact decimals
+  displayed to zero or one decimal place, normally in `60..180`.
+  `{startIndex}=100` is required only for the direct base-period variation.
+- `{percentChange}` is an exact signed rate displayed as a percent, normally
+  `-30%..+50%`, constrained so the constructed ending index is positive and has
+  at most one displayed decimal place.
+
+#### Answer template
+
+The canonical answer is either `{percentChange}%`, `{indexPointChange} index
+points`, `{endIndex}`, or the structured pair
+`{indexPointChange}; {percentChange}%`, matching the requested fields.
+
+#### Answer derivation
+
+For a base-period interpretation, compute
+`(targetIndex/100-1)×100%`, equivalently `targetIndex-100` percent because the
+declared base is exactly 100. For an arbitrary interval, compute
+`(endIndex-startIndex)/startIndex×100%`. The signed index-point change is
+`endIndex-startIndex`. For forward construction, compute
+`endIndex=startIndex×(1+percentChange/100)`. Use exact decimal/rational
+arithmetic and apply the global percent rounding rule only to the requested
+final percent.
+
+#### Accepted answers
+
+Percent fields accept the global percent forms, with an optional percent sign.
+Index and index-point fields accept localized decimal syntax and an optional
+matching `index point(s)` suffix. A percent is not accepted in an index-point
+field and vice versa. In a two-field item, both named fields are required; an
+unlabeled comma string is not accepted.
+
+#### Instance constraints
+
+- Every prompt names the base-100 convention and both relevant periods.
+- All index denominators are positive.
+- The response unit is shown beside each field.
+- A non-base interval must use `{startIndex}≠100`.
+- At Levels 2–4, at least one misconception result must differ from the correct
+  displayed answer.
+- The fictional label and Learn/feedback text must not imply a forecast,
+  investable return, or explanation of an index's causes.
+
+#### Rejection rules
+
+Reject an instance when the start and end indexes are equal except in an
+explicit Level 1 zero-change item; when rounding makes point change and percent
+change numerically indistinguishable in a diagnostic item; when a non-base
+percent can be answered correctly by `endIndex-startIndex`; when forward
+construction gives a nonpositive index; or when labels could be confused with a
+real current index.
+
+#### Controlled variations
+
+- interpret one value relative to the base period;
+- compute interval percent change from two non-100 values;
+- report point and percent changes together;
+- construct an ending index from a starting index and supplied percent change;
+- classify a displayed claim such as “six index points means six percent” as
+  valid only when the comparison base makes it true.
+
+The first four retain the central operation of selecting and applying the index
+reference base. Claim classification is used only after numeric mastery.
+
+#### Difficulty levels
+
+- **Level 1:** Base is 100, integer indexes, one direct above/below-base percent,
+  and no rounding.
+- **Level 2:** Two non-100 integer indexes; compute a percent change whose
+  denominator is visually explicit.
+- **Level 3:** Decimal index values, decline cases, or forward construction;
+  final rounding may be required.
+- **Level 4:** Return both point and percent changes or evaluate a claim where
+  the point difference is a plausible but wrong percent.
+
+#### Multiple-choice distractors
+
+When claim classification or single-choice mode is used, distractors come from
+using the point difference as the percent, dividing by the ending index, using
+`100` as the denominator for every interval, or reversing the sign. Remove any
+distractor that is equivalent after rounding.
+
+#### Feedback
+
+**Correct feedback.** Name the comparison base and confirm the requested unit:
+`The change is measured from {startIndex}, so {pointChange} index points equals
+{percentChange}%.`
+
+**Incorrect feedback.** If the answer matches the point difference, explain
+that index points are not percentages unless the starting index is exactly 100.
+If it matches division by the ending value, identify the later-period
+denominator error. If the sign is reversed, restate chronological order.
+
+**Worked solution.** Display a three-row table for start level, signed point
+change, and `point change ÷ start level`, then convert that ratio to a percent.
+For forward construction, show `startIndex×(1+rate)`.
+
+#### Examples
+
+1. `Cost Index A uses 2024=100. Its 2025 value is 118. How many percent is the indexed level above the base?`
+   Answer: `18%`. Derivation: `(118-100)/100=18%`. Level 1; distinguishes an
+   index level from a currency amount.
+2. `Cost Index B moves from 120 in Q1 to 126 in Q2. What is the percent change?`
+   Answer: `5%`. Derivation: `(126-120)/120=5%`. Level 2; targets the
+   six-points-equals-six-percent error.
+3. `Cost Index C moves from 137.5 to 132.0. Give the change in index points and the percent change.`
+   Answer: `-5.5 index points; -4.00%`. Derivation:
+   `-5.5/137.5×100=-4%`. Level 4; targets unit and denominator confusion.
+
+#### Implementation notes
+
+Construct friendly cases backward from rational percent changes for lower
+levels. Store index levels as exact decimals and period order as semantic IDs.
+Use a neutral index-name grammar separate from localization. Record direction,
+start-is-100 status, requested unit, rounding class, and misconception target in
+the structural signature.
+
+#### Automated validation
+
+Independently recompute point and percent changes; verify period order,
+positivity, placeholder substitution, unit labels, and accepted-answer type.
+Forward-apply the computed percent and recover the ending index before rounding.
+For choice items, assert exactly one semantic answer. Sweep seeds to enforce
+rejection rules and ensure no generated label matches the real-index denylist.
+
+#### Coverage requirements
+
+Across fixed-seed samples, balance base-period and non-base comparisons,
+increases and decreases, numeric and two-field responses, exact and rounded
+percentages, and forward/inverse direction. At least half of non-base interval
+items must make the index-point answer visibly different from the percent
+answer.
+
 ### Cross-family progression for Inflation
 
-Future nominal price follows compound interest. Cumulative inflation separates annual from total rate. Purchasing-power questions then reverse the factor. Real change is last because it combines two indexes. If multiplication/division direction fails, use paired forward/inverse questions with the same factor.
+Future nominal price follows compound interest. Cumulative inflation separates
+annual from total rate. Purchasing-power questions then reverse the factor.
+Base-100 indexes can be introduced after direct percent change and should be
+interleaved with cumulative-inflation interpretation, but arbitrary-interval
+index changes wait until the learner reliably selects an old-value denominator.
+Real change is last because it combines two factors. If
+multiplication/division direction fails, use paired forward/inverse questions
+with the same factor.
 
 ## 7. Category: Subscriptions
 
@@ -1343,7 +1565,502 @@ Outcomes are labeled as already net; no separate cost unless shown on its own li
 
 Begin with no-cost single rewards, then certain cost. Multi-outcome distributions follow after gross/net language is stable. Comparison and break-even are inverse mastery families. If a learner weights a certain cost by probability, select a paired gross-then-net two-field item.
 
-## 9. Topic-level cross-family progression
+## 9. Category: Shared Bills and Explicit Charges
+
+### Category purpose
+
+Train the learner to turn an itemized fictional bill into an exact total and
+allocate that total under a stated equal or proportional policy. The skill is
+following explicit percentage bases, distinguishing charges, and preserving
+minor-unit totals—not learning a jurisdiction's tax or tipping customs.
+
+### Learn
+
+A tip/gratuity, surcharge, and tax may use different bases. Read the stated base
+for each charge before calculating:
+
+```text
+eligible subtotal = 80.00
+10% surcharge on eligible subtotal = 8.00
+taxable subtotal is eligible subtotal + surcharge = 88.00
+5% tax on taxable subtotal = 4.40
+15% gratuity on the original eligible subtotal = 12.00
+bill total = 80.00 + 8.00 + 4.40 + 12.00 = 104.40
+```
+
+An equal split divides the whole total by the number of people. A proportional
+allocation gives a person the same fraction of an allocable charge as that
+person's eligible subtotal is of the group eligible subtotal. Rounded shares
+must add back to the exact bill total, so the prompt states how any leftover
+minor units are assigned.
+
+### Prerequisites
+
+Percentages of an amount, money addition, final-only rounding, and the
+`tax_single` family. Proportional allocation also requires ratios or unit-fraction
+reasoning.
+
+### Category boundaries
+
+All bills, rates, and allocation policies are fictional and fully stated. The
+app does not teach customary tip amounts, determine whether a fee is lawful,
+interpret real receipts, split based on social fairness, or provide tax,
+purchasing, or interpersonal advice. A label such as `gratuity` describes an
+arithmetic line only. Discounts belong to Category 3; open-ended budgeting and
+accounting entries belong elsewhere.
+
+### Subcategories
+
+1. Bill Total from Explicit Charge Bases
+2. Equal and Proportional Allocation
+
+### Common misconceptions
+
+- Applying every percentage to the final or original subtotal without reading
+  its stated base.
+- Treating a surcharge, gratuity, and tax as synonymous.
+- Multiplying a certain fixed charge by a percentage.
+- Omitting a line from the bill total or counting it twice.
+- Dividing only the pre-charge subtotal in an equal split.
+- Allocating a shared charge equally when the prompt says proportional, or
+  proportionally when it says equal.
+- Rounding each allocation independently and accepting a sum that differs from
+  the bill total.
+
+## 9.1 Subcategory: Bill Total from Explicit Charge Bases
+
+### Skill
+
+Calculate named charge amounts and a final fictional bill total from explicit,
+possibly different, percentage bases.
+
+### Mental operation
+
+Build a short charge ledger: identify each base, multiply base by rate, add each
+charge exactly once, then round at the stated stage.
+
+### Common misconceptions
+
+The category misconceptions apply, especially one-base-for-all, omitted fixed
+charge, and tax-on-wrong-subtotal answers.
+
+### Generation scope
+
+Generate one eligible subtotal in `10.00..500.00`, zero or one fixed surcharge,
+and one to three percentage lines chosen from gratuity/tip, surcharge, and
+fictional tax. Rates are exact `1%..30%`; every percentage line stores a base
+expression made only from already defined bill rows. Currency precision is
+normally two minor-unit decimals. Zero-valued decorative charges are not
+allowed.
+
+### Difficulty dimensions
+
+Number of charges, whether bases differ, presence of a fixed versus percentage
+surcharge, dependency order, named intermediate fields, and final-only versus
+explicit per-line rounding. Larger prices alone do not raise difficulty.
+
+### Question families
+
+- `bill_charges_total`
+
+### Family `bill_charges_total`
+
+#### Learner task
+
+Calculate one or more named gratuity/tip, surcharge, or fictional-tax amounts and
+the resulting bill total from explicitly stated bases.
+
+#### Relationship to the skill
+
+Repeated instances train the learner to bind each rate to its named base and to
+reconcile a charge ledger, a mental operation not exercised by a single flat-tax
+or discount-then-tax item.
+
+#### Response mode
+
+Money input for one requested charge or total. Diagnostic and upper-level items
+use multiple named money fields for every generated charge plus `billTotal`.
+
+#### Question template
+
+```text
+Eligible subtotal: {eligibleSubtotal}
+{chargeLines}
+{roundingInstruction}
+What is {requestedAmounts}?
+```
+
+Each rendered charge line has the exact form
+`{chargeLabel}: {rate}% of {baseLabel}` or
+`{chargeLabel}: fixed {fixedAmount}`.
+
+#### Placeholder definitions
+
+- `{eligibleSubtotal}` is a positive exact money amount in
+  `10.00..500.00`, displayed at the configured currency precision.
+- `{chargeLines}` is an ordered list of one to three semantic charge rows. Each
+  row has a stable ID, a label from `tip`, `gratuity`, `surcharge`, or
+  `fictional tax`, and either an exact rate in `1%..30%` plus a `{baseLabel}`,
+  or a positive fixed amount in `0.50..30.00`. `tip` and `gratuity` are display
+  alternatives for the same charge type and never both occur in one instance.
+- `{baseLabel}` is exact wording generated from the charge-row AST, such as
+  `eligible subtotal` or `eligible subtotal plus surcharge`; it may reference
+  only prior rows and must name all included components.
+- `{roundingInstruction}` is either `Keep exact intermediate values and round
+  only the requested final amounts` or an explicit policy that each charge is
+  rounded to the currency minor unit before addition.
+- `{requestedAmounts}` names exactly one amount (`the surcharge`, `the
+  gratuity`, `the fictional tax`, or `the bill total`) or all semantic field
+  labels in ledger order.
+
+#### Answer template
+
+Single-field canonical answer: `{requestedAmount}`. Multi-field canonical
+answer:
+
+```text
+{chargeId1}: {chargeAmount1}
+...
+billTotal: {billTotal}
+```
+
+#### Answer derivation
+
+Start with `eligibleSubtotal`. Evaluate charge rows in dependency order. For a
+rate row, compute `chargeAmount=rate×evaluate(baseExpression)`. For a fixed row,
+use its fixed amount. Apply only the declared rounding stage. Compute
+`billTotal=eligibleSubtotal+ΣchargeAmount`, including each row once. The final
+canonical money fields use the global minor-unit rounding rule.
+
+#### Accepted answers
+
+Each money field follows the global money parser and must match its named
+semantic amount. Optional matching currency symbol/code is accepted. A bare
+percent, a different charge field, or an unlabeled list is not accepted.
+Multi-field items permit fields in any UI order because semantic IDs, not text
+position, determine correctness.
+
+#### Instance constraints
+
+- Every percentage line has one unambiguous visible base.
+- Charge dependencies are acyclic and follow rendered order.
+- `tip`/`gratuity` is never described as required, customary, recommended, or
+  legally defined.
+- `tax` is always called `fictional tax` in the scenario disclaimer, and no
+  jurisdiction is named.
+- At least one requested amount is nonzero and survives displayed rounding.
+- Diagnostic items include at least one wrong-base result distinct by two or
+  more minor units.
+
+#### Rejection rules
+
+Reject hidden or circular bases; two rows with identical labels; a percentage
+charge whose base is zero; a line that rounds to zero; a total dominated by
+tedious decimals; accidental equality of all charge amounts; or any wording
+that could be read as stating a real tipping, surcharge, or tax rule. Reject
+multi-field instances if two semantic fields are indistinguishable after
+localization.
+
+#### Controlled variations
+
+- one percentage tip/gratuity on an eligible subtotal;
+- fixed or percentage surcharge;
+- fictional tax on the original subtotal or on subtotal plus surcharge;
+- gratuity on a pre-tax base while fictional tax uses a different base;
+- final-only rounding versus explicitly line-rounded receipt arithmetic.
+
+All variations preserve the charge-ledger and named-base operation. Discounts
+do not enter this family because their remaining-factor reasoning is already
+covered in Category 3.
+
+#### Difficulty levels
+
+- **Level 1:** One percentage tip/gratuity or surcharge on the eligible
+  subtotal; request that charge and total; exact minor-unit results.
+- **Level 2:** Two charges sharing a clearly named base or one fixed plus one
+  percentage charge.
+- **Level 3:** Two percentage charges with different bases, including a
+  surcharge-before-tax dependency.
+- **Level 4:** Three charge rows and multiple named answer fields; identify a
+  wrong-base intermediate even when the final total is requested.
+- **Level 5:** Compare final-only rounding with an explicitly line-rounded
+  receipt using the same semantic rows; the prompt highlights the policy.
+
+#### Feedback
+
+**Correct feedback.** Confirm each rate-base pairing and show that the rows sum
+to the bill total.
+
+**Incorrect feedback.** Match the response against alternative ledgers:
+all rates on original subtotal, tax excluding/including the wrong surcharge,
+fixed fee treated as a percent, omitted line, or double-counted line. Name the
+first differing base or ledger row.
+
+**Worked solution.** Render an accessible table with columns `charge`,
+`stated base`, `rate/fixed amount`, `exact charge`, and `included in total`,
+followed by the final sum and rounding step.
+
+#### Examples
+
+1. `Eligible subtotal 40.00. Tip: 15% of eligible subtotal. What are the tip and bill total?`
+   Answer: `6.00; 46.00`. Derivation: `40×0.15=6`; `40+6=46`.
+   Level 1; targets amount-versus-total confusion.
+2. `Eligible subtotal 80.00. Surcharge: 10% of eligible subtotal. Fictional tax: 5% of eligible subtotal plus surcharge. What is the bill total?`
+   Answer: `92.40`. Derivation: surcharge `8`; tax `0.05×88=4.40`;
+   total `80+8+4.40`. Level 3; targets tax on the original subtotal.
+3. `Eligible subtotal 59.95. Gratuity: 18% of eligible subtotal. Surcharge: fixed 2.00. Fictional tax: 7% of eligible subtotal plus surcharge. Round each charge line before adding. What are all charges and the total?`
+   Answer: `gratuity 10.79; surcharge 2.00; fictional tax 4.34; total 77.08`.
+   Level 5; targets rounding stage and distinct bases.
+
+#### Implementation notes
+
+Represent every base as a small expression tree over earlier semantic row IDs,
+not as interpolated prose. Render the prose from that tree. Store exact and
+rounded row ledgers, rounding policy, requested fields, and alternative
+misconception ledgers. Generate simple cases forward and rounding-sensitive
+cases backward from desired fractional minor units.
+
+#### Automated validation
+
+Evaluate the charge AST with an independent ledger oracle; assert acyclicity,
+visible base completeness, exact sum reconciliation, requested-field presence,
+and locale round-trip. For every stored misconception, verify its displayed
+answer is distinct when used diagnostically. Property-test both rounding
+policies and every permitted charge/base combination.
+
+#### Coverage requirements
+
+Balance tip and gratuity labels, fixed and percentage surcharges, fictional tax
+bases, single and multi-field requests, exact and rounding-sensitive cases, and
+shared versus differing bases. No label, rate, base structure, or rounding
+policy may dominate recent practice.
+
+## 9.2 Subcategory: Equal and Proportional Allocation
+
+### Skill
+
+Allocate a complete fictional bill or named shared charges among people under
+an explicit equal or proportional policy while preserving the exact total.
+
+### Mental operation
+
+Choose the allocation base, compute each person's fraction, apply that fraction
+to the allocable amount, and reconcile rounded shares to the original total.
+
+### Common misconceptions
+
+The category misconceptions apply, especially dividing only the eligible
+subtotal, using headcount for a proportional allocation, and ignoring remainder
+minor units.
+
+### Generation scope
+
+Generate `2..6` people with positive eligible subtotals, a complete bill ledger
+from `bill_charges_total`, and an allocation policy. Equal allocation may cover
+the complete total. Proportional allocation uses each person's eligible
+subtotal for specified percentage charges; fixed shared charges declare either
+equal or proportional treatment separately. Advanced cases may require a
+deterministic largest-remainder minor-unit reconciliation.
+
+### Difficulty dimensions
+
+Person count, equal versus proportional policy, number and kind of allocated
+charges, whether fixed and percentage rows use different policies, exact
+divisibility, and remainder reconciliation.
+
+### Question families
+
+- `shared_bill_allocate`
+
+### Family `shared_bill_allocate`
+
+#### Learner task
+
+Determine one or all participant shares of a fictional bill under the displayed
+equal/proportional allocation and minor-unit remainder policy.
+
+#### Relationship to the skill
+
+This family trains conservation under allocation: every item and shared charge
+must be assigned exactly once, and rounded shares must sum to the bill total.
+That dynamic purpose is not represented by price-total or percentage families.
+
+#### Response mode
+
+One named money field for a requested person at lower levels, multiple named
+money fields for all people at higher levels, or an ordered allocation table.
+
+#### Question template
+
+```text
+{participantTable}
+{chargeSummary}
+Allocation policy: {allocationPolicy}
+Remainder policy: {remainderPolicy}
+What is {requestedShares}?
+```
+
+#### Placeholder definitions
+
+- `{participantTable}` contains `2..6` rows with stable participant IDs
+  (`Person A`, `Person B`, ...) and positive eligible subtotals in
+  `5.00..200.00`. Names carry no demographic or social information.
+- `{chargeSummary}` lists exact or displayed gratuity/tip, surcharge, fictional
+  tax, and total rows derived from a valid charge ledger. It states whether
+  each row is already rounded.
+- `{allocationPolicy}` is one exact policy AST: `split complete total equally`;
+  `allocate every percentage charge in proportion to eligible subtotal`; or a
+  mixed policy that explicitly assigns fixed shared rows equally and percentage
+  rows proportionally.
+- `{remainderPolicy}` is `No remainder: all shares are exact to the minor unit`
+  or `Round down to whole minor units, then give remaining minor units in
+  descending fractional-remainder order; ties go to the earlier participant
+  ID`.
+- `{requestedShares}` names one participant or `each participant's final
+  share`.
+
+#### Answer template
+
+Single answer: `{participantId}: {moneyShare}`. Complete answer:
+
+```text
+{participantId1}: {moneyShare1}
+...
+allocationTotal: {billTotal}
+```
+
+`allocationTotal` is shown in feedback and may be an assessed field at Levels
+4–5.
+
+#### Answer derivation
+
+For an equal split, each exact share is `billTotal/personCount`. For a
+proportional percentage charge, person `i` receives
+`personEligibleSubtotal/groupEligibleSubtotal × chargeAmount`; add the person's
+own eligible subtotal and any fixed-charge allocation specified by the policy.
+For an equal fixed row, use `fixedAmount/personCount`.
+
+When exact shares are not whole minor units, convert each exact share to minor
+units, take its non-negative floor, compute
+`remainingMinorUnits=billTotalMinorUnits-Σfloors`, rank fractional remainders
+descending with participant ID as the tie-breaker, and add one minor unit to the
+first `remainingMinorUnits` participants. The canonical shares are those
+reconciled integers.
+
+#### Accepted answers
+
+Named money fields follow global money syntax. All requested participant fields
+must be supplied; equivalent reordering is accepted by semantic ID. Shares
+obtained by independent ordinary rounding are not accepted when they violate
+the stated remainder policy, even if each appears locally plausible. An
+alternative allocation policy is not accepted.
+
+#### Instance constraints
+
+- Participant eligible subtotals sum exactly to the group eligible subtotal.
+- The charge summary reconciles exactly to the bill total.
+- Every bill row has exactly one allocation rule.
+- Final participant shares are non-negative integer minor-unit amounts and sum
+  exactly to the bill total.
+- Proportional cases contain at least two distinct eligible subtotals.
+- The prompt does not imply that the generated allocation is fair, customary,
+  legally required, or recommended.
+
+#### Rejection rules
+
+Reject zero-person or zero-subtotal rows; policies with an unallocated or
+double-allocated charge; identical participant subtotals in a proportional
+diagnostic; cases where equal and proportional allocations coincide after
+rounding; more leftover minor units than participants under the one-pass
+largest-remainder construction; ties not resolved by the stated policy; or
+answers whose difficulty is mostly long division.
+
+#### Controlled variations
+
+- equal split of a complete already-calculated bill;
+- proportional allocation of a supplied gratuity/tip, surcharge, or fictional
+  tax;
+- reconstruct charge amounts and then allocate them;
+- mixed equal fixed fee plus proportional percentage charges;
+- exact-divisible allocation and deterministic remainder allocation.
+
+All variations preserve the operation of applying a declared allocation policy
+and reconciling the shares. Open-ended “What is fair?” prompts are excluded.
+
+#### Difficulty levels
+
+- **Level 1:** Two to four people, equal complete-total split, exact minor-unit
+  division.
+- **Level 2:** Two or three different eligible subtotals and one supplied
+  percentage charge allocated proportionally.
+- **Level 3:** Item subtotals plus two named percentage charges; calculate each
+  final share, with exact minor-unit results.
+- **Level 4:** Mixed policy for a fixed surcharge and proportional
+  gratuity/tax, or a non-divisible total using the displayed remainder rule.
+- **Level 5:** Reconstruct a compact charge ledger, allocate all rows, and
+  provide a reconciliation field; no more than four people and three charges.
+
+#### Feedback
+
+**Correct feedback.** Confirm the policy and show that participant shares sum
+exactly to the bill total.
+
+**Incorrect feedback.** Match answers against equal-instead-of-proportional,
+proportional-instead-of-equal, pre-charge-subtotal-only, omitted-charge, and
+independent-rounding ledgers. State the first policy row that differs and show
+the reconciliation gap when present.
+
+**Worked solution.** Show each person's eligible fraction, exact allocation by
+charge row, floor/remainder when needed, final minor-unit adjustment, and a
+bottom-row total matching the bill.
+
+#### Examples
+
+1. `Bill total 72.00. Persons A, B, and C split the complete total equally. Each share?`
+   Answer: `24.00 each`. Derivation: `72/3=24`. Level 1; targets splitting
+   only a pre-charge subtotal.
+2. `A eligible subtotal 30.00; B 20.00. A 10.00 gratuity is allocated in proportion to eligible subtotal. Final shares?`
+   Answer: `A 36.00; B 24.00`. Derivation: fractions `3/5` and `2/5`;
+   gratuity shares `6` and `4`. Level 2; targets equal allocation.
+3. `A, B, C eligible subtotals are 10.00 each; complete bill total is 31.00. Split the complete total equally using the stated largest-remainder policy with ID tie-break.`
+   Answer: `A 10.34; B 10.33; C 10.33`. Derivation: exact shares
+   `10.333...`; floors total `30.99`; the one remaining cent goes to A.
+   Level 4; targets unreconciled independent rounding.
+
+#### Implementation notes
+
+Use a semantic allocation matrix with participant rows and bill-component
+columns. Generate or import only validated charge ledgers. Perform remainder
+allocation in integer minor units using exact rational remainders; never use
+binary floating-point ordering. Store the allocation policy version and
+tie-break rule in the archived question.
+
+#### Automated validation
+
+Independently sum participant subtotals, bill rows, allocation columns, and
+final participant rows. Assert every component is allocated once, all minor-unit
+shares are integers, the tie-break order is deterministic, and the final sum
+equals the bill. For every seed, compare the primary matrix engine with an
+independent rational oracle and verify all placeholders and named fields.
+
+#### Coverage requirements
+
+Balance equal and proportional cases, requested-one and requested-all modes,
+tip/gratuity, surcharge, and fictional-tax allocation, fixed and percentage
+rows, exact and remainder cases, and two through six participants. Mixed-policy
+and Level 5 cases must remain a minority so basic allocation fluency is not
+crowded out.
+
+### Cross-family progression for Shared Bills
+
+`bill_charges_total` precedes `shared_bill_allocate`. Equal allocation begins
+with a supplied complete total; proportional allocation begins with a supplied
+charge amount. Only after both are stable should one item require constructing
+the charge ledger and allocating it. Errors in the constructed total route back
+to named charge fields; correct total with incorrect participant shares stays
+in allocation practice.
+
+## 10. Topic-level cross-family progression
 
 Recommended order:
 
@@ -1351,12 +2068,13 @@ Recommended order:
 2. single discount amount/sale price and single tax amount/total;
 3. direct percent change and forward changed value;
 4. one-period then simple interest;
-5. subscription totals and effective monthly cost;
-6. single-reward expected value;
-7. combined discounts/tax and successive percentage changes;
-8. annual compound interest and nominal inflation;
-9. common-horizon subscriptions and multi-outcome EV;
-10. inverse price/change/interest questions, purchasing power, real change, and break-even families.
+5. one-line bill charges and equal split of a supplied total;
+6. subscription totals and effective monthly cost;
+7. single-reward expected value;
+8. combined discounts/tax, multi-charge bill totals, and successive percentage changes;
+9. annual compound interest, nominal inflation, and base-period index interpretation;
+10. common-horizon subscriptions, proportional bill allocation, and multi-outcome EV;
+11. inverse price/change/interest questions, non-base index changes, purchasing power, real change, and break-even families.
 
 Interleave inverse pairs after acquisition:
 
@@ -1364,12 +2082,14 @@ Interleave inverse pairs after acquisition:
 - discounted/final price with original price;
 - forward percent change with original-value recovery;
 - nominal future price with today's purchasing power;
+- index-point change with percent change from the same pair of index values;
+- bill total with participant allocations under one displayed policy;
 - subscription total comparison with break-even month;
 - expected value with break-even probability/cost.
 
 Do not unlock multi-stage or inverse families solely because a category-level average is high; their direct prerequisites must be stable.
 
-## 10. Adaptive practice guidance
+## 11. Adaptive practice guidance
 
 ### Mastery dimensions
 
@@ -1381,6 +2101,8 @@ Track:
 - unit/conversion;
 - percentage base;
 - number of multiplicative stages;
+- charge type, charge base, allocation policy, and remainder handling;
+- index reference base and answer unit (points versus percent);
 - time horizon and annual/monthly basis;
 - simple/compound/real model;
 - gross/net convention;
@@ -1410,6 +2132,10 @@ Multiple-field questions update fields independently. Correct discounted subtota
 | Inflation answer is `rate×years` | no compounding | cumulative two-year factor |
 | Purchasing power multiplied by inflation factor | direction reversal | paired preserve/deflate question |
 | Real change equals nominal minus inflation | approximation treated exact | one-period factor ratio |
+| Index percent equals point difference from non-100 start | index points treated as percent | paired point/percent fields with start base highlighted |
+| Bill tax/tip uses wrong subtotal | charge-base confusion | named charge ledger with one rate per row |
+| Allocated shares do not sum to bill | independent rounding or omitted row | exact equal split, then displayed remainder policy |
+| Proportional charge split equally | headcount substituted for eligible share | two-person 3:2 eligible-subtotal allocation |
 | Subscription omits setup | fixed/recurring confusion | itemized one-plan total |
 | Effective monthly divides by charged months | access/billed confusion | free-month plan with labeled denominators |
 | Break-even month off by one | whole-month/strictness error | verify previous and current month |
@@ -1430,7 +2156,7 @@ Recommended adaptive mix:
 
 At least 30% of long-run practice should require interpretation or comparison rather than only formula substitution. Inverse/break-even families appear only after forward accuracy. Rounding-sensitive items stay below 20% so the app does not become a rounding drill.
 
-## 11. Feedback requirements
+## 12. Feedback requirements
 
 Every instance stores:
 
@@ -1451,7 +2177,7 @@ Feedback must state:
 
 Do not use moralizing language about spending, debt, gambling, or financial competence.
 
-## 12. Implementation requirements
+## 13. Implementation requirements
 
 ### Exact decimal representation
 
@@ -1471,7 +2197,7 @@ Given seed, family, level, number format, currency display, and unit system, gen
 
 Choice order is randomized only after unique correctness. Exact rationals decide comparisons; formatted strings never do.
 
-## 13. Automated validation
+## 14. Automated validation
 
 ### Per-instance checks
 
@@ -1481,10 +2207,12 @@ Choice order is randomized only after unique correctness. Exact rationals decide
 4. Rate bases, units, and horizons are dimensionally compatible.
 5. Divisors and old/reference values are nonzero.
 6. Complete probability distributions sum exactly to 100%.
-7. Choice questions have exactly one correct distinct displayed option.
-8. Inverse questions round-trip under their stated exactness convention.
-9. Rejection rules pass and no provisional marker remains.
-10. Localized rendering parses back to the canonical value.
+7. Charge ledgers and participant allocations each reconcile exactly.
+8. Base-100 index questions preserve point/percent units and the declared reference index.
+9. Choice questions have exactly one correct distinct displayed option.
+10. Inverse questions round-trip under their stated exactness convention.
+11. Rejection rules pass and no provisional marker remains.
+12. Localized rendering parses back to the canonical value.
 
 ### Property and exhaustive tests
 
@@ -1494,6 +2222,8 @@ Choice order is randomized only after unique correctness. Exact rationals decide
 - Exhaust small old/new integer pairs for percent-change denominator/sign.
 - Compare simple and compound formulas with repeated annual simulation.
 - Verify nominal inflation/purchasing-power inverse round trips.
+- Exhaust representative base-100 and non-base index pairs in both directions.
+- Verify charge-ledger bases, both rounding policies, and allocation conservation.
 - Enumerate subscription totals around every break-even month and test the previous month.
 - Enumerate probability grids for two/three outcomes and compare weighted sums.
 - Verify break-even EV thresholds immediately below/at/above the answer.
@@ -1509,6 +2239,8 @@ Fixed-seed samples must verify:
 - increase/decrease and old/new denominator traps recur;
 - simple and compound families do not starve one another;
 - nominal/real direction is balanced;
+- base-100/non-base index direction and point/percent response modes recur;
+- charge-base structures, equal/proportional allocations, and remainder cases recur;
 - subscription fee/promotion structures and winner cues vary;
 - positive/zero/negative EV classes recur;
 - expected-value option with highest payoff is not systematically best;
@@ -1519,7 +2251,7 @@ Fixed-seed samples must verify:
 
 Test configured comma/point decimals, permitted grouping, currencies before/after values, percent sign, negative values, whitespace, and exact integers. Reject ambiguous separators under the active format, multiple signs, scientific notation, fractions, NaN/infinity, wrong units, and a percent answer supplied as a decimal fraction unless explicitly requested.
 
-## 14. Coverage requirements
+## 15. Coverage requirements
 
 Across long-run practice:
 
@@ -1529,13 +2261,15 @@ Across long-run practice:
 - percent change includes direction, denominator, inverse, and successive changes;
 - interest distinguishes principal, interest, balance, simple, and compound;
 - inflation distinguishes annual rate, cumulative rate, nominal price, purchasing power, and real change;
+- index interpretation distinguishes a base-100 level, index-point change, and percent change from the actual starting index;
+- shared bills distinguish tip/gratuity, surcharge, and fictional-tax bases and reconcile equal/proportional allocations to the exact total;
 - subscription questions use common horizons and verify break-even integer months;
 - EV includes gross/net, multiple outcomes, comparisons, and thresholds;
 - realistic-looking prose never hides an unstated convention;
 - difficulty is driven by model selection and interpretation, not giant values;
 - generated figures are never presented as current facts or advice.
 
-## 15. Topic-level quality checklist
+## 16. Topic-level quality checklist
 
 - [ ] Every monetary question states currency precision and rounding stage.
 - [ ] Exact decimal/rational arithmetic determines answers and choices.
@@ -1547,6 +2281,8 @@ Across long-run practice:
 - [ ] Percent change always uses the original value as denominator.
 - [ ] Simple and annually compounded interest are not mixed implicitly.
 - [ ] Nominal price and purchasing power are explicitly labeled.
+- [ ] Index points and percent changes use distinct units and the stated starting index.
+- [ ] Every bill charge names its base and every participant allocation sums exactly to the total.
 - [ ] Subscription comparisons share an identical access horizon.
 - [ ] Break-even questions state equality/inequality and whole-month convention.
 - [ ] Expected-value distributions are complete and gross/net language is unambiguous.
@@ -1556,9 +2292,9 @@ Across long-run practice:
 - [ ] Property, distribution, inverse, localization, and parser tests pass.
 - [ ] The app states that exercises are educational and not financial advice.
 
-## 16. Stable identifiers and recommended navigation
+## 17. Stable identifiers and recommended navigation
 
-The UI may retain the current seven category labels:
+The UI should expose these eight category labels:
 
 - Unit Prices
 - Discounts and Tax
@@ -1567,5 +2303,6 @@ The UI may retain the current seven category labels:
 - Inflation
 - Subscriptions
 - Expected Value
+- Shared Bills and Explicit Charges
 
 Stable family identifiers are the backticked names in this specification. Existing category-level progress may remain visible after migration, but new adaptive records must begin at family/dimension level; historical category attempts cannot be assumed to identify mastery of newly separated skills.

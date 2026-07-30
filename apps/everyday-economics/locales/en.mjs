@@ -6,7 +6,7 @@ export default {
     localeCode: "en",
     locale: "en-US",
     appTitle: "Everyday Economics",
-    brandSubtitle: "Applied math drills for prices, percentages, interest, inflation, and simple risk.",
+    brandSubtitle: "Applied math drills for prices, percentages, interest, indexes, shared bills, and simple risk.",
     educationalNote: "Educational practice only — not financial, tax, legal, investment, or purchasing advice.",
     summary: {
       aria: "Progress summary",
@@ -78,7 +78,8 @@ export default {
       interest: { title: "Interest", short: "Int" },
       inflation: { title: "Inflation", short: "Infl" },
       subscriptions: { title: "Subscriptions", short: "Sub" },
-      expectedValue: { title: "Expected Value", short: "EV" }
+      expectedValue: { title: "Expected Value", short: "EV" },
+      sharedBills: { title: "Shared Bills and Explicit Charges", short: "Bills" }
     },
     learnCards: {
       unitPrices: {
@@ -106,10 +107,10 @@ export default {
         format: "Money rounded to hundredths."
       },
       inflation: {
-        concept: "Inflation changes purchasing power and nominal prices.",
-        rules: "Apply the rate like any other percent increase, often repeatedly over years.",
-        example: "$100 with 3% inflation becomes $103 after one year.",
-        format: "Money rounded to hundredths, or percent when asked."
+        concept: "Inflation changes purchasing power and nominal prices; a base-100 index expresses a level relative to a reference period.",
+        rules: "Compound repeated rates. For two index values, divide the index-point change by the starting index to find percent change.",
+        example: "An index move from 120 to 126 is 6 index points but a 5% increase.",
+        format: "Money, index points, or percent as explicitly labeled."
       },
       subscriptions: {
         concept: "Recurring costs are easier to compare over a shared time horizon.",
@@ -122,6 +123,12 @@ export default {
         rules: "Multiply each outcome by its probability, then add.",
         example: "25% chance of $20 has expected value $5.",
         format: "Money rounded to hundredths."
+      },
+      sharedBills: {
+        concept: "A shared bill can contain charges with different bases and different allocation policies.",
+        rules: "Calculate each fictional charge from its named base, then allocate it equally or proportionally exactly as stated.",
+        example: "A $10 charge split in a 3:2 ratio gives $6 and $4.",
+        format: "Named money fields whose shares reconcile to the complete bill total."
       }
     },
     settings: {

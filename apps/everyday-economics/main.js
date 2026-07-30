@@ -316,7 +316,8 @@
     { id: "interest", title: "Interest" },
     { id: "inflation", title: "Inflation and Purchasing Power" },
     { id: "subscriptions", title: "Subscriptions" },
-    { id: "expected-value", title: "Expected Value" }
+    { id: "expected-value", title: "Expected Value" },
+    { id: "shared-bills", title: "Shared Bills and Explicit Charges" }
   ];
 
   var FAMILY_DATA = [
@@ -343,6 +344,7 @@
     ["cumulative_inflation_rate", "inflation", "Cumulative Inflation", "Cumulative inflation rate", [2, 3, 4, 5], "Convert a multi-year compound factor back to a cumulative rate.", "cumulative = (1+i)^t−1"],
     ["purchasing_power", "inflation", "Purchasing Power", "Purchasing power", [2, 3, 4, 5], "Deflate future nominal money into today's currency.", "today-value = future nominal ÷ (1+i)^t"],
     ["real_change_from_nominal", "inflation", "Real Change", "Real change from nominal", [3, 4, 5], "Compare nominal growth with price growth using a factor ratio.", "real factor = nominal factor ÷ inflation factor"],
+    ["base_100_index_interpret", "inflation", "Base-100 Index Interpretation", "Interpret a base-100 index", [1, 2, 3, 4], "Keep an index-point movement distinct from its percent change.", "percent change = point change ÷ starting index"],
     ["subscription_total", "subscriptions", "Single-Plan Total", "Subscription total", [1, 2, 3, 4, 5], "Separate fixed, monthly, promotional, and annual charges.", "total over stated access horizon"],
     ["subscription_effective_monthly", "subscriptions", "Effective Monthly Cost", "Effective monthly cost", [2, 3, 4, 5], "Divide total cost by access months, not billed months.", "effective monthly = total ÷ access months"],
     ["subscription_compare", "subscriptions", "Common-Horizon Comparison", "Compare subscriptions", [1, 2, 3, 4, 5], "Put every plan on the identical access horizon.", "lower stated cost over the named horizon"],
@@ -350,7 +352,9 @@
     ["expected_value_single_reward", "expected-value", "One Reward and Cost", "Single-reward expected value", [1, 2, 3, 4, 5], "Weight gross reward, then subtract a certain cost once.", "EV = p×reward−cost"],
     ["expected_value_multiple_outcomes", "expected-value", "Multiple Outcomes", "Multiple-outcome expected value", [2, 3, 4, 5], "Weight every mutually exclusive net outcome.", "EV = Σ pᵢxᵢ"],
     ["expected_value_compare", "expected-value", "Comparing Options", "Compare expected values", [2, 3, 4, 5], "Compare exact long-run averages rather than maximum payoff.", "choose the larger exact EV"],
-    ["expected_value_break_even", "expected-value", "Break-Even Probability or Cost", "Expected-value break-even", [2, 3, 4, 5], "Solve p×reward−cost = 0 and interpret the threshold.", "break-even equality"]
+    ["expected_value_break_even", "expected-value", "Break-Even Probability or Cost", "Expected-value break-even", [2, 3, 4, 5], "Solve p×reward−cost = 0 and interpret the threshold.", "break-even equality"],
+    ["bill_charges_total", "shared-bills", "Bill Total from Explicit Charge Bases", "Total explicit bill charges", [1, 2, 3, 4, 5], "Bind every tip, surcharge, and fictional-tax rate to its named base.", "bill total = eligible subtotal + each charge once"],
+    ["shared_bill_allocate", "shared-bills", "Equal and Proportional Allocation", "Allocate a shared bill", [1, 2, 3, 4, 5], "Apply the stated allocation policy and reconcile every minor unit.", "participant shares sum exactly to bill total"]
   ];
 
   var FAMILIES = FAMILY_DATA.map(function (entry) {
@@ -387,12 +391,15 @@
     cumulative_inflation_rate: ["inflated_future_price"],
     purchasing_power: ["inflated_future_price"],
     real_change_from_nominal: ["purchasing_power", "percent_change_direct"],
+    base_100_index_interpret: ["percent_change_direct"],
     subscription_effective_monthly: ["subscription_total"],
     subscription_compare: ["subscription_total"],
     subscription_break_even: ["subscription_compare"],
     expected_value_multiple_outcomes: ["expected_value_single_reward"],
     expected_value_compare: ["expected_value_single_reward"],
-    expected_value_break_even: ["expected_value_single_reward"]
+    expected_value_break_even: ["expected_value_single_reward"],
+    bill_charges_total: ["tax_single"],
+    shared_bill_allocate: ["bill_charges_total"]
   };
 
   var GENERATORS = {};
@@ -418,7 +425,8 @@
       interest: "interest",
       inflation: "inflation",
       subscriptions: "subscriptions",
-      "expected-value": "expectedValue"
+      "expected-value": "expectedValue",
+      "shared-bills": "sharedBills"
     };
     CATEGORIES.forEach(function (category) {
       var localized = t("categories." + categoryLocaleKeys[category.id], null);
@@ -893,6 +901,86 @@
     return { real: percentPoints(subRat(divRat(factorRat(p.nominalBp), factorRat(p.inflationBp)), rat(1n))) };
   };
 
+  function indexValueText(value) {
+    return decimalFromScaled(roundHalfAway(value, 10), 1);
+  }
+
+  function indexPeriodPair(rng) {
+    if (rng.chance(0.5)) {
+      var year = rng.int(2021, 2028);
+      return { start: String(year), end: String(year + 1), base: String(year - 1) };
+    }
+    var quarter = rng.int(1, 3);
+    return { start: "Year A Q" + quarter, end: "Year A Q" + (quarter + 1), base: "Base period" };
+  }
+
+  GENERATORS.base_100_index_interpret = function (level, rng) {
+    var periods = indexPeriodPair(rng);
+    var start;
+    var end;
+    var change;
+    var percent;
+    var fields;
+    var rows;
+    var steps;
+    var mode;
+    if (level === 1) {
+      mode = "base";
+      start = rat(100);
+      end = rat(rng.pick([72, 80, 90, 110, 118, 125, 140, 160]));
+      change = subRat(end, start);
+      percent = percentPoints(divRat(change, start));
+      fields = [fieldPercent("percentChange", "Change from base period", percent)];
+      rows = ["Fictional Cost Index A: " + periods.base + " = 100", periods.end + " index value: " + indexValueText(end)];
+      steps = ["index-point change: " + rationalText(change), "percent change from 100: " + percentFromBasisPoints(basisPointsOf(percent))];
+    } else if (level === 3 && rng.chance(0.45)) {
+      mode = "forward";
+      start = rat(rng.pick([825, 1125, 1200, 1375, 1500]), 10);
+      var rateBp = rng.pick([-1250, -1000, -500, 500, 800, 1000, 1250, 2000]);
+      percent = rat(rateBp, 100);
+      end = mulRat(start, factorRat(rateBp));
+      fields = [fieldDecimal("endIndex", "New index value", end, 1, "index")];
+      rows = ["Fictional Cost Index C at " + periods.start + ": " + indexValueText(start), "Stated change to " + periods.end + ": " + rateLabel(rateBp)];
+      steps = ["growth factor: " + rationalText(factorRat(rateBp)), "new index: " + indexValueText(start) + " × factor = " + indexValueText(end)];
+    } else {
+      mode = level >= 4 ? "points-and-percent" : "interval";
+      start = level >= 3 ? rat(rng.pick([825, 1125, 1200, 1250, 1375, 1500, 1625]), 10) : rat(rng.pick([80, 120, 125, 150, 160]));
+      var intervalRateBp = rng.pick(level >= 3 ? [-1250, -1000, -500, 400, 500, 800, 1000, 1250] : [-2000, -1000, -500, 500, 1000, 2000, 2500]);
+      end = rat(roundHalfAway(mulRat(start, factorRat(intervalRateBp)), 10), 10);
+      change = subRat(end, start);
+      percent = percentPoints(divRat(change, start));
+      fields = mode === "points-and-percent"
+        ? [fieldDecimal("indexPointChange", "Signed change in index points", change, 1, "index points"), fieldPercent("percentChange", "Signed percent change", percent)]
+        : [fieldPercent("percentChange", "Signed percent change", percent)];
+      rows = ["Fictional Cost Index B at " + periods.start + ": " + indexValueText(start), "At " + periods.end + ": " + indexValueText(end)];
+      steps = ["index-point change: " + indexValueText(end) + " − " + indexValueText(start) + " = " + indexValueText(change), "percent change: point change ÷ starting index = " + percentFromBasisPoints(basisPointsOf(percent))];
+    }
+    return makeQuestion(
+      "base_100_index_interpret",
+      level,
+      fields.length > 1 ? "decimal-and-percent" : fields[0].kind,
+      { mode: mode, startN: start.n.toString(), startD: start.d.toString(), endN: end.n.toString(), endD: end.d.toString() },
+      prompt(
+        mode === "forward" ? "Construct the new fictional index value." : mode === "points-and-percent" ? "Give the index-point and percent changes." : "Interpret the fictional base-100 index.",
+        rows,
+        mode === "base" ? "The index base is exactly 100." : mode === "forward" ? "Apply the stated percent to the starting index." : "Use the starting index as the percent-change denominator; index points are not percentages."
+      ),
+      fields,
+      steps,
+      [mode, compareRat(end, start) > 0 ? "increase" : "decrease", start.n === 100n * start.d ? "start-100" : "start-not-100"],
+      { units: fields.map(function (field) { return field.unit; }), timeBasis: (mode === "base" ? periods.base : periods.start) + " to " + periods.end, interpretation: "These are fictional index values for arithmetic interpretation, not current data or a forecast." },
+      ["index-points-as-percent", "ending-index-denominator", "sign-reversal"]
+    );
+  };
+
+  DERIVERS.base_100_index_interpret = function (p) {
+    var start = rat(p.startN, p.startD);
+    var end = rat(p.endN, p.endD);
+    var pointChange = subRat(end, start);
+    var result = { indexPointChange: pointChange, percentChange: percentPoints(divRat(pointChange, start)), endIndex: end };
+    return result;
+  };
+
   function subscriptionPlan(rng, level, id) {
     var monthly = BigInt(rng.int(5, level <= 2 ? 30 : 80)) * 100n;
     var setup = level >= 2 ? BigInt(rng.pick([0, 500, 1000, 2500, 5000])) : 0n;
@@ -1061,6 +1149,249 @@
     return { answer: exact };
   };
 
+  function chargeDisplayLabel(row) {
+    if (row.type === "tip") return row.displayAs === "gratuity" ? "Gratuity" : "Tip";
+    if (row.type === "tax") return "Fictional tax";
+    return "Surcharge";
+  }
+
+  function chargeBaseLabel(row) {
+    return row.baseIds.map(function (id) {
+      if (id === "eligibleSubtotal") return "eligible subtotal";
+      return id === "surcharge" ? "surcharge" : id === "tip" ? "tip/gratuity" : "fictional tax";
+    }).join(" plus ");
+  }
+
+  function deriveChargeLedger(parameters) {
+    var values = { eligibleSubtotal: moneyRat(parameters.eligibleSubtotalCents) };
+    var rows = [];
+    parameters.chargeRows.forEach(function (row) {
+      var exact;
+      if (row.kind === "fixed") {
+        exact = moneyRat(row.fixedCents);
+      } else {
+        var base = row.baseIds.reduce(function (sum, id) { return addRat(sum, values[id]); }, rat(0n));
+        exact = mulRat(base, rateRat(row.rateBp));
+      }
+      if (parameters.roundingPolicy === "line-rounded") exact = moneyRat(centsOf(exact));
+      values[row.id] = exact;
+      rows.push({ id: row.id, exact: exact });
+    });
+    var total = rows.reduce(function (sum, row) { return addRat(sum, row.exact); }, values.eligibleSubtotal);
+    values.billTotal = total;
+    return { values: values, rows: rows, total: total };
+  }
+
+  function chargeRowPrompt(row) {
+    var label = chargeDisplayLabel(row);
+    if (row.kind === "fixed") return label + ": fixed " + moneyFromCents(row.fixedCents);
+    return label + ": " + rateLabel(row.rateBp) + " of " + chargeBaseLabel(row);
+  }
+
+  function makeBillChargeRows(level, rng) {
+    var tipLabel = rng.chance(0.5) ? "tip" : "gratuity";
+    if (level === 1) {
+      return [{ id: "tip", type: "tip", displayAs: tipLabel, kind: "rate", rateBp: rng.pick([1000, 1500, 2000]), baseIds: ["eligibleSubtotal"] }];
+    }
+    if (level === 2) {
+      var useFixed = rng.chance(0.5);
+      return [
+        { id: "surcharge", type: "surcharge", kind: useFixed ? "fixed" : "rate", fixedCents: useFixed ? String(rng.pick([100, 200, 500])) : undefined, rateBp: useFixed ? undefined : rng.pick([500, 1000]), baseIds: useFixed ? [] : ["eligibleSubtotal"] },
+        { id: "tip", type: "tip", displayAs: tipLabel, kind: "rate", rateBp: rng.pick([1000, 1500, 2000]), baseIds: ["eligibleSubtotal"] }
+      ];
+    }
+    if (level === 3) {
+      return [
+        { id: "surcharge", type: "surcharge", kind: "rate", rateBp: rng.pick([500, 750, 1000]), baseIds: ["eligibleSubtotal"] },
+        { id: "tax", type: "tax", kind: "rate", rateBp: rng.pick([500, 600, 800, 1000]), baseIds: ["eligibleSubtotal", "surcharge"] }
+      ];
+    }
+    return [
+      { id: "tip", type: "tip", displayAs: tipLabel, kind: "rate", rateBp: rng.pick(level >= 5 ? [1250, 1750, 1850, 2250] : [1000, 1500, 2000]), baseIds: ["eligibleSubtotal"] },
+      level >= 5 && rng.chance(0.5)
+        ? { id: "surcharge", type: "surcharge", kind: "fixed", fixedCents: String(rng.pick([125, 200, 350, 500])), baseIds: [] }
+        : { id: "surcharge", type: "surcharge", kind: "rate", rateBp: rng.pick([500, 750, 1000]), baseIds: ["eligibleSubtotal"] },
+      { id: "tax", type: "tax", kind: "rate", rateBp: rng.pick(level >= 5 ? [550, 625, 725, 825] : [500, 800, 1000]), baseIds: ["eligibleSubtotal", "surcharge"] }
+    ];
+  }
+
+  GENERATORS.bill_charges_total = function (level, rng) {
+    var eligibleSubtotalCents = level >= 5 ? BigInt(rng.int(1001, 50000)) : BigInt(rng.int(10, level <= 2 ? 150 : 500)) * 100n;
+    var parameters = {
+      eligibleSubtotalCents: eligibleSubtotalCents.toString(),
+      chargeRows: makeBillChargeRows(level, rng),
+      roundingPolicy: level >= 5 ? "line-rounded" : "final-only"
+    };
+    var ledger = deriveChargeLedger(parameters);
+    var requestedRows = level >= 4 ? parameters.chargeRows : level === 1 ? parameters.chargeRows : [];
+    var fields = requestedRows.map(function (row) {
+      return fieldMoney(row.id, chargeDisplayLabel(row), ledger.values[row.id]);
+    });
+    fields.push(fieldMoney("billTotal", "Bill total", ledger.total));
+    var workedSteps = parameters.chargeRows.map(function (row) {
+      return chargeDisplayLabel(row) + ": " + moneyFromCents(centsOf(ledger.values[row.id]));
+    });
+    workedSteps.push("eligible subtotal plus each charge once = " + moneyFromCents(centsOf(ledger.total)));
+    return makeQuestion(
+      "bill_charges_total",
+      level,
+      fields.length > 1 ? "multi-money" : "money",
+      parameters,
+      prompt(
+        "Calculate the fictional bill charges.",
+        ["Eligible subtotal: " + moneyFromCents(eligibleSubtotalCents)].concat(parameters.chargeRows.map(chargeRowPrompt)),
+        (parameters.roundingPolicy === "line-rounded" ? "Round each charge line to the currency minor unit before adding." : "Keep exact intermediate values and round only requested final amounts.") + " Rates and labels are fictional arithmetic inputs, not tax or tipping guidance."
+      ),
+      fields,
+      workedSteps,
+      [parameters.chargeRows.map(function (row) { return row.type + "-" + row.kind; }).join(","), parameters.roundingPolicy, fields.length > 1 ? "all-fields" : "total-only"],
+      { units: ["currency"], roundingStage: parameters.roundingPolicy, difficultyDimensions: ["charge-count-" + parameters.chargeRows.length, "named-bases", parameters.roundingPolicy], interpretation: "This is a fictional charge ledger for arithmetic practice, not a statement of customary or legal charges." },
+      ["one-base-for-all", "omitted-charge", "double-counted-charge", "fixed-fee-as-percent"]
+    );
+  };
+
+  DERIVERS.bill_charges_total = function (p) {
+    return deriveChargeLedger(p).values;
+  };
+
+  function buildSharedBillScenario(level, rng) {
+    var count = level === 1 ? rng.int(2, 4) : level >= 5 ? 4 : rng.int(2, Math.min(4, level + 1));
+    var participants = [];
+    if (level === 1) {
+      var equalShareCents = BigInt(rng.int(8, 80)) * 100n;
+      for (var equalIndex = 0; equalIndex < count; equalIndex += 1) {
+        participants.push({ id: String.fromCharCode(65 + equalIndex), eligibleCents: equalShareCents.toString() });
+      }
+      return {
+        mode: "equal-total",
+        eligibleSubtotalCents: (equalShareCents * BigInt(count)).toString(),
+        participants: participants,
+        chargeRows: [],
+        roundingPolicy: "line-rounded"
+      };
+    }
+    var totalEligible = 0n;
+    for (var i = 0; i < count; i += 1) {
+      var cents = level >= 4 ? BigInt(rng.int(501, 5000) + i) : BigInt(rng.int(8, 50) + i * 3) * 100n;
+      while (participants.some(function (participant) { return BigInt(participant.eligibleCents) === cents; })) cents += level >= 4 ? 1n : 100n;
+      participants.push({ id: String.fromCharCode(65 + i), eligibleCents: cents.toString() });
+      totalEligible += cents;
+    }
+    var tipLabel = rng.chance(0.5) ? "tip" : "gratuity";
+    var chargeRows;
+    if (level === 2) {
+      chargeRows = [{ id: "tip", type: "tip", displayAs: tipLabel, kind: "rate", rateBp: rng.pick([1000, 1500, 2000]), baseIds: ["eligibleSubtotal"], allocation: "proportional" }];
+    } else if (level === 3) {
+      chargeRows = [
+        { id: "tip", type: "tip", displayAs: tipLabel, kind: "rate", rateBp: rng.pick([1000, 1500, 2000]), baseIds: ["eligibleSubtotal"], allocation: "proportional" },
+        { id: "tax", type: "tax", kind: "rate", rateBp: rng.pick([500, 800, 1000]), baseIds: ["eligibleSubtotal"], allocation: "proportional" }
+      ];
+    } else {
+      chargeRows = [
+        { id: "tip", type: "tip", displayAs: tipLabel, kind: "rate", rateBp: rng.pick([1250, 1500, 1750, 2000]), baseIds: ["eligibleSubtotal"], allocation: "proportional" },
+        { id: "surcharge", type: "surcharge", kind: "fixed", fixedCents: String(rng.pick([100, 200, 500, 700])), baseIds: [], allocation: "equal" },
+        { id: "tax", type: "tax", kind: "rate", rateBp: rng.pick([500, 625, 800, 1000]), baseIds: ["eligibleSubtotal", "surcharge"], allocation: "proportional" }
+      ];
+    }
+    return {
+      mode: level >= 4 ? "mixed" : "proportional",
+      eligibleSubtotalCents: totalEligible.toString(),
+      participants: participants,
+      chargeRows: chargeRows,
+      roundingPolicy: "line-rounded"
+    };
+  }
+
+  function floorPositive(value) {
+    if (value.n < 0n) throw new Error("negative allocation");
+    return value.n / value.d;
+  }
+
+  function deriveSharedAllocation(parameters) {
+    var ledger = deriveChargeLedger(parameters);
+    var totalCents = centsOf(ledger.total);
+    var count = parameters.participants.length;
+    var exactShares;
+    if (parameters.mode === "equal-total") {
+      exactShares = parameters.participants.map(function (participant) {
+        return { id: participant.id, cents: rat(totalCents, count) };
+      });
+    } else {
+      var eligibleTotal = BigInt(parameters.eligibleSubtotalCents);
+      exactShares = parameters.participants.map(function (participant) {
+        var eligible = BigInt(participant.eligibleCents);
+        var share = rat(eligible);
+        parameters.chargeRows.forEach(function (row) {
+          var chargeCents = centsOf(ledger.values[row.id]);
+          share = addRat(share, row.allocation === "equal" ? rat(chargeCents, count) : mulRat(rat(chargeCents), rat(eligible, eligibleTotal)));
+        });
+        return { id: participant.id, cents: share };
+      });
+    }
+    var floors = {};
+    var floorSum = 0n;
+    exactShares.forEach(function (entry) {
+      floors[entry.id] = floorPositive(entry.cents);
+      floorSum += floors[entry.id];
+    });
+    var remaining = totalCents - floorSum;
+    var ranked = exactShares.slice().sort(function (a, b) {
+      var aRemainder = a.cents.n % a.cents.d;
+      var bRemainder = b.cents.n % b.cents.d;
+      var comparison = aRemainder * b.cents.d - bRemainder * a.cents.d;
+      return comparison === 0n ? a.id.localeCompare(b.id) : comparison > 0n ? -1 : 1;
+    });
+    for (var i = 0; i < Number(remaining); i += 1) floors[ranked[i].id] += 1n;
+    var values = {};
+    parameters.participants.forEach(function (participant) { values["person" + participant.id] = moneyRat(floors[participant.id]); });
+    values.allocationTotal = moneyRat(totalCents);
+    return { values: values, exactShares: exactShares, roundedCents: floors, remaining: remaining, ledger: ledger };
+  }
+
+  GENERATORS.shared_bill_allocate = function (level, rng) {
+    var parameters = buildSharedBillScenario(level, rng);
+    var allocation = deriveSharedAllocation(parameters);
+    var participantRows = parameters.mode === "equal-total"
+      ? ["Participants: " + parameters.participants.map(function (participant) { return "Person " + participant.id; }).join(", ")]
+      : parameters.participants.map(function (participant) { return "Person " + participant.id + " eligible subtotal: " + moneyFromCents(participant.eligibleCents); });
+    var chargeRows = parameters.chargeRows.map(function (row) {
+      var policy = row.allocation === "equal" ? "split equally" : "allocate in proportion to eligible subtotal";
+      var calculation = level >= 5 ? chargeRowPrompt(row) : chargeDisplayLabel(row) + ": " + moneyFromCents(centsOf(allocation.ledger.values[row.id]));
+      return calculation + "; " + policy;
+    });
+    var fields = parameters.participants.map(function (participant) {
+      return fieldMoney("person" + participant.id, "Person " + participant.id + " final share", allocation.values["person" + participant.id]);
+    });
+    if (level >= 4) fields.push(fieldMoney("allocationTotal", "Allocation total", allocation.values.allocationTotal));
+    var policyText = parameters.mode === "equal-total" ? "Split the complete bill total equally." : parameters.mode === "proportional" ? "Keep each person's own eligible subtotal; allocate every listed charge proportionally." : "Keep each person's own eligible subtotal; split fixed surcharge equally and allocate percentage charges proportionally.";
+    var remainderText = allocation.remaining
+      ? "Round exact shares down to minor units, then assign remaining units by largest fractional remainder; ties go to the earlier person ID."
+      : "All participant shares reconcile exactly at the currency minor unit.";
+    var workedSteps = parameters.mode === "equal-total"
+      ? ["complete bill total: " + moneyFromCents(centsOf(allocation.ledger.total)), "divide by " + parameters.participants.length + " participants", "reconciled shares sum to " + moneyFromCents(centsOf(allocation.ledger.total))]
+      : ["eligible subtotal: " + moneyFromCents(parameters.eligibleSubtotalCents), "apply each row's stated equal or proportional policy", remainderText, "reconciled shares sum to " + moneyFromCents(centsOf(allocation.ledger.total))];
+    return makeQuestion(
+      "shared_bill_allocate",
+      level,
+      fields.length > 1 ? "multi-money" : "money",
+      parameters,
+      prompt(
+        "Allocate the fictional shared bill.",
+        participantRows.concat(chargeRows, ["Complete bill total: " + moneyFromCents(centsOf(allocation.ledger.total)), "Allocation policy: " + policyText]),
+        (parameters.chargeRows.length ? "Round each charge line to the currency minor unit before allocation. " : "") + remainderText + " This is a stated arithmetic policy, not a claim about fairness or custom."
+      ),
+      fields,
+      workedSteps,
+      [parameters.mode, "people-" + parameters.participants.length, allocation.remaining ? "remainder" : "exact", parameters.chargeRows.map(function (row) { return row.type + "-" + row.allocation; }).join(",")],
+      { units: ["currency"], roundingStage: "line-rounded charges then largest-remainder allocation", difficultyDimensions: ["people-" + parameters.participants.length, parameters.mode, allocation.remaining ? "minor-unit-remainder" : "exact-minor-unit"], interpretation: "The shares follow only the displayed fictional allocation policy and sum exactly to the bill total." },
+      ["equal-instead-of-proportional", "proportional-instead-of-equal", "omitted-charge", "independent-rounding"]
+    );
+  };
+
+  DERIVERS.shared_bill_allocate = function (p) {
+    return deriveSharedAllocation(p).values;
+  };
+
   function validateQuestion(question) {
     ["categoryId", "subcategoryId", "familyId", "level", "answerKind", "currencyPrecision", "units", "timeBasis", "roundingStage", "difficultyDimensions", "misconceptionsTargeted", "parameters", "exactAnswer", "roundedAnswer", "workedSteps", "structuralSignature"].forEach(function (key) {
       if (question[key] === undefined || question[key] === null) throw new Error("Missing metadata " + key);
@@ -1088,6 +1419,28 @@
     });
     if (question.familyId === "expected_value_multiple_outcomes") {
       if (question.parameters.outcomes.reduce(function (sum, outcome) { return sum + outcome.probability; }, 0) !== 100) throw new Error("Incomplete probability distribution");
+    }
+    if (question.familyId === "base_100_index_interpret") {
+      if (BigInt(question.parameters.startN) <= 0n || BigInt(question.parameters.endN) <= 0n) throw new Error("Index values must be positive");
+      if (question.parameters.mode !== "base" && BigInt(question.parameters.startN) === 100n * BigInt(question.parameters.startD)) throw new Error("Non-base index interval starts at 100");
+      if (question.parameters.mode !== "forward") {
+        var visibleStart = rat(question.parameters.startN, question.parameters.startD);
+        var visibleEnd = rat(question.parameters.endN, question.parameters.endD);
+        if (compareRat(visibleStart, rat(roundHalfAway(visibleStart, 10), 10)) !== 0 || compareRat(visibleEnd, rat(roundHalfAway(visibleEnd, 10), 10)) !== 0) throw new Error("Displayed index inputs lose semantic precision");
+      }
+    }
+    if (question.familyId === "bill_charges_total" || question.familyId === "shared_bill_allocate") {
+      var chargeLedger = deriveChargeLedger(question.parameters);
+      var chargeSum = question.parameters.chargeRows.reduce(function (sum, row) { return addRat(sum, chargeLedger.values[row.id]); }, moneyRat(question.parameters.eligibleSubtotalCents));
+      if (compareRat(chargeSum, chargeLedger.total) !== 0) throw new Error("Charge ledger does not reconcile");
+    }
+    if (question.familyId === "shared_bill_allocate") {
+      var allocation = deriveSharedAllocation(question.parameters);
+      var allocated = question.parameters.participants.reduce(function (sum, participant) {
+        return addRat(sum, allocation.values["person" + participant.id]);
+      }, rat(0n));
+      if (compareRat(allocated, allocation.values.allocationTotal) !== 0) throw new Error("Shared bill allocation does not reconcile");
+      if (BigInt(question.parameters.eligibleSubtotalCents) !== question.parameters.participants.reduce(function (sum, participant) { return sum + BigInt(participant.eligibleCents); }, 0n)) throw new Error("Participant subtotals do not reconcile");
     }
   }
 
@@ -1207,8 +1560,11 @@
     if (family.indexOf("interest") >= 0 || family === "simple_vs_compound") return localizeGeneratedString("Keep principal, interest, balance, annual basis, and model distinct.");
     if (["inflated_future_price", "cumulative_inflation_rate"].includes(family)) return localizeGeneratedString("Constant annual inflation compounds through the stated horizon.");
     if (["purchasing_power", "real_change_from_nominal"].includes(family)) return localizeGeneratedString("Nominal and real values move in opposite calculation directions: deflate by division.");
+    if (family === "base_100_index_interpret") return localizeGeneratedString("Index points are not percentages: divide the signed point change by the starting index.");
     if (family.indexOf("subscription") === 0) return localizeGeneratedString("Use the identical access horizon and include every explicitly stated fixed and recurring charge.");
     if (family.indexOf("expected_value") === 0) return localizeGeneratedString("Weight every outcome by its probability; subtract a certain cost once.");
+    if (family === "bill_charges_total") return localizeGeneratedString("Apply each fictional charge to its explicitly named base, then include each charge once.");
+    if (family === "shared_bill_allocate") return localizeGeneratedString("Use the displayed equal or proportional policy, then reconcile participant shares to the exact bill total.");
     return localizeGeneratedString("Recheck the exact relationship, units, and final-only rounding.");
   }
 
@@ -2003,9 +2359,10 @@
   function runSelfTests() {
     var failures = [];
     function assert(name, condition) { if (!condition) failures.push(name); }
-    assert("31 families", FAMILIES.length === 31);
-    assert("31 generators", Object.keys(GENERATORS).length === 31);
-    assert("31 derivers", Object.keys(DERIVERS).length === 31);
+    assert("8 categories", CATEGORIES.length === 8);
+    assert("34 families", FAMILIES.length === 34);
+    assert("34 generators", Object.keys(GENERATORS).length === 34);
+    assert("34 derivers", Object.keys(DERIVERS).length === 34);
     assert("half away positive", roundHalfAway(rat(1005, 1000), 100) === 101n);
     assert("half away negative", roundHalfAway(rat(-1005, 1000), 100) === -101n);
     assert("successive factor", compareRat(mulRat(factorRat(2000), factorRat(-2000)), rat(96, 100)) === 0);
@@ -2015,6 +2372,27 @@
     var planB = { monthlyCents: "1500", setupCents: "0", freeMonths: 0, annualFeeCents: "0" };
     assert("break-even previous", compareRat(subscriptionTotalExact(planA, 5), subscriptionTotalExact(planB, 5)) > 0);
     assert("break-even month", compareRat(subscriptionTotalExact(planA, 6), subscriptionTotalExact(planB, 6)) <= 0);
+    var indexQuestion = GENERATORS.base_100_index_interpret(4, new Rng(120126));
+    assert("index point/percent units differ", indexQuestion.answer.fields.some(function (field) { return field.id === "indexPointChange"; }) && indexQuestion.answer.fields.some(function (field) { return field.id === "percentChange"; }));
+    var billParameters = {
+      eligibleSubtotalCents: "8000",
+      chargeRows: [
+        { id: "surcharge", type: "surcharge", kind: "rate", rateBp: 1000, baseIds: ["eligibleSubtotal"] },
+        { id: "tax", type: "tax", kind: "rate", rateBp: 500, baseIds: ["eligibleSubtotal", "surcharge"] }
+      ],
+      roundingPolicy: "final-only"
+    };
+    assert("charge ledger bases", centsOf(deriveChargeLedger(billParameters).total) === 9240n);
+    var allocationParameters = {
+      mode: "equal-total",
+      eligibleSubtotalCents: "3100",
+      participants: [{ id: "A", eligibleCents: "1000" }, { id: "B", eligibleCents: "1000" }, { id: "C", eligibleCents: "1100" }],
+      chargeRows: [],
+      roundingPolicy: "line-rounded"
+    };
+    var allocated = deriveSharedAllocation(allocationParameters);
+    assert("allocation largest remainder", centsOf(allocated.values.personA) === 1034n && centsOf(allocated.values.personB) === 1033n && centsOf(allocated.values.personC) === 1033n);
+    assert("allocation conservation", centsOf(addRat(addRat(allocated.values.personA, allocated.values.personB), allocated.values.personC)) === 3100n);
     progress = defaultProgress();
     progress.settings.numberFormat = "point";
     assert("point decimal", rationalText(parseLocalizedRational("1,234.50", "money")) === "2469/2");
@@ -2056,7 +2434,7 @@
       console.error("Everyday economics self-tests failed", failures.slice(0, 50), "total", failures.length);
       return { ok: false, failures: failures.slice(0, 100) };
     }
-    console.info("Everyday economics self-tests passed: 31 families, exact rational arithmetic, localized parser, generated property sample");
+    console.info("Everyday economics self-tests passed: 34 families, exact rational arithmetic, localized parser, generated property sample");
     return { ok: true, failures: [] };
   }
 
