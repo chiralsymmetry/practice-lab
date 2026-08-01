@@ -28,6 +28,7 @@ const apps = [
     sourceDir: "apps/programmer-low-level-numeracy",
     outputBase: "programmer-low-level-numeracy",
     locales: ["en", "sv"],
+    settingsExtras: "apps/programmer-low-level-numeracy/settings-extras.html",
   },
   {
     id: "mental-arithmetic",
@@ -42,6 +43,8 @@ const apps = [
     sourceDir: "apps/everyday-economics",
     outputBase: "everyday-economics",
     locales: ["en", "sv"],
+    practiceTools: "apps/everyday-economics/practice-tools.html",
+    settingsExtras: "apps/everyday-economics/settings-extras.html",
   },
   {
     id: "floating-point-practice",
@@ -70,6 +73,8 @@ const apps = [
     sourceDir: "apps/electric-circuits",
     outputBase: "electric-circuits",
     locales: ["en", "sv"],
+    practiceTools: "apps/electric-circuits/practice-tools.html",
+    settingsExtras: "apps/electric-circuits/settings-extras.html",
   },
 ];
 
@@ -95,9 +100,10 @@ function escapeHtml(value) {
 }
 
 function applyTemplate(template, locale, app) {
-  return template.replace(/\{\{([a-zA-Z0-9_.-]+)\}\}/g, (match, key) => {
+  return template.replace(/\{\{(\??)([a-zA-Z0-9_.-]+)\}\}/g, (match, optional, key) => {
     const value = getPath({ ...locale, app }, key) ?? getPath(locale.text, key);
     if (value === undefined) {
+      if (optional) return "";
       throw new Error(`${app.id}/${locale.code}: missing template key ${key}`);
     }
     return escapeHtml(value);
@@ -119,11 +125,16 @@ async function loadLocale(app, code) {
 
 async function buildAppLocale(app, locale, source) {
   let js = source.js.replace("__LOCALE_TEXT__", JSON.stringify(locale.text));
-  let html = applyTemplate(source.template, locale, app);
-  html = html.replace("/* __INLINE_CSS__ */", source.css.trimEnd());
-  html = html.replace("// __INLINE_JS__", js.trimEnd());
+  let html = source.shell
+    .replace("<!-- __PRACTICE_TOOLS__ -->", source.practiceTools)
+    .replace("<!-- __SETTINGS_EXTRAS__ -->", source.settingsExtras);
+  html = applyTemplate(html, locale, app);
+  html = html.replace("/* __INLINE_SHARED_CSS__ */", source.sharedCss.trimEnd());
+  html = html.replace("/* __INLINE_APP_CSS__ */", source.css.trimEnd());
+  html = html.replace("// __INLINE_SHARED_JS__", source.sharedJs.trimEnd());
+  html = html.replace("// __INLINE_APP_JS__", js.trimEnd());
 
-  if (html.includes("__INLINE_CSS__") || html.includes("__INLINE_JS__") || html.includes("__LOCALE_TEXT__")) {
+  if (html.includes("__INLINE_") || html.includes("__PRACTICE_TOOLS__") || html.includes("__SETTINGS_EXTRAS__") || html.includes("__LOCALE_TEXT__")) {
     throw new Error(`${app.id}/${locale.code}: build placeholders were not replaced`);
   }
 
@@ -139,9 +150,13 @@ async function buildAppLocale(app, locale, source) {
 
 async function buildApp(app) {
   const source = {
-    template: await readText(`${app.sourceDir}/template.html`),
+    shell: await readText("shared/practice-shell.html"),
+    sharedCss: await readText("shared/practice.css"),
+    sharedJs: await readText("shared/practice-ui.js"),
     css: await readText(`${app.sourceDir}/style.css`),
     js: await readText(`${app.sourceDir}/main.js`),
+    practiceTools: app.practiceTools ? await readText(app.practiceTools) : "",
+    settingsExtras: app.settingsExtras ? await readText(app.settingsExtras) : "",
   };
 
   for (const code of app.locales) {

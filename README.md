@@ -31,12 +31,18 @@ Build it, then open it directly in a browser. Progress is stored locally in the 
 
 ## Source Layout
 
-The standalone HTML file is generated into `dist/`, which is ignored by git. Edit the source files instead:
+The standalone HTML files are generated into `dist/`, which is ignored by git. Edit the source files instead:
 
-- `apps/{{app}}/template.html`
 - `apps/{{app}}/style.css`
 - `apps/{{app}}/main.js`
 - `apps/{{app}}/locales/*.mjs`
+- `apps/{{app}}/practice-tools.html` and `settings-extras.html` when the app needs shell extensions
+
+Shared presentation and low-level browser UI live in:
+
+- `shared/practice-shell.html`
+- `shared/practice.css`
+- `shared/practice-ui.js`
 
 Tooling lives in:
 
@@ -53,7 +59,7 @@ There is no Node/npm dependency chain. The build uses shell plus Bun, with no ex
 tools/build.sh
 ```
 
-This inlines the app CSS and JavaScript into localized files under `dist/`. English uses the plain `.html` filename; localized use `.{{lang}}.html`.
+This inlines the shared shell/runtime, shared CSS, and app-specific CSS and JavaScript into localized files under `dist/`. English uses the plain `.html` filename; localized builds use `.{{lang}}.html`.
 
 ## Test
 

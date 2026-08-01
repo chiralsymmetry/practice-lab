@@ -25,6 +25,8 @@
   var recentPrompts = [];
   var learnSpotlightId = null;
   var elements = {};
+  var selectorController;
+  var keypadButtons;
   var generatedTranslationPairs = null;
 
   function t(path, fallback) {
@@ -1856,10 +1858,9 @@
     elements.nextBtn.classList.add("hidden");
     elements.skipBtn.classList.remove("hidden");
     elements.pauseBtn.disabled = false;
-    document.querySelector("[data-keypad-action=\"submit\"]").textContent = t("practice.check", "Check");
-    var decimalKey = document.querySelector("[data-keypad-insert=\".\"]");
+    keypadButtons.get("submit").textContent = t("practice.check", "Check");
+    var decimalKey = keypadButtons.get("decimal");
     decimalKey.textContent = decimalSeparator();
-    decimalKey.dataset.keypadInsert = decimalSeparator();
     if (activeAnswerInput && window.matchMedia && window.matchMedia("(pointer: fine)").matches) activeAnswerInput.focus();
   }
 
@@ -1916,7 +1917,7 @@
     elements.nextBtn.classList.remove("hidden");
     elements.skipBtn.classList.add("hidden");
     elements.pauseBtn.disabled = true;
-    document.querySelector("[data-keypad-action=\"submit\"]").textContent = t("practice.next", "Next");
+    keypadButtons.get("submit").textContent = t("practice.next", "Next");
     showFeedback(result, duration);
     renderCurrentMetrics();
     renderSummary();
@@ -1934,31 +1935,7 @@
 
   function renderPracticeControls() {
     var activeFamily = currentQuestion ? familyById(currentQuestion.familyId) : familyById(progress.manual.familyId);
-    var categoryId = currentQuestion && progress.settings.adaptive ? currentQuestion.categoryId : progress.manual.categoryId;
-    elements.categorySelect.innerHTML = "";
-    CATEGORIES.forEach(function (category) {
-      var option = document.createElement("option");
-      option.value = category.id;
-      option.textContent = category.title;
-      option.selected = category.id === categoryId;
-      elements.categorySelect.appendChild(option);
-    });
-    elements.familySelect.innerHTML = "";
-    familiesForCategory(categoryId).forEach(function (family) {
-      var option = document.createElement("option");
-      option.value = family.id;
-      option.textContent = family.title;
-      option.selected = family.id === activeFamily.id;
-      elements.familySelect.appendChild(option);
-    });
-    elements.levelSelect.innerHTML = "";
-    activeFamily.levels.forEach(function (level) {
-      var option = document.createElement("option");
-      option.value = String(level);
-      option.textContent = t("practice.level", "Level") + " " + level;
-      option.selected = currentQuestion ? currentQuestion.level === level : progress.manual.level === level;
-      elements.levelSelect.appendChild(option);
-    });
+    selectorController.render({ familyId: activeFamily.id, level: currentQuestion ? currentQuestion.level : progress.manual.level });
     elements.adaptiveModeBtn.classList.toggle("secondary-active", progress.settings.adaptive);
     elements.manualModeBtn.classList.toggle("secondary-active", !progress.settings.adaptive);
   }
@@ -2155,24 +2132,6 @@
     renderAll();
   }
 
-  function insertAnswer(text) {
-    if (!activeAnswerInput || activeAnswerInput.disabled || pauseStartedAt) return;
-    var start = activeAnswerInput.selectionStart === null ? activeAnswerInput.value.length : activeAnswerInput.selectionStart;
-    var end = activeAnswerInput.selectionEnd === null ? start : activeAnswerInput.selectionEnd;
-    activeAnswerInput.value = activeAnswerInput.value.slice(0, start) + text + activeAnswerInput.value.slice(end);
-    activeAnswerInput.focus();
-    activeAnswerInput.setSelectionRange(start + text.length, start + text.length);
-  }
-
-  function answerKeypadClick(event) {
-    var button = event.target.closest("button");
-    if (!button) return;
-    if (button.dataset.keypadInsert !== undefined) insertAnswer(button.dataset.keypadInsert);
-    if (button.dataset.keypadAction === "backspace" && activeAnswerInput) activeAnswerInput.value = activeAnswerInput.value.slice(0, -1);
-    if (button.dataset.keypadAction === "clear" && activeAnswerInput) activeAnswerInput.value = "";
-    if (button.dataset.keypadAction === "submit" || button.dataset.keypadAction === "next") elements.answerForm.requestSubmit();
-  }
-
   function evaluateCalculatorExpression(source) {
     source = String(source || "").replace(/×/g, "*").replace(/÷/g, "/");
     var index = 0;
@@ -2251,15 +2210,6 @@
     }
   }
 
-  function calculatorKeyClick(event) {
-    var button = event.target.closest("button");
-    if (!button) return;
-    if (button.dataset.calcInsert !== undefined) elements.calculatorInput.value += button.dataset.calcInsert === "." ? decimalSeparator() : button.dataset.calcInsert;
-    if (button.dataset.calcAction === "backspace") elements.calculatorInput.value = elements.calculatorInput.value.slice(0, -1);
-    if (button.dataset.calcAction === "clear") { elements.calculatorInput.value = ""; calculatorValue = null; elements.calculatorOutput.textContent = t("calculator.ready", "Ready"); }
-    if (button.dataset.calcAction === "evaluate") calculatorEvaluate();
-  }
-
   function useCalculatorValue() {
     if (calculatorValue === null || !activeAnswerInput || activeAnswerInput.disabled) return;
     activeAnswerInput.value = String(calculatorValue).replace(".", decimalSeparator());
@@ -2286,8 +2236,7 @@
 
   function copyProgress() {
     if (!elements.dataBox.value.trim()) exportProgress();
-    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(elements.dataBox.value).catch(function () { elements.dataBox.select(); });
-    else elements.dataBox.select();
+    PracticeLabUI.copyText(elements.dataBox.value);
   }
 
   function resetProgress() {
@@ -2302,28 +2251,47 @@
   function cacheElements() {
     [
       "pauseBtn", "adaptiveModeBtn", "manualModeBtn", "questionCategory", "questionFamily", "questionLevel", "questionMastery", "questionPrompt",
-      "answerForm", "answerControls", "submitBtn", "nextBtn", "skipBtn", "feedback", "categorySelect", "familySelect", "levelSelect",
+      "answerForm", "answerControls", "answerKeypad", "submitBtn", "nextBtn", "skipBtn", "feedback", "categorySelect", "familySelect", "levelSelect",
       "metricMastery", "metricAccuracy", "metricStreak", "metricAvgTime", "summaryMastery", "summaryAccuracy", "summaryAttempts",
       "matrix", "statTotalAttempts", "statTotalCorrect", "statTotalTime", "statActiveCells", "weakList", "strongList",
       "numberFormatSelect", "currencyFormatSelect", "unitSystemSelect", "enabledCategories", "dataBox", "learnGrid",
-      "calculatorInput", "calculatorOutput"
+      "calculatorInput", "calculatorOutput", "calculatorKeys"
     ].forEach(function (id) { elements[id] = document.getElementById(id); });
     elements.practiceMain = document.querySelector(".practice-main");
   }
 
   function wireEvents() {
+    selectorController = PracticeLabUI.createPracticeSelectors({
+      categorySelect: elements.categorySelect,
+      familySelect: elements.familySelect,
+      levelSelect: elements.levelSelect,
+      categories: CATEGORIES,
+      families: FAMILIES,
+      levelLabel: function (level) { return t("practice.level", "Level") + " " + level; },
+      onSelect: function (selection) { setManual(selection.familyId, selection.level); }
+    });
+    var answerEditor = PracticeLabUI.createTextEditor(function () { return activeAnswerInput; });
+    var calculatorEditor = PracticeLabUI.createTextEditor(function () { return elements.calculatorInput; });
+    keypadButtons = PracticeLabUI.renderInputGrid(elements.answerKeypad, [
+      [["7", answerEditor.insert("7")], ["8", answerEditor.insert("8")], ["9", answerEditor.insert("9")], [t("practice.delete", "Delete"), answerEditor.backspace, { variant: "function" }]],
+      [["4", answerEditor.insert("4")], ["5", answerEditor.insert("5")], ["6", answerEditor.insert("6")], [t("practice.clear", "Clear"), answerEditor.clear, { variant: "function" }]],
+      [["1", answerEditor.insert("1")], ["2", answerEditor.insert("2")], ["3", answerEditor.insert("3")], ["-", answerEditor.insert("-"), { variant: "function" }]],
+      [["0", answerEditor.insert("0")], [decimalSeparator(), function () { answerEditor.insert(decimalSeparator())(); }, { id: "decimal" }], [t("practice.check", "Check"), function () { elements.answerForm.requestSubmit(); }, { id: "submit", variant: "primary" }], ["↵", function () { elements.answerForm.requestSubmit(); }, { variant: "function" }]]
+    ]);
+    PracticeLabUI.renderInputGrid(elements.calculatorKeys, [
+      [["7", calculatorEditor.insert("7")], ["8", calculatorEditor.insert("8")], ["9", calculatorEditor.insert("9")], ["/", calculatorEditor.insert("/"), { variant: "function" }], ["(", calculatorEditor.insert("("), { variant: "function" }]],
+      [["4", calculatorEditor.insert("4")], ["5", calculatorEditor.insert("5")], ["6", calculatorEditor.insert("6")], ["*", calculatorEditor.insert("*"), { variant: "function" }], [")", calculatorEditor.insert(")"), { variant: "function" }]],
+      [["1", calculatorEditor.insert("1")], ["2", calculatorEditor.insert("2")], ["3", calculatorEditor.insert("3")], ["-", calculatorEditor.insert("-"), { variant: "function" }], ["%", calculatorEditor.insert("%"), { variant: "function" }]],
+      [["0", calculatorEditor.insert("0")], [".", function () { calculatorEditor.insert(decimalSeparator())(); }], [t("calculator.delete", "Delete"), calculatorEditor.backspace, { variant: "function" }], ["+", calculatorEditor.insert("+"), { variant: "function" }], ["=", calculatorEvaluate, { variant: "primary" }]],
+      [[t("calculator.clear", "Clear"), function () { elements.calculatorInput.value = ""; calculatorValue = null; elements.calculatorOutput.textContent = t("calculator.ready", "Ready"); }, { variant: "function", colspan: 5 }]]
+    ]);
     document.querySelectorAll("[data-view]").forEach(function (button) { button.addEventListener("click", function () { setView(button.dataset.view); }); });
     elements.adaptiveModeBtn.addEventListener("click", function () { progress.settings.adaptive = true; saveProgress(); startQuestion(); });
     elements.manualModeBtn.addEventListener("click", function () { progress.settings.adaptive = false; saveProgress(); startQuestion(); });
     elements.pauseBtn.addEventListener("click", pausePractice);
     document.getElementById("resumeBtn").addEventListener("click", resumePractice);
     document.getElementById("learnCurrentBtn").addEventListener("click", function () { if (currentQuestion) { learnSpotlightId = currentQuestion.familyId; setView("learn"); } });
-    elements.categorySelect.addEventListener("change", function (event) { var family = familiesForCategory(event.target.value)[0]; setManual(family.id, family.levels[0]); });
-    elements.familySelect.addEventListener("change", function (event) { setManual(event.target.value, familyById(event.target.value).levels[0]); });
-    elements.levelSelect.addEventListener("change", function (event) { setManual(elements.familySelect.value, Number(event.target.value)); });
     elements.answerForm.addEventListener("submit", submitAnswer);
-    document.getElementById("answerKeypad").addEventListener("pointerdown", function (event) { event.preventDefault(); });
-    document.getElementById("answerKeypad").addEventListener("click", answerKeypadClick);
     elements.nextBtn.addEventListener("click", startQuestion);
     elements.skipBtn.addEventListener("click", startQuestion);
     elements.matrix.addEventListener("click", function (event) { var button = event.target.closest("[data-family-id][data-level]"); if (button) { setView("practice"); setManual(button.dataset.familyId, Number(button.dataset.level)); } });
@@ -2340,7 +2308,6 @@
       });
     });
     elements.enabledCategories.addEventListener("change", function (event) { if (event.target.dataset.categoryId) { progress.settings.enabledCategories[event.target.dataset.categoryId] = event.target.checked; saveProgress(); } });
-    document.getElementById("calculatorKeys").addEventListener("click", calculatorKeyClick);
     elements.calculatorInput.addEventListener("keydown", function (event) { if (event.key === "Enter") { event.preventDefault(); calculatorEvaluate(); } });
     document.getElementById("calculatorUseBtn").addEventListener("click", useCalculatorValue);
     document.getElementById("exportBtn").addEventListener("click", exportProgress);

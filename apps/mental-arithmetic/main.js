@@ -17,6 +17,9 @@
   var recentExpressions = [];
   var learnSpotlightId = null;
   var elements = {};
+  var selectorController;
+  var keypadButtons;
+  var activeAnswerInput = null;
   var generatedTranslationPairs = null;
 
   function t(path, fallback) {
@@ -1639,6 +1642,7 @@
     elements.questionPrompt.appendChild(title);
     elements.questionPrompt.appendChild(expression);
     elements.questionPrompt.appendChild(note);
+    renderAnswerControls();
     elements.integerAnswerControl.classList.toggle("hidden", currentQuestion.responseMode !== "integer");
     elements.pairAnswerControl.classList.toggle("hidden", currentQuestion.responseMode !== "pair");
     elements.choiceAnswerControl.classList.toggle("hidden", currentQuestion.responseMode !== "choice");
@@ -1670,11 +1674,67 @@
     elements.skipBtn.classList.remove("hidden");
     elements.feedback.className = "feedback hidden";
     elements.pauseBtn.disabled = false;
-    document.querySelector("[data-keypad-action=\"submit\"]").textContent = t("practice.check", "Check");
+    keypadButtons.get("submit").textContent = t("practice.check", "Check");
     if (window.matchMedia && window.matchMedia("(pointer: fine)").matches) {
       if (currentQuestion.responseMode === "integer") elements.answerInput.focus();
       if (currentQuestion.responseMode === "pair") elements.quotientInput.focus();
     }
+  }
+
+  function renderAnswerControls() {
+    elements.answerControls.replaceChildren();
+    activeAnswerInput = null;
+
+    elements.integerAnswerControl = document.createElement("div");
+    elements.integerAnswerControl.className = "answer-control";
+    var answerLabel = document.createElement("label");
+    answerLabel.htmlFor = "answerInput";
+    answerLabel.textContent = t("practice.answer", "Answer");
+    elements.answerInput = document.createElement("input");
+    elements.answerInput.id = "answerInput";
+    elements.answerInput.type = "text";
+    elements.answerInput.autocomplete = "off";
+    elements.answerInput.spellcheck = false;
+    elements.answerInput.inputMode = "numeric";
+    elements.integerAnswerControl.appendChild(answerLabel);
+    elements.integerAnswerControl.appendChild(elements.answerInput);
+
+    elements.pairAnswerControl = document.createElement("div");
+    elements.pairAnswerControl.className = "answer-pair hidden";
+    [["quotientInput", t("practice.quotient", "Quotient")], ["remainderInput", t("practice.remainder", "Remainder")]].forEach(function (definition) {
+      var wrapper = document.createElement("div");
+      var label = document.createElement("label");
+      label.htmlFor = definition[0];
+      label.textContent = definition[1];
+      var input = document.createElement("input");
+      input.id = definition[0];
+      input.type = "text";
+      input.autocomplete = "off";
+      input.spellcheck = false;
+      input.inputMode = "numeric";
+      elements[definition[0]] = input;
+      wrapper.appendChild(label);
+      wrapper.appendChild(input);
+      elements.pairAnswerControl.appendChild(wrapper);
+    });
+
+    elements.choiceAnswerControl = document.createElement("fieldset");
+    elements.choiceAnswerControl.className = "choice-control hidden";
+    var legend = document.createElement("legend");
+    legend.textContent = t("practice.chooseAnswer", "Choose an answer");
+    elements.choiceOptions = document.createElement("div");
+    elements.choiceOptions.id = "choiceOptions";
+    elements.choiceOptions.className = "choice-options";
+    elements.choiceAnswerControl.appendChild(legend);
+    elements.choiceAnswerControl.appendChild(elements.choiceOptions);
+
+    elements.answerControls.appendChild(elements.integerAnswerControl);
+    elements.answerControls.appendChild(elements.pairAnswerControl);
+    elements.answerControls.appendChild(elements.choiceAnswerControl);
+    [elements.answerInput, elements.quotientInput, elements.remainderInput].forEach(function (input) {
+      input.addEventListener("focus", function () { activeAnswerInput = input; });
+    });
+    activeAnswerInput = elements.answerInput;
   }
 
   function showFeedback(result, duration) {
@@ -1726,7 +1786,7 @@
     elements.nextBtn.classList.remove("hidden");
     elements.skipBtn.classList.add("hidden");
     elements.pauseBtn.disabled = true;
-    document.querySelector("[data-keypad-action=\"submit\"]").textContent = t("practice.next", "Next");
+    keypadButtons.get("submit").textContent = t("practice.next", "Next");
     showFeedback(result, duration);
     renderCurrentMetrics();
     renderSummary();
@@ -1734,31 +1794,7 @@
 
   function renderPracticeControls() {
     var activeFamily = currentQuestion ? familyById(currentQuestion.familyId) : familyById(progress.manual.familyId);
-    var categoryId = currentQuestion && progress.settings.adaptive ? currentQuestion.categoryId : progress.manual.categoryId;
-    elements.categorySelect.innerHTML = "";
-    CATEGORIES.forEach(function (category) {
-      var option = document.createElement("option");
-      option.value = category.id;
-      option.textContent = category.title;
-      option.selected = category.id === categoryId;
-      elements.categorySelect.appendChild(option);
-    });
-    elements.familySelect.innerHTML = "";
-    familiesForCategory(categoryId).forEach(function (family) {
-      var option = document.createElement("option");
-      option.value = family.id;
-      option.textContent = family.title;
-      option.selected = family.id === activeFamily.id;
-      elements.familySelect.appendChild(option);
-    });
-    elements.levelSelect.innerHTML = "";
-    activeFamily.levels.forEach(function (level) {
-      var option = document.createElement("option");
-      option.value = String(level);
-      option.textContent = t("practice.level", "Level") + " " + level;
-      option.selected = currentQuestion ? currentQuestion.level === level : progress.manual.level === level;
-      elements.levelSelect.appendChild(option);
-    });
+    selectorController.render({ familyId: activeFamily.id, level: currentQuestion ? currentQuestion.level : progress.manual.level });
     elements.adaptiveModeBtn.classList.toggle("secondary-active", progress.settings.adaptive);
     elements.manualModeBtn.classList.toggle("secondary-active", !progress.settings.adaptive);
   }
@@ -1983,31 +2019,13 @@
     renderAll();
   }
 
-  function keypadClick(event) {
-    var button = event.target.closest("button");
-    var activeInput = document.activeElement === elements.remainderInput ? elements.remainderInput
-      : document.activeElement === elements.quotientInput ? elements.quotientInput
-        : elements.answerInput;
-    if (!button || activeInput.disabled || pauseStartedAt || currentQuestion.responseMode === "choice") return;
-    if (button.dataset.keypadInsert !== undefined) {
-      var start = activeInput.selectionStart === null ? activeInput.value.length : activeInput.selectionStart;
-      var end = activeInput.selectionEnd === null ? start : activeInput.selectionEnd;
-      activeInput.value = activeInput.value.slice(0, start) + button.dataset.keypadInsert + activeInput.value.slice(end);
-      activeInput.focus();
-    }
-    if (button.dataset.keypadAction === "backspace") activeInput.value = activeInput.value.slice(0, -1);
-    if (button.dataset.keypadAction === "clear") activeInput.value = "";
-    if (button.dataset.keypadAction === "submit" || button.dataset.keypadAction === "next") elements.answerForm.requestSubmit();
-  }
-
   function exportProgress() {
     elements.dataBox.value = JSON.stringify(progress, null, 2);
   }
 
   function copyProgress() {
     if (!elements.dataBox.value.trim()) exportProgress();
-    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(elements.dataBox.value).catch(function () { elements.dataBox.select(); });
-    else elements.dataBox.select();
+    PracticeLabUI.copyText(elements.dataBox.value);
   }
 
   function importProgress() {
@@ -2034,8 +2052,7 @@
   function cacheElements() {
     [
       "practiceMain", "pauseBtn", "adaptiveModeBtn", "manualModeBtn", "questionCategory", "questionFamily", "questionLevel", "questionMastery",
-      "questionPrompt", "answerForm", "answerInput", "quotientInput", "remainderInput", "integerAnswerControl", "pairAnswerControl",
-      "choiceAnswerControl", "choiceOptions", "answerKeypad", "submitBtn", "nextBtn", "skipBtn", "feedback", "categorySelect", "familySelect", "levelSelect",
+      "questionPrompt", "answerForm", "answerControls", "answerKeypad", "submitBtn", "nextBtn", "skipBtn", "feedback", "categorySelect", "familySelect", "levelSelect",
       "metricMastery", "metricAccuracy", "metricStreak", "metricAvgTime", "summaryMastery", "summaryAccuracy", "summaryAttempts",
       "matrix", "statTotalAttempts", "statTotalCorrect", "statTotalTime", "statActiveCells", "weakList", "strongList",
       "enabledCategories", "dataBox", "learnGrid"
@@ -2044,6 +2061,22 @@
   }
 
   function wireEvents() {
+    selectorController = PracticeLabUI.createPracticeSelectors({
+      categorySelect: elements.categorySelect,
+      familySelect: elements.familySelect,
+      levelSelect: elements.levelSelect,
+      categories: CATEGORIES,
+      families: FAMILIES,
+      levelLabel: function (level) { return t("practice.level", "Level") + " " + level; },
+      onSelect: function (selection) { setManual(selection.familyId, selection.level); }
+    });
+    var editor = PracticeLabUI.createTextEditor(function () { return activeAnswerInput; });
+    keypadButtons = PracticeLabUI.renderInputGrid(elements.answerKeypad, [
+      [["7", editor.insert("7")], ["8", editor.insert("8")], ["9", editor.insert("9")], [t("practice.delete", "Delete"), editor.backspace, { variant: "function" }]],
+      [["4", editor.insert("4")], ["5", editor.insert("5")], ["6", editor.insert("6")], [t("practice.clear", "Clear"), editor.clear, { variant: "function" }]],
+      [["1", editor.insert("1")], ["2", editor.insert("2")], ["3", editor.insert("3")], ["-", editor.insert("-"), { variant: "function" }]],
+      [["0", editor.insert("0")], ["00", editor.insert("00")], [t("practice.check", "Check"), function () { elements.answerForm.requestSubmit(); }, { id: "submit", variant: "primary" }], ["↵", function () { elements.answerForm.requestSubmit(); }, { variant: "function" }]]
+    ]);
     document.querySelectorAll("[data-view]").forEach(function (button) {
       button.addEventListener("click", function () { setView(button.dataset.view); });
     });
@@ -2056,15 +2089,7 @@
       learnSpotlightId = currentQuestion.familyId;
       setView("learn");
     });
-    elements.categorySelect.addEventListener("change", function (event) {
-      var family = familiesForCategory(event.target.value)[0];
-      setManual(family.id, family.levels[0]);
-    });
-    elements.familySelect.addEventListener("change", function (event) { setManual(event.target.value, familyById(event.target.value).levels[0]); });
-    elements.levelSelect.addEventListener("change", function (event) { setManual(elements.familySelect.value, Number(event.target.value)); });
     elements.answerForm.addEventListener("submit", submitAnswer);
-    document.getElementById("answerKeypad").addEventListener("pointerdown", function (event) { event.preventDefault(); });
-    document.getElementById("answerKeypad").addEventListener("click", keypadClick);
     elements.nextBtn.addEventListener("click", startQuestion);
     elements.skipBtn.addEventListener("click", startQuestion);
     elements.matrix.addEventListener("click", function (event) {

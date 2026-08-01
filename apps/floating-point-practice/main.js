@@ -16,6 +16,7 @@
   var recentSignatures = [];
   var recentPrompts = [];
   var elements = {};
+  var selectorController;
 
   function t(path, fallback) {
     var value = path.split(".").reduce(function (node, key) {
@@ -862,9 +863,8 @@
     renderPrompt();renderAnswerControls();elements.feedback.className="feedback hidden";elements.submitBtn.disabled=false;elements.nextBtn.classList.add("hidden");elements.skipBtn.classList.remove("hidden");elements.answerKeypad.classList.toggle("hidden",currentQuestion.answer.fields.every(function(field){return field.kind==="choice";}));
   }
   function renderSelectors(){
-    elements.categorySelect.innerHTML="";CATEGORIES.forEach(function(c){var o=document.createElement("option");o.value=c.id;o.textContent=c.title;elements.categorySelect.appendChild(o);});
-    var family=progress.settings.adaptive&&currentQuestion?familyById(currentQuestion.familyId):familyById(progress.manual.familyId),shownLevel=progress.settings.adaptive&&currentQuestion?currentQuestion.level:progress.manual.level;elements.categorySelect.value=family.categoryId;elements.familySelect.innerHTML="";familiesForCategory(family.categoryId).forEach(function(f){var o=document.createElement("option");o.value=f.id;o.textContent=f.title;elements.familySelect.appendChild(o);});elements.familySelect.value=family.id;
-    elements.levelSelect.innerHTML="";family.levels.forEach(function(level){var o=document.createElement("option");o.value=level;o.textContent=t("practice.level","Level")+" "+level;elements.levelSelect.appendChild(o);});elements.levelSelect.value=shownLevel;
+    var family=progress.settings.adaptive&&currentQuestion?familyById(currentQuestion.familyId):familyById(progress.manual.familyId),shownLevel=progress.settings.adaptive&&currentQuestion?currentQuestion.level:progress.manual.level;
+    selectorController.render({familyId:family.id,level:shownLevel});
     elements.adaptiveModeBtn.classList.toggle("secondary-active",progress.settings.adaptive);elements.manualModeBtn.classList.toggle("secondary-active",!progress.settings.adaptive);
   }
   function renderSummary(){
@@ -900,18 +900,27 @@
   function setView(name){progress.activeView=name;saveProgress();document.querySelectorAll(".view").forEach(function(v){v.classList.toggle("active",v.id==="view-"+name);});document.querySelectorAll("[data-view]").forEach(function(b){b.classList.toggle("active",b.dataset.view===name);});}
   function pause(){if(pauseStartedAt||answered)return;pauseStartedAt=Date.now();elements.practiceMain.classList.add("paused");}
   function resume(){if(!pauseStartedAt)return;pausedMs+=Date.now()-pauseStartedAt;pauseStartedAt=0;elements.practiceMain.classList.remove("paused");}
-  function keypad(event){var button=event.target.closest("button");if(!button)return;if(button.dataset.keypadAction==="submit"){submit();return;}if(button.dataset.keypadAction==="next"){answered?startQuestion():submit();return;}if(!activeInput)return;if(button.dataset.keypadAction==="clear")activeInput.value="";else if(button.dataset.keypadAction==="backspace")activeInput.value=activeInput.value.slice(0,-1);else if(button.dataset.keypadInsert)activeInput.value+=button.dataset.keypadInsert;}
   function exportData(){elements.dataBox.value=JSON.stringify(progress,null,2);}
   function importData(){try{progress=ensureProgress(JSON.parse(elements.dataBox.value));saveProgress();startQuestion();}catch(error){alert(t("messages.invalidJson","Invalid JSON"));}}
   function cache(){
     ["summaryMastery","summaryAccuracy","summaryAttempts","adaptiveModeBtn","manualModeBtn","pauseBtn","learnCurrentBtn","questionCategory","questionFamily","questionLevel","questionMastery","questionPrompt","answerForm","answerControls","submitBtn","nextBtn","skipBtn","answerKeypad","feedback","resumeBtn","categorySelect","familySelect","levelSelect","metricMastery","metricAccuracy","metricStreak","metricAvgTime","matrix","statTotalAttempts","statTotalCorrect","statTotalTime","statActiveCells","weakList","strongList","enabledCategories","dataBox","exportBtn","copyBtn","importBtn","resetBtn","learnGrid"].forEach(function(id){elements[id]=document.getElementById(id);});elements.practiceMain=document.querySelector(".practice-main");
   }
   function bind(){
+    selectorController=PracticeLabUI.createPracticeSelectors({categorySelect:elements.categorySelect,familySelect:elements.familySelect,levelSelect:elements.levelSelect,categories:CATEGORIES,families:FAMILIES,levelLabel:function(level){return t("practice.level","Level")+" "+level;},onSelect:function(selection){setManual(selection.familyId,selection.level);}});
+    var editor=PracticeLabUI.createTextEditor(function(){return activeInput;});
+    PracticeLabUI.renderInputGrid(elements.answerKeypad,[
+      [["D",editor.insert("D")],["E",editor.insert("E")],["F",editor.insert("F")],[t("practice.delete","Delete"),editor.backspace,{variant:"function"}]],
+      [["A",editor.insert("A")],["B",editor.insert("B")],["C",editor.insert("C")],[t("practice.clear","Clear"),editor.clear,{variant:"function"}]],
+      [["7",editor.insert("7")],["8",editor.insert("8")],["9",editor.insert("9")],["/",editor.insert("/"),{variant:"function"}]],
+      [["4",editor.insert("4")],["5",editor.insert("5")],["6",editor.insert("6")],[".",editor.insert("."),{variant:"function"}]],
+      [["1",editor.insert("1")],["2",editor.insert("2")],["3",editor.insert("3")],["-",editor.insert("-"),{variant:"function"}]],
+      [["0",editor.insert("0")],["␣",editor.insert(" "),{variant:"function",ariaLabel:"space"}],["^",editor.insert("^"),{variant:"function"}],["×",editor.insert("×"),{variant:"function"}]],
+      [[t("practice.check","Check"),submit,{variant:"primary",colspan:2}],["↵",function(){answered?startQuestion():submit();},{variant:"function",colspan:2}]]
+    ]);
     document.querySelectorAll("[data-view]").forEach(function(b){b.addEventListener("click",function(){setView(b.dataset.view);});});elements.answerForm.addEventListener("submit",submit);elements.nextBtn.addEventListener("click",startQuestion);elements.skipBtn.addEventListener("click",startQuestion);elements.adaptiveModeBtn.addEventListener("click",function(){progress.settings.adaptive=true;saveProgress();startQuestion();});elements.manualModeBtn.addEventListener("click",function(){progress.settings.adaptive=false;saveProgress();startQuestion();});elements.pauseBtn.addEventListener("click",pause);elements.resumeBtn.addEventListener("click",resume);
-    elements.categorySelect.addEventListener("change",function(){var f=familiesForCategory(elements.categorySelect.value)[0];setManual(f.id,f.levels[0]);});elements.familySelect.addEventListener("change",function(){var f=familyById(elements.familySelect.value);setManual(f.id,f.levels[0]);});elements.levelSelect.addEventListener("change",function(){setManual(elements.familySelect.value,Number(elements.levelSelect.value));});
     elements.matrix.addEventListener("click",function(e){var b=e.target.closest("[data-family]");if(b){setView("practice");setManual(b.dataset.family,Number(b.dataset.level));}});["weakList","strongList"].forEach(function(id){elements[id].addEventListener("click",function(e){var b=e.target.closest("[data-family]");if(b){setView("practice");setManual(b.dataset.family,Number(b.dataset.level));}});});
-    elements.enabledCategories.addEventListener("change",function(e){if(e.target.dataset.enabled){progress.settings.enabledCategories[e.target.dataset.enabled]=e.target.checked;saveProgress();}});elements.answerKeypad.addEventListener("click",keypad);elements.learnCurrentBtn.addEventListener("click",function(){setView("learn");var node=document.getElementById("learn-"+currentQuestion.familyId);if(node)node.scrollIntoView({behavior:"smooth",block:"center"});});
-    elements.exportBtn.addEventListener("click",exportData);elements.copyBtn.addEventListener("click",function(){elements.dataBox.select();document.execCommand("copy");});elements.importBtn.addEventListener("click",importData);elements.resetBtn.addEventListener("click",function(){if(confirm(t("messages.resetConfirm","Reset all local progress?"))){progress=defaultProgress();saveProgress();startQuestion();}});
+    elements.enabledCategories.addEventListener("change",function(e){if(e.target.dataset.enabled){progress.settings.enabledCategories[e.target.dataset.enabled]=e.target.checked;saveProgress();}});elements.learnCurrentBtn.addEventListener("click",function(){setView("learn");var node=document.getElementById("learn-"+currentQuestion.familyId);if(node)node.scrollIntoView({behavior:"smooth",block:"center"});});
+    elements.exportBtn.addEventListener("click",exportData);elements.copyBtn.addEventListener("click",function(){PracticeLabUI.copyText(elements.dataBox.value||JSON.stringify(progress,null,2));});elements.importBtn.addEventListener("click",importData);elements.resetBtn.addEventListener("click",function(){if(confirm(t("messages.resetConfirm","Reset all local progress?"))){progress=defaultProgress();saveProgress();startQuestion();}});
   }
   function init(){cache();progress=loadProgress();bind();startQuestion();setView(progress.activeView||"practice");}
 

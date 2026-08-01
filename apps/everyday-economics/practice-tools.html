@@ -1,0 +1,9 @@
+<div class="panel side-panel calculator-panel">
+  <div class="calculator-head">
+    <label for="calculatorInput">{{calculator.title}}</label>
+    <button id="calculatorUseBtn" type="button">{{calculator.use}}</button>
+  </div>
+  <input id="calculatorInput" type="text" autocomplete="off" spellcheck="false" inputmode="decimal" aria-label="{{calculator.title}}">
+  <div id="calculatorOutput" class="calculator-output" aria-live="polite">{{calculator.ready}}</div>
+  <div id="calculatorKeys" class="calculator-keys input-grid" aria-label="{{calculator.keypadAria}}"></div>
+</div>
