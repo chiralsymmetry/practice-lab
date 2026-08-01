@@ -186,6 +186,11 @@ input:focus,
       font-size: 1.05rem;
     }
 
+.answer-control input.active-keypad-target:not(:disabled) {
+      border-color: var(--teal);
+      box-shadow: 0 0 0 3px rgba(0, 127, 109, 0.16);
+    }
+
 .answer-row {
       justify-content: flex-end;
     }

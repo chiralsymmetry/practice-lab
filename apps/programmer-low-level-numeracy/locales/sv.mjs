@@ -39,6 +39,8 @@ export default {
       keypadAria: "Svarsknappar",
       delete: "Radera",
       clear: "Töm",
+      nextField: "Nästa svarsfält",
+      nextFieldShort: "Fält →",
       pauseText: "Timern är stoppad för den här frågan.",
       resume: "Fortsätt",
       controlsAria: "Övningskontroller",

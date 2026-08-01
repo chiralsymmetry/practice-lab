@@ -39,6 +39,8 @@ export default {
       keypadAria: "Answer keypad",
       delete: "Del",
       clear: "Clear",
+      nextField: "Next answer field",
+      nextFieldShort: "Field →",
       pauseText: "The timer is stopped for this question.",
       resume: "Resume",
       controlsAria: "Practice controls",

@@ -1859,19 +1859,42 @@
             input.inputMode = answerField.kind === "integer" ? "numeric" : "text";
             input.dataset.inputKind = answerField.kind;
             input.addEventListener("focus", function () {
-              activeAnswerInput = input;
-              updateKeypadState();
+              setActiveAnswerInput(input, false);
             });
             wrapper.appendChild(input);
             if (!activeAnswerInput) activeAnswerInput = input;
           }
           container.appendChild(wrapper);
         });
-        updateKeypadState();
+        setActiveAnswerInput(activeAnswerInput, false);
       }
 
       function keypadAllowedInputIds(kind) {
         return KEYPAD_ALLOWED_BY_KIND[kind] || [];
+      }
+
+      function answerTextInputs() {
+        return Array.from(document.querySelectorAll("#answerControls input[data-answer-field]"));
+      }
+
+      function setActiveAnswerInput(input, focusOnDesktop) {
+        activeAnswerInput = input || null;
+        answerTextInputs().forEach(function (candidate) {
+          candidate.classList.toggle("active-keypad-target", candidate === activeAnswerInput);
+        });
+        updateKeypadState();
+        if (focusOnDesktop && activeAnswerInput && shouldAutoFocusAnswer()) activeAnswerInput.focus();
+      }
+
+      function nextAnswerInput(inputs, current) {
+        if (!inputs.length) return null;
+        return inputs[(inputs.indexOf(current) + 1 + inputs.length) % inputs.length];
+      }
+
+      function selectNextAnswerInput() {
+        var inputs = answerTextInputs().filter(function (input) { return !input.disabled; });
+        if (inputs.length < 2) return;
+        setActiveAnswerInput(nextAnswerInput(inputs, activeAnswerInput), true);
       }
 
       function updateKeypadState() {
@@ -1886,6 +1909,8 @@
           var button = keypadButtons.get(id);
           if (button) button.disabled = !editable;
         });
+        var fieldSwitchButton = keypadButtons.get("nextField");
+        if (fieldSwitchButton) fieldSwitchButton.disabled = !editable || answerTextInputs().length < 2;
         var submitButton = keypadButtons.get("submit");
         if (submitButton) submitButton.disabled = isPaused;
       }
@@ -2256,7 +2281,7 @@
           [["D", editor.insert("D"), { id: "hexD" }], ["E", editor.insert("E"), { id: "hexE" }], ["F", editor.insert("F"), { id: "hexF" }], ["+", editor.insert("+"), { id: "plus", variant: "function" }], ["0x", editor.insert("0x"), { id: "hexPrefix", variant: "function" }]],
           [["A", editor.insert("A"), { id: "hexA" }], ["B", editor.insert("B"), { id: "hexB" }], ["C", editor.insert("C"), { id: "hexC" }], ["-", editor.insert("-"), { id: "minus", variant: "function" }], ["0o", editor.insert("0o"), { id: "octalPrefix", variant: "function" }]],
           [["7", editor.insert("7"), { id: "digit7" }], ["8", editor.insert("8"), { id: "digit8" }], ["9", editor.insert("9"), { id: "digit9" }], ["␣", editor.insert(" "), { id: "space", variant: "function", ariaLabel: "space" }], [t("practice.delete", "Delete"), editor.backspace, { id: "delete", variant: "function" }]],
-          [["4", editor.insert("4"), { id: "digit4" }], ["5", editor.insert("5"), { id: "digit5" }], ["6", editor.insert("6"), { id: "digit6" }], [t("practice.clear", "Clear"), editor.clear, { id: "clear", variant: "function" }], ["", function () {}, { disabled: true, ariaLabel: "spacer" }]],
+          [["4", editor.insert("4"), { id: "digit4" }], ["5", editor.insert("5"), { id: "digit5" }], ["6", editor.insert("6"), { id: "digit6" }], [t("practice.clear", "Clear"), editor.clear, { id: "clear", variant: "function" }], [t("practice.nextFieldShort", "Field →"), selectNextAnswerInput, { id: "nextField", disabled: true, variant: "function", ariaLabel: t("practice.nextField", "Next answer field") }]],
           [["1", editor.insert("1"), { id: "digit1" }], ["2", editor.insert("2"), { id: "digit2" }], ["3", editor.insert("3"), { id: "digit3" }], ["0", editor.insert("0"), { id: "digit0" }], [t("practice.check", "Check"), function () { document.getElementById("answerForm").requestSubmit(); }, { id: "submit", variant: "primary" }]]
         ]);
         document.querySelectorAll("[data-view]").forEach(function (button) {
@@ -2338,6 +2363,9 @@
         assert("all keypad mappings name real input buttons", Object.keys(KEYPAD_ALLOWED_BY_KIND).every(function (kind) {
           return keypadAllowedInputIds(kind).every(function (id) { return KEYPAD_INPUT_BUTTON_IDS.includes(id); });
         }));
+        var testInputs = [{ id: "first" }, { id: "second" }, { id: "third" }];
+        assert("field helper advances", nextAnswerInput(testInputs, testInputs[0]) === testInputs[1]);
+        assert("field helper wraps", nextAnswerInput(testInputs, testInputs[2]) === testInputs[0]);
         [4, 8].forEach(function (width) {
           for (var raw = 0n; raw <= widthMask(width); raw += 1n) {
             assert("signed roundtrip " + width + ":" + raw, modulo(toSigned(raw, width), width) === raw);
