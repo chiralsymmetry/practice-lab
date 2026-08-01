@@ -61,6 +61,13 @@ const apps = [
     locales: ["en", "sv"],
   },
   {
+    id: "assembly-practice-6502",
+    categoryId: "computing-operations",
+    sourceDir: "apps/assembly-practice-6502",
+    outputBase: "assembly-practice-6502",
+    locales: ["en", "sv"],
+  },
+  {
     id: "japanese-numbers-dates",
     categoryId: "languages-humanities-other-practice",
     sourceDir: "apps/japanese-numbers-dates",

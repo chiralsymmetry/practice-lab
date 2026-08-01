@@ -25,6 +25,7 @@ source of truth for family-level scope and validation requirements.
 | Everyday Economics | **Implemented** | [spec](specs/everyday-economics.md) | [app](apps/everyday-economics/) |
 | Floating-Point Practice | **Implemented** | [spec](specs/floating-point-practice.md) | [app](apps/floating-point-practice/) |
 | C++ Mental Execution | **Implemented** | [spec](specs/cpp-mental-execution.md) | [app](apps/cpp-mental-execution/) |
+| 6502 Assembly Practice | **Implemented** | [spec](specs/assembly-practice-6502.md) | [app](apps/assembly-practice-6502/) |
 | Japanese Numbers, Dates, Time, and Money | **Implemented** | [spec](specs/japanese-numbers-dates.md) | [app](apps/japanese-numbers-dates/) |
 | Electric Circuits | **Implemented** | [spec](specs/electric-circuits.md) | [app](apps/electric-circuits/) |
 
@@ -46,7 +47,7 @@ specified** or **Deliberately excluded** below.
 | Mental Arithmetic | **Implemented and specified** for core integer arithmetic in the [Mental Arithmetic spec](specs/mental-arithmetic.md). The original idea was also split by ownership: divisibility, modular arithmetic, and clock arithmetic moved to [Number Theory and Modular Arithmetic](specs/number-theory-modular-arithmetic.md), while byte addresses, offsets, and alignment moved to [Programmer Low-Level Numeracy](specs/programmer-low-level-numeracy.md). |
 | Theoretical CS and Algorithms | **Specified but not implemented** as [Computer Science: Algorithms and Discrete Reasoning](specs/computer_science.md). |
 | Shell, Regex, and Admin Practice | **Specified but not implemented** as [Unix Shell and Administration Practice](specs/admin-practice.md). Its networking and HTTP edge grew into the broader [Networking and Protocols](specs/networking-protocols.md) and [HTTP and Web Practice](specs/http-web-practice.md) specs. |
-| Assembly Practice | The original idea was **split into two specified but not implemented apps**: [6502 Assembly Practice](specs/assembly-practice-6502.md) and [AMD64 Assembly Practice](specs/assembly-practice-amd64.md). |
+| Assembly Practice | The original idea was split into two apps. [6502 Assembly Practice](specs/assembly-practice-6502.md) is **implemented and specified**; [AMD64 Assembly Practice](specs/assembly-practice-amd64.md) remains **specified but not implemented**. |
 | Electric Circuits and Electronics | **Implemented and specified** as [Electric Circuits](specs/electric-circuits.md). |
 | Economics and Applied Everyday Math | The price, percent, interest, inflation, subscription, expected-value, and shared-charge core is **implemented and specified** as [Everyday Economics](specs/everyday-economics.md). Organizational budgeting and decision work was absorbed into the broader, **specified but not implemented** [Business Economics and Managerial Decisions](specs/business-economics-managerial-decisions.md) topic; Rule-of-72 practice is specified in [Investment Literacy and Company Analysis](specs/investment-literacy-company-analysis.md). |
 | Physics and Chemistry Practice | The combined science idea was **split into two specified but not implemented apps**: [Physics](specs/physics.md) and [Chemistry](specs/chemistry.md). |
@@ -57,14 +58,13 @@ specified** or **Deliberately excluded** below.
 
 ## Specified but not implemented
 
-The following 58 topic specs have no corresponding directory under `apps/`.
+The following 57 topic specs have no corresponding directory under `apps/`.
 They are the implementation backlog; they do not need another proposal document
 before implementation.
 
 ### Computing and operations
 
 - [Unix Shell and Administration Practice](specs/admin-practice.md)
-- [6502 Assembly Practice](specs/assembly-practice-6502.md)
 - [AMD64 Assembly Practice](specs/assembly-practice-amd64.md)
 - [Computer Science: Algorithms and Discrete Reasoning](specs/computer_science.md)
 - [Digital Logic and Computer Architecture](specs/digital-logic-computer-architecture.md)
@@ -147,9 +147,8 @@ define a family or UI requirement:
   The Mental Arithmetic spec assigns byte-specific work to low-level numeracy,
   but the low-level spec does not currently define this conversion family.
 - **Generic ratio and recipe scaling** from the original applied-math proposal.
-- **Low-level keypad refinement:** category-aware keypad presets and a user
-  setting for keypad hint dimming. Structured result/status fields are already
-  specified and implemented; these two UI refinements are not.
+- **Low-level keypad refinement:** field-aware keypad presets are implemented;
+  a user setting for keypad hint dimming remains unspecified.
 
 Before implementation, each exercise-family item should be added to the owning
 topic spec with generation, checking, progression, and validation rules. The UI
@@ -182,8 +181,9 @@ refinement can be specified in the owning app spec without creating a new topic.
 
 - Prefer generated questions with exact or structured checking. Keep each app
   focused enough that category- and family-level progress remains meaningful.
-- Keep app source in `apps/<app-id>/`: `template.html`, `style.css`, `main.js`,
-  and `locales/*.mjs`.
+- Keep app source in `apps/<app-id>/`: `style.css`, `main.js`, and
+  `locales/*.mjs`, plus optional shell-slot fragments. The common page shell,
+  base stylesheet, and low-risk UI runtime live under `shared/`.
 - Keep published artifacts as standalone localized HTML files under `dist/`.
   `tools/build.mjs` also generates the launcher at `dist/index.html`; a launcher
   is no longer future work.

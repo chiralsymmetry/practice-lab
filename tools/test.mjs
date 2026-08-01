@@ -154,6 +154,8 @@ const outputs = [
   "dist/floating-point-practice.sv.html",
   "dist/cpp-mental-execution.html",
   "dist/cpp-mental-execution.sv.html",
+  "dist/assembly-practice-6502.html",
+  "dist/assembly-practice-6502.sv.html",
   "dist/japanese-numbers-dates.html",
   "dist/japanese-numbers-dates.sv.html",
   "dist/electric-circuits.html",

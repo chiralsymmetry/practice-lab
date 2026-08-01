@@ -4,3 +4,4 @@ set -eu
 tools/build.sh
 bun tools/test.mjs "$@"
 bun apps/cpp-mental-execution/validate.mjs
+bun apps/assembly-practice-6502/validate.mjs
