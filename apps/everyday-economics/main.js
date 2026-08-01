@@ -2213,7 +2213,7 @@
   function useCalculatorValue() {
     if (calculatorValue === null || !activeAnswerInput || activeAnswerInput.disabled) return;
     activeAnswerInput.value = String(calculatorValue).replace(".", decimalSeparator());
-    activeAnswerInput.focus();
+    if (window.matchMedia && window.matchMedia("(pointer: fine)").matches) activeAnswerInput.focus();
     var cell = currentQuestion ? getCell(currentQuestion.familyId, currentQuestion.level) : null;
     if (cell) { cell.calculatorUses += 1; saveProgress(); }
   }

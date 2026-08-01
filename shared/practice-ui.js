@@ -167,7 +167,6 @@
       if (typeof input.setSelectionRange === "function") input.setSelectionRange(caret, caret);
       var event = createInputEvent(input);
       if (event && typeof input.dispatchEvent === "function") input.dispatchEvent(event);
-      if (typeof input.focus === "function") input.focus();
     }
 
     function insertValue(text) {

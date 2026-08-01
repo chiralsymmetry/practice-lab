@@ -107,10 +107,13 @@ async function runSharedUiTests() {
   input.setSelectionRange(1, 4);
   editor.insert("X")();
   assert(input.value === "1X4" && input.selectionStart === 2, "insert replaces the current selection");
+  assert(fakeDocument.activeElement === null, "editing does not focus an unfocused input");
+  input.focus();
   input.value = "A😀";
   input.setSelectionRange(3, 3);
   editor.backspace();
   assert(input.value === "A" && input.selectionStart === 1, "backspace removes one Unicode code point");
+  assert(fakeDocument.activeElement === input, "editing preserves an input that is already focused");
   editor.clear();
   assert(input.value === "" && input.selectionStart === 0 && inputEvents === 3, "clear updates state and emits input");
 
