@@ -20,6 +20,22 @@
       var generatedTranslationPairs = null;
       var selectorController = null;
       var keypadButtons = null;
+      var KEYPAD_INPUT_BUTTON_IDS = [
+        "hexD", "hexE", "hexF", "plus", "hexPrefix",
+        "hexA", "hexB", "hexC", "minus", "octalPrefix",
+        "digit7", "digit8", "digit9", "space",
+        "digit4", "digit5", "digit6",
+        "digit1", "digit2", "digit3", "digit0"
+      ];
+      var KEYPAD_ALLOWED_BY_KIND = {
+        binaryPattern: ["digit0", "digit1"],
+        hexPattern: ["digit0", "digit1", "digit2", "digit3", "digit4", "digit5", "digit6", "digit7", "digit8", "digit9", "hexA", "hexB", "hexC", "hexD", "hexE", "hexF", "hexPrefix"],
+        octalPattern: ["digit0", "digit1", "digit2", "digit3", "digit4", "digit5", "digit6", "digit7", "octalPrefix"],
+        integer: ["digit0", "digit1", "digit2", "digit3", "digit4", "digit5", "digit6", "digit7", "digit8", "digit9", "plus", "minus"],
+        hexInteger: ["digit0", "digit1", "digit2", "digit3", "digit4", "digit5", "digit6", "digit7", "digit8", "digit9", "hexA", "hexB", "hexC", "hexD", "hexE", "hexF", "plus", "minus", "hexPrefix"],
+        positions: ["digit0", "digit1", "digit2", "digit3", "digit4", "digit5", "digit6", "digit7", "digit8", "digit9", "space"],
+        bytes: ["digit0", "digit1", "digit2", "digit3", "digit4", "digit5", "digit6", "digit7", "digit8", "digit9", "hexA", "hexB", "hexC", "hexD", "hexE", "hexF", "hexPrefix", "space"]
+      };
 
       function t(path, fallback) {
         var value = path.split(".").reduce(function (current, part) {
@@ -1811,7 +1827,7 @@
         var container = document.getElementById("answerControls");
         container.innerHTML = "";
         activeAnswerInput = null;
-        currentQuestion.answer.fields.forEach(function (answerField, index) {
+        currentQuestion.answer.fields.forEach(function (answerField) {
           var wrapper = document.createElement("div");
           wrapper.className = "answer-control";
           var label = document.createElement("label");
@@ -1841,12 +1857,37 @@
             input.autocomplete = "off";
             input.spellcheck = false;
             input.inputMode = answerField.kind === "integer" ? "numeric" : "text";
-            input.addEventListener("focus", function () { activeAnswerInput = input; });
+            input.dataset.inputKind = answerField.kind;
+            input.addEventListener("focus", function () {
+              activeAnswerInput = input;
+              updateKeypadState();
+            });
             wrapper.appendChild(input);
-            if (index === 0) activeAnswerInput = input;
+            if (!activeAnswerInput) activeAnswerInput = input;
           }
           container.appendChild(wrapper);
         });
+        updateKeypadState();
+      }
+
+      function keypadAllowedInputIds(kind) {
+        return KEYPAD_ALLOWED_BY_KIND[kind] || [];
+      }
+
+      function updateKeypadState() {
+        if (!keypadButtons) return;
+        var editable = Boolean(activeAnswerInput && !activeAnswerInput.disabled && !isPaused && !submitted);
+        var allowed = editable ? keypadAllowedInputIds(activeAnswerInput.dataset.inputKind) : [];
+        KEYPAD_INPUT_BUTTON_IDS.forEach(function (id) {
+          var button = keypadButtons.get(id);
+          if (button) button.disabled = !allowed.includes(id);
+        });
+        ["delete", "clear"].forEach(function (id) {
+          var button = keypadButtons.get(id);
+          if (button) button.disabled = !editable;
+        });
+        var submitButton = keypadButtons.get("submit");
+        if (submitButton) submitButton.disabled = isPaused;
       }
 
       function renderQuestion() {
@@ -1931,6 +1972,7 @@
         recordResult(currentQuestion, result, elapsedMs);
         submitted = true;
         document.querySelectorAll("[data-answer-field]").forEach(function (control) { control.disabled = true; });
+        updateKeypadState();
         document.getElementById("submitBtn").innerHTML = t("practice.next", "Next") + " <span class=\"key-symbol\">↵</span>";
         document.getElementById("nextBtn").classList.remove("hidden");
         document.getElementById("skipBtn").classList.add("hidden");
@@ -1958,6 +2000,7 @@
       function renderPauseState() {
         document.querySelector(".practice-main").classList.toggle("paused", isPaused);
         document.getElementById("pauseBtn").disabled = isPaused || submitted;
+        updateKeypadState();
       }
 
       function renderModeButtons() {
@@ -2210,11 +2253,11 @@
         });
         var editor = PracticeLabUI.createTextEditor(function () { return isPaused ? null : activeAnswerInput; });
         keypadButtons = PracticeLabUI.renderInputGrid(document.getElementById("answerKeypad"), [
-          [["D", editor.insert("D")], ["E", editor.insert("E")], ["F", editor.insert("F")], ["+", editor.insert("+"), { variant: "function" }], ["0x", editor.insert("0x"), { variant: "function" }]],
-          [["A", editor.insert("A")], ["B", editor.insert("B")], ["C", editor.insert("C")], ["-", editor.insert("-"), { variant: "function" }], ["0o", editor.insert("0o"), { variant: "function" }]],
-          [["7", editor.insert("7")], ["8", editor.insert("8")], ["9", editor.insert("9")], ["␣", editor.insert(" "), { variant: "function", ariaLabel: "space" }], [t("practice.delete", "Delete"), editor.backspace, { variant: "function" }]],
-          [["4", editor.insert("4")], ["5", editor.insert("5")], ["6", editor.insert("6")], [t("practice.clear", "Clear"), editor.clear, { variant: "function" }], ["", function () {}, { disabled: true, ariaLabel: "spacer" }]],
-          [["1", editor.insert("1")], ["2", editor.insert("2")], ["3", editor.insert("3")], ["0", editor.insert("0")], [t("practice.check", "Check"), function () { document.getElementById("answerForm").requestSubmit(); }, { id: "submit", variant: "primary" }]]
+          [["D", editor.insert("D"), { id: "hexD" }], ["E", editor.insert("E"), { id: "hexE" }], ["F", editor.insert("F"), { id: "hexF" }], ["+", editor.insert("+"), { id: "plus", variant: "function" }], ["0x", editor.insert("0x"), { id: "hexPrefix", variant: "function" }]],
+          [["A", editor.insert("A"), { id: "hexA" }], ["B", editor.insert("B"), { id: "hexB" }], ["C", editor.insert("C"), { id: "hexC" }], ["-", editor.insert("-"), { id: "minus", variant: "function" }], ["0o", editor.insert("0o"), { id: "octalPrefix", variant: "function" }]],
+          [["7", editor.insert("7"), { id: "digit7" }], ["8", editor.insert("8"), { id: "digit8" }], ["9", editor.insert("9"), { id: "digit9" }], ["␣", editor.insert(" "), { id: "space", variant: "function", ariaLabel: "space" }], [t("practice.delete", "Delete"), editor.backspace, { id: "delete", variant: "function" }]],
+          [["4", editor.insert("4"), { id: "digit4" }], ["5", editor.insert("5"), { id: "digit5" }], ["6", editor.insert("6"), { id: "digit6" }], [t("practice.clear", "Clear"), editor.clear, { id: "clear", variant: "function" }], ["", function () {}, { disabled: true, ariaLabel: "spacer" }]],
+          [["1", editor.insert("1"), { id: "digit1" }], ["2", editor.insert("2"), { id: "digit2" }], ["3", editor.insert("3"), { id: "digit3" }], ["0", editor.insert("0"), { id: "digit0" }], [t("practice.check", "Check"), function () { document.getElementById("answerForm").requestSubmit(); }, { id: "submit", variant: "primary" }]]
         ]);
         document.querySelectorAll("[data-view]").forEach(function (button) {
           button.addEventListener("click", function () { setView(button.dataset.view); });
@@ -2288,6 +2331,13 @@
         }
         assert("50 families", FAMILIES.length === 50);
         assert("50 generators", Object.keys(FAMILY_GENERATORS).length === 50);
+        assert("binary keypad has only bits", keypadAllowedInputIds("binaryPattern").join(",") === "digit0,digit1");
+        assert("hex pattern keypad has hexadecimal digits and prefix", ["digit0", "digit9", "hexA", "hexF", "hexPrefix"].every(function (id) { return keypadAllowedInputIds("hexPattern").includes(id); }));
+        assert("hex pattern keypad excludes signs and octal", ["plus", "minus", "octalPrefix"].every(function (id) { return !keypadAllowedInputIds("hexPattern").includes(id); }));
+        assert("integer keypad excludes hexadecimal keys", ["hexA", "hexPrefix", "octalPrefix", "space"].every(function (id) { return !keypadAllowedInputIds("integer").includes(id); }));
+        assert("all keypad mappings name real input buttons", Object.keys(KEYPAD_ALLOWED_BY_KIND).every(function (kind) {
+          return keypadAllowedInputIds(kind).every(function (id) { return KEYPAD_INPUT_BUTTON_IDS.includes(id); });
+        }));
         [4, 8].forEach(function (width) {
           for (var raw = 0n; raw <= widthMask(width); raw += 1n) {
             assert("signed roundtrip " + width + ":" + raw, modulo(toSigned(raw, width), width) === raw);
