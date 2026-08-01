@@ -820,7 +820,7 @@
     var family=progress.settings.adaptive&&currentQuestion?familyById(currentQuestion.familyId):familyById(progress.manual.familyId),shownLevel=progress.settings.adaptive&&currentQuestion?currentQuestion.level:progress.manual.level;
     elements.categorySelect.value=family.categoryId;elements.familySelect.innerHTML="";familiesForCategory(family.categoryId).forEach(function(item){var option=document.createElement("option");option.value=item.id;option.textContent=item.title;elements.familySelect.appendChild(option);});elements.familySelect.value=family.id;
     elements.levelSelect.innerHTML="";family.levels.forEach(function(level){var option=document.createElement("option");option.value=level;option.textContent=t("practice.level","Level")+" "+level;elements.levelSelect.appendChild(option);});elements.levelSelect.value=shownLevel;
-    elements.categorySelect.disabled=progress.settings.adaptive;elements.familySelect.disabled=progress.settings.adaptive;elements.levelSelect.disabled=progress.settings.adaptive;elements.adaptiveModeBtn.classList.toggle("secondary-active",progress.settings.adaptive);elements.manualModeBtn.classList.toggle("secondary-active",!progress.settings.adaptive);
+    elements.adaptiveModeBtn.classList.toggle("secondary-active",progress.settings.adaptive);elements.manualModeBtn.classList.toggle("secondary-active",!progress.settings.adaptive);
   }
   function renderSummary(){
     var totals=aggregate();elements.summaryMastery.textContent=Math.round(totals.mastery)+"%";elements.summaryAccuracy.textContent=Math.round(totals.accuracy)+"%";elements.summaryAttempts.textContent=totals.attempts;

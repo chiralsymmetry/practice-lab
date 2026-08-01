@@ -1995,9 +1995,6 @@
           option.selected = level === (currentQuestion ? currentQuestion.level : progress.manual.level);
           levelSelect.appendChild(option);
         });
-        categorySelect.disabled = progress.settings.adaptive;
-        familySelect.disabled = progress.settings.adaptive;
-        levelSelect.disabled = progress.settings.adaptive;
       }
 
       function renderCurrentMetrics() {

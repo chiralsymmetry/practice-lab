@@ -1759,9 +1759,6 @@
       option.selected = currentQuestion ? currentQuestion.level === level : progress.manual.level === level;
       elements.levelSelect.appendChild(option);
     });
-    elements.categorySelect.disabled = progress.settings.adaptive;
-    elements.familySelect.disabled = progress.settings.adaptive;
-    elements.levelSelect.disabled = progress.settings.adaptive;
     elements.adaptiveModeBtn.classList.toggle("secondary-active", progress.settings.adaptive);
     elements.manualModeBtn.classList.toggle("secondary-active", !progress.settings.adaptive);
   }

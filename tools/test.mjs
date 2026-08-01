@@ -28,6 +28,10 @@ for (const output of outputs) {
   const script = scriptMatch[1];
   new Function(script);
 
+  if (/\b(?:categorySelect|familySelect|levelSelect)\.disabled\s*=/.test(script)) {
+    throw new Error(`${output}: practice selectors must remain interactive in adaptive mode`);
+  }
+
   const context = {
     window: {},
     document: {
