@@ -180,6 +180,8 @@ const outputs = [
   "dist/sql-relational-databases.sv.html",
   "dist/admin-practice.html",
   "dist/admin-practice.sv.html",
+  "dist/http-web-practice.html",
+  "dist/http-web-practice.sv.html",
   "dist/japanese-numbers-dates.html",
   "dist/japanese-numbers-dates.sv.html",
   "dist/electric-circuits.html",

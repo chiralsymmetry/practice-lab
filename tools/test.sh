@@ -11,3 +11,4 @@ bun apps/unicode-encodings-text/validate.mjs
 bun apps/computer-science/validate.mjs
 bun apps/sql-relational-databases/validate.mjs
 bun apps/admin-practice/validate.mjs
+bun apps/http-web-practice/validate.mjs

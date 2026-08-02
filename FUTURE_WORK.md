@@ -32,6 +32,7 @@ source of truth for family-level scope and validation requirements.
 | Computer Science: Algorithms and Discrete Reasoning | **Implemented** | [spec](specs/computer_science.md) | [app](apps/computer-science/) |
 | SQL and Relational Databases | **Implemented** | [spec](specs/sql-relational-databases.md) | [app](apps/sql-relational-databases/) |
 | Unix Shell and Administration Practice | **Implemented** | [spec](specs/admin-practice.md) | [app](apps/admin-practice/) |
+| HTTP and Web Protocol Practice | **Implemented** | [spec](specs/http-web-practice.md) | [app](apps/http-web-practice/) |
 | Japanese Numbers, Dates, Time, and Money | **Implemented** | [spec](specs/japanese-numbers-dates.md) | [app](apps/japanese-numbers-dates/) |
 | Electric Circuits | **Implemented** | [spec](specs/electric-circuits.md) | [app](apps/electric-circuits/) |
 
@@ -58,13 +59,13 @@ specified** or **Deliberately excluded** below.
 | Economics and Applied Everyday Math | The price, percent, interest, inflation, subscription, expected-value, and shared-charge core is **implemented and specified** as [Everyday Economics](specs/everyday-economics.md). Organizational budgeting and decision work was absorbed into the broader, **specified but not implemented** [Business Economics and Managerial Decisions](specs/business-economics-managerial-decisions.md) topic; Rule-of-72 practice is specified in [Investment Literacy and Company Analysis](specs/investment-literacy-company-analysis.md). |
 | Physics and Chemistry Practice | The combined science idea was **split into two specified but not implemented apps**: [Physics](specs/physics.md) and [Chemistry](specs/chemistry.md). |
 | Calculus and Symbolic Math Practice | **Specified but not implemented** as [Calculus](specs/calculus.md), including the controlled expression grammar and layered checker that the proposal anticipated. |
-| Git, HTTP, SQL, Networking, and Unicode | [Git and Version-Control Reasoning](specs/git-version-control.md), [SQL and Relational Databases](specs/sql-relational-databases.md), and [Unicode, Encodings, and Text](specs/unicode-encodings-text.md) are **implemented and specified**. [HTTP and Web Practice](specs/http-web-practice.md) and [Networking and Protocols](specs/networking-protocols.md) remain **specified but not implemented**. |
+| Git, HTTP, SQL, Networking, and Unicode | [Git and Version-Control Reasoning](specs/git-version-control.md), [HTTP and Web Practice](specs/http-web-practice.md), [SQL and Relational Databases](specs/sql-relational-databases.md), and [Unicode, Encodings, and Text](specs/unicode-encodings-text.md) are **implemented and specified**. [Networking and Protocols](specs/networking-protocols.md) remains **specified but not implemented**. |
 | Japanese Practice | The original idea was **split**. Numbers, counters, dates, time, and money are **implemented** under the [focused spec](specs/japanese-numbers-dates.md); wider kana, vocabulary, particles, inflection, reading, listening, and interaction are **specified but not implemented** in [Japanese Language](specs/japanese-language.md). |
 | Music Practice | **Specified but not implemented** as [Music Practice](specs/music-practice.md); it is no longer merely a possible later architecture experiment. |
 
 ## Specified but not implemented
 
-The following 51 topic specs have no corresponding directory under `apps/`.
+The following 50 topic specs have no corresponding directory under `apps/`.
 They are the implementation backlog; they do not need another proposal document
 before implementation.
 
@@ -73,7 +74,6 @@ before implementation.
 - [AMD64 Assembly Practice](specs/assembly-practice-amd64.md)
 - [Digital Logic and Computer Architecture](specs/digital-logic-computer-architecture.md)
 - [Game Programming Fundamentals](specs/game-programming-fundamentals.md)
-- [HTTP and Web Practice](specs/http-web-practice.md)
 - [Networking and Protocols](specs/networking-protocols.md)
 - [Practical Cryptography](specs/practical-cryptography.md)
 - [Reverse Engineering and Code Recovery](specs/reverse-engineering-code-recovery.md)

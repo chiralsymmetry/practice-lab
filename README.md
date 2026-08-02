@@ -14,6 +14,7 @@ Practice Lab is a collection of small offline practice apps for programmer-adjac
 - **Computer Science: Algorithms & Discrete Reasoning**: analyze growth and recurrences, trace data structures and graph algorithms, evaluate logic, and solve exact counting and finite-probability problems.
 - **SQL & Relational Database Reasoning**: execute small PracticeSQL-1 queries, reason about NULL, bags, ordering, joins, aggregates, subqueries, transactions, normalization, and bounded index plans.
 - **Unix Shell & Administration Practice**: reason about shell words and paths, streams and status, controlled text tools, POSIX EREs, permissions, filesystems, processes, IPv4 routing, synthetic services, and robust troubleshooting without executing real commands.
+- **HTTP & Web Protocol Practice**: reason through synthetic URLs, requests, responses, methods, statuses, media negotiation, redirects, caches, validators, cookies, sessions, origins, CORS, proxies, CDNs, and exchange diagnosis under a pinned offline model.
 - **Japanese Numbers & Dates**: practice Japanese readings for numbers, counters, months, dates, weekdays, and relative days.
 - **Electric Circuits**: generated, model-explicit drills spanning DC foundations, resistor networks, transients, AC and filters, semiconductor switches, op-amps, digital interfaces, measurement, tolerance, and ratings.
 
@@ -43,6 +44,8 @@ The built apps are standalone HTML files:
 - `dist/sql-relational-databases.{{lang}}.html`
 - `dist/admin-practice.html`
 - `dist/admin-practice.{{lang}}.html`
+- `dist/http-web-practice.html`
+- `dist/http-web-practice.{{lang}}.html`
 - `dist/japanese-numbers-dates.html`
 - `dist/japanese-numbers-dates.{{lang}}.html`
 - `dist/electric-circuits.html`
@@ -88,7 +91,7 @@ This inlines the shared shell/runtime, shared CSS, and app-specific CSS and Java
 tools/test.sh
 ```
 
-This rebuilds the apps, checks that every inline script parses, runs the browser-console self-tests through Bun, validates C++ fixtures with GCC and Clang, and runs every registered extended domain validator, including the large administration generator/oracle sweep.
+This rebuilds the apps, checks that every inline script parses, runs the browser-console self-tests through Bun, validates C++ fixtures with GCC and Clang, and runs every registered extended domain validator, including the large administration and HTTP/web generator/oracle sweeps.
 
 ## GitHub Pages and Releases
 

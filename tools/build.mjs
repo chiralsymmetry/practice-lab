@@ -110,6 +110,13 @@ const apps = [
     locales: ["en", "sv"],
   },
   {
+    id: "http-web-practice",
+    categoryId: "computing-operations",
+    sourceDir: "apps/http-web-practice",
+    outputBase: "http-web-practice",
+    locales: ["en", "sv"],
+  },
+  {
     id: "japanese-numbers-dates",
     categoryId: "languages-humanities-other-practice",
     sourceDir: "apps/japanese-numbers-dates",
