@@ -89,6 +89,13 @@ const apps = [
     locales: ["en", "sv"],
   },
   {
+    id: "computer-science",
+    categoryId: "computing-operations",
+    sourceDir: "apps/computer-science",
+    outputBase: "computer-science",
+    locales: ["en", "sv"],
+  },
+  {
     id: "japanese-numbers-dates",
     categoryId: "languages-humanities-other-practice",
     sourceDir: "apps/japanese-numbers-dates",

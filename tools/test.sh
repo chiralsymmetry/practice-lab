@@ -8,3 +8,4 @@ bun apps/assembly-practice-6502/validate.mjs
 bun apps/number-theory-modular-arithmetic/validate.mjs
 bun apps/git-version-control/validate.mjs
 bun apps/unicode-encodings-text/validate.mjs
+bun apps/computer-science/validate.mjs

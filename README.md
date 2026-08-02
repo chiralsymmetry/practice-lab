@@ -11,6 +11,7 @@ Practice Lab is a collection of small offline practice apps for programmer-adjac
 - **6502 Assembly Practice**: execute original NMOS 6502 addressing, instructions, flags, arithmetic, branches, stack frames, interrupts, and cycle counts.
 - **Git & Version-Control Reasoning**: predict snapshots, refs, the index, status, branches, merges, conflicts, rewriting, remotes, collaboration, diagnosis, bisect, and recovery in a synthetic repository model.
 - **Unicode, Encodings & Text**: reason about text units, scalar validity, UTF-8/16/32, byte order, legacy encodings, normalization, grapheme clusters, casing, JavaScript strings, and safe text pipelines.
+- **Computer Science: Algorithms & Discrete Reasoning**: analyze growth and recurrences, trace data structures and graph algorithms, evaluate logic, and solve exact counting and finite-probability problems.
 - **Japanese Numbers & Dates**: practice Japanese readings for numbers, counters, months, dates, weekdays, and relative days.
 - **Electric Circuits**: generated, model-explicit drills spanning DC foundations, resistor networks, transients, AC and filters, semiconductor switches, op-amps, digital interfaces, measurement, tolerance, and ratings.
 
@@ -34,6 +35,8 @@ The built apps are standalone HTML files:
 - `dist/git-version-control.{{lang}}.html`
 - `dist/unicode-encodings-text.html`
 - `dist/unicode-encodings-text.{{lang}}.html`
+- `dist/computer-science.html`
+- `dist/computer-science.{{lang}}.html`
 - `dist/japanese-numbers-dates.html`
 - `dist/japanese-numbers-dates.{{lang}}.html`
 - `dist/electric-circuits.html`

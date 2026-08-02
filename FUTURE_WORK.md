@@ -29,6 +29,7 @@ source of truth for family-level scope and validation requirements.
 | 6502 Assembly Practice | **Implemented** | [spec](specs/assembly-practice-6502.md) | [app](apps/assembly-practice-6502/) |
 | Git and Version-Control Reasoning | **Implemented** | [spec](specs/git-version-control.md) | [app](apps/git-version-control/) |
 | Unicode, Encodings, and Text | **Implemented** | [spec](specs/unicode-encodings-text.md) | [app](apps/unicode-encodings-text/) |
+| Computer Science: Algorithms and Discrete Reasoning | **Implemented** | [spec](specs/computer_science.md) | [app](apps/computer-science/) |
 | Japanese Numbers, Dates, Time, and Money | **Implemented** | [spec](specs/japanese-numbers-dates.md) | [app](apps/japanese-numbers-dates/) |
 | Electric Circuits | **Implemented** | [spec](specs/electric-circuits.md) | [app](apps/electric-circuits/) |
 
@@ -48,7 +49,7 @@ specified** or **Deliberately excluded** below.
 | Floating Point Practice | **Implemented and specified** in the [floating-point spec](specs/floating-point-practice.md), covering FP4, FP6, FP8, binary16, bfloat16, and binary32. The original machine-epsilon idea is handled through format-specific spacing and exactness families. FP64 has a deliberate disposition below. |
 | C++ Mental Execution | **Implemented and specified** in the [C++ spec](specs/cpp-mental-execution.md). The original state tracing, aliasing, parameter, type, overload, lifetime, ownership, container, callable, bitwise, and behavior-classification ideas are now bounded families rather than a proposal for a general compiler. |
 | Mental Arithmetic | **Implemented and specified** for core integer arithmetic in the [Mental Arithmetic spec](specs/mental-arithmetic.md). The original idea was also split by ownership: divisibility, modular arithmetic, and clock arithmetic moved to [Number Theory and Modular Arithmetic](specs/number-theory-modular-arithmetic.md), while byte addresses, offsets, and alignment moved to [Programmer Low-Level Numeracy](specs/programmer-low-level-numeracy.md). |
-| Theoretical CS and Algorithms | **Specified but not implemented** as [Computer Science: Algorithms and Discrete Reasoning](specs/computer_science.md). |
+| Theoretical CS and Algorithms | **Implemented and specified** as [Computer Science: Algorithms and Discrete Reasoning](specs/computer_science.md), with generated asymptotic, recurrence, data-structure, graph, logic, counting, and finite-probability drills. |
 | Shell, Regex, and Admin Practice | **Specified but not implemented** as [Unix Shell and Administration Practice](specs/admin-practice.md). Its networking and HTTP edge grew into the broader [Networking and Protocols](specs/networking-protocols.md) and [HTTP and Web Practice](specs/http-web-practice.md) specs. |
 | Assembly Practice | The original idea was split into two apps. [6502 Assembly Practice](specs/assembly-practice-6502.md) is **implemented and specified**; [AMD64 Assembly Practice](specs/assembly-practice-amd64.md) remains **specified but not implemented**. |
 | Electric Circuits and Electronics | **Implemented and specified** as [Electric Circuits](specs/electric-circuits.md). |
@@ -61,7 +62,7 @@ specified** or **Deliberately excluded** below.
 
 ## Specified but not implemented
 
-The following 54 topic specs have no corresponding directory under `apps/`.
+The following 53 topic specs have no corresponding directory under `apps/`.
 They are the implementation backlog; they do not need another proposal document
 before implementation.
 
@@ -69,7 +70,6 @@ before implementation.
 
 - [Unix Shell and Administration Practice](specs/admin-practice.md)
 - [AMD64 Assembly Practice](specs/assembly-practice-amd64.md)
-- [Computer Science: Algorithms and Discrete Reasoning](specs/computer_science.md)
 - [Digital Logic and Computer Architecture](specs/digital-logic-computer-architecture.md)
 - [Game Programming Fundamentals](specs/game-programming-fundamentals.md)
 - [HTTP and Web Practice](specs/http-web-practice.md)

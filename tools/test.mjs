@@ -139,9 +139,10 @@ async function runSharedUiTests() {
   selectors.destroy();
 
   console.log("shared practice UI tests passed");
+  return new Set(Object.keys(ui));
 }
 
-await runSharedUiTests();
+const sharedUiMethods = await runSharedUiTests();
 
 const outputs = [
   "dist/programmer-low-level-numeracy.html",
@@ -162,6 +163,8 @@ const outputs = [
   "dist/git-version-control.sv.html",
   "dist/unicode-encodings-text.html",
   "dist/unicode-encodings-text.sv.html",
+  "dist/computer-science.html",
+  "dist/computer-science.sv.html",
   "dist/japanese-numbers-dates.html",
   "dist/japanese-numbers-dates.sv.html",
   "dist/electric-circuits.html",
@@ -189,6 +192,10 @@ for (const output of outputs) {
 
   const script = scriptMatch[1];
   new Function(script);
+
+  for (const match of script.matchAll(/\bPracticeLabUI\.([A-Za-z][A-Za-z0-9_]*)/g)) {
+    if (!sharedUiMethods.has(match[1])) throw new Error(`${output}: calls missing PracticeLabUI.${match[1]}()`);
+  }
 
   if (/\b(?:categorySelect|familySelect|levelSelect)\.disabled\s*=\s*(?:true|progress\.settings\.adaptive)/.test(script)) {
     throw new Error(`${output}: practice selectors must remain interactive in adaptive mode`);
