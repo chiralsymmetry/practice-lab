@@ -148,6 +148,8 @@ const outputs = [
   "dist/programmer-low-level-numeracy.sv.html",
   "dist/mental-arithmetic.html",
   "dist/mental-arithmetic.sv.html",
+  "dist/number-theory-modular-arithmetic.html",
+  "dist/number-theory-modular-arithmetic.sv.html",
   "dist/everyday-economics.html",
   "dist/everyday-economics.sv.html",
   "dist/floating-point-practice.html",

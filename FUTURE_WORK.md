@@ -22,6 +22,7 @@ source of truth for family-level scope and validation requirements.
 |---|---|---|---|
 | Programmer Low-Level Numeracy | **Implemented** | [spec](specs/programmer-low-level-numeracy.md) | [app](apps/programmer-low-level-numeracy/) |
 | Mental Arithmetic | **Implemented** | [spec](specs/mental-arithmetic.md) | [app](apps/mental-arithmetic/) |
+| Number Theory and Modular Arithmetic | **Implemented** | [spec](specs/number-theory-modular-arithmetic.md) | [app](apps/number-theory-modular-arithmetic/) |
 | Everyday Economics | **Implemented** | [spec](specs/everyday-economics.md) | [app](apps/everyday-economics/) |
 | Floating-Point Practice | **Implemented** | [spec](specs/floating-point-practice.md) | [app](apps/floating-point-practice/) |
 | C++ Mental Execution | **Implemented** | [spec](specs/cpp-mental-execution.md) | [app](apps/cpp-mental-execution/) |
@@ -58,7 +59,7 @@ specified** or **Deliberately excluded** below.
 
 ## Specified but not implemented
 
-The following 57 topic specs have no corresponding directory under `apps/`.
+The following 56 topic specs have no corresponding directory under `apps/`.
 They are the implementation backlog; they do not need another proposal document
 before implementation.
 
@@ -87,7 +88,6 @@ before implementation.
 - [Geometry and Trigonometry](specs/geometry-trigonometry.md)
 - [Linear Algebra](specs/linear-algebra.md)
 - [Logic](specs/logic.md)
-- [Number Theory and Modular Arithmetic](specs/number-theory-modular-arithmetic.md)
 - [Probability and Statistics](specs/probability-statistics.md)
 - [Spreadsheet Practice](specs/spreadsheet-practice.md)
 

@@ -38,6 +38,13 @@ const apps = [
     locales: ["en", "sv"],
   },
   {
+    id: "number-theory-modular-arithmetic",
+    categoryId: "mathematics-data",
+    sourceDir: "apps/number-theory-modular-arithmetic",
+    outputBase: "number-theory-modular-arithmetic",
+    locales: ["en", "sv"],
+  },
+  {
     id: "everyday-economics",
     categoryId: "business",
     sourceDir: "apps/everyday-economics",
