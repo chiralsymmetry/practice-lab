@@ -31,6 +31,7 @@ source of truth for family-level scope and validation requirements.
 | Unicode, Encodings, and Text | **Implemented** | [spec](specs/unicode-encodings-text.md) | [app](apps/unicode-encodings-text/) |
 | Computer Science: Algorithms and Discrete Reasoning | **Implemented** | [spec](specs/computer_science.md) | [app](apps/computer-science/) |
 | SQL and Relational Databases | **Implemented** | [spec](specs/sql-relational-databases.md) | [app](apps/sql-relational-databases/) |
+| Unix Shell and Administration Practice | **Implemented** | [spec](specs/admin-practice.md) | [app](apps/admin-practice/) |
 | Japanese Numbers, Dates, Time, and Money | **Implemented** | [spec](specs/japanese-numbers-dates.md) | [app](apps/japanese-numbers-dates/) |
 | Electric Circuits | **Implemented** | [spec](specs/electric-circuits.md) | [app](apps/electric-circuits/) |
 
@@ -51,7 +52,7 @@ specified** or **Deliberately excluded** below.
 | C++ Mental Execution | **Implemented and specified** in the [C++ spec](specs/cpp-mental-execution.md). The original state tracing, aliasing, parameter, type, overload, lifetime, ownership, container, callable, bitwise, and behavior-classification ideas are now bounded families rather than a proposal for a general compiler. |
 | Mental Arithmetic | **Implemented and specified** for core integer arithmetic in the [Mental Arithmetic spec](specs/mental-arithmetic.md). The original idea was also split by ownership: divisibility, modular arithmetic, and clock arithmetic moved to [Number Theory and Modular Arithmetic](specs/number-theory-modular-arithmetic.md), while byte addresses, offsets, and alignment moved to [Programmer Low-Level Numeracy](specs/programmer-low-level-numeracy.md). |
 | Theoretical CS and Algorithms | **Implemented and specified** as [Computer Science: Algorithms and Discrete Reasoning](specs/computer_science.md), with generated asymptotic, recurrence, data-structure, graph, logic, counting, and finite-probability drills. |
-| Shell, Regex, and Admin Practice | **Specified but not implemented** as [Unix Shell and Administration Practice](specs/admin-practice.md). Its networking and HTTP edge grew into the broader [Networking and Protocols](specs/networking-protocols.md) and [HTTP and Web Practice](specs/http-web-practice.md) specs. |
+| Shell, Regex, and Admin Practice | **Implemented and specified** as [Unix Shell and Administration Practice](specs/admin-practice.md), using a bounded offline `bash-gnu-v1` model rather than real command execution. Its networking and HTTP edge also grew into the broader [Networking and Protocols](specs/networking-protocols.md) and [HTTP and Web Practice](specs/http-web-practice.md) specs. |
 | Assembly Practice | The original idea was split into two apps. [6502 Assembly Practice](specs/assembly-practice-6502.md) is **implemented and specified**; [AMD64 Assembly Practice](specs/assembly-practice-amd64.md) remains **specified but not implemented**. |
 | Electric Circuits and Electronics | **Implemented and specified** as [Electric Circuits](specs/electric-circuits.md). |
 | Economics and Applied Everyday Math | The price, percent, interest, inflation, subscription, expected-value, and shared-charge core is **implemented and specified** as [Everyday Economics](specs/everyday-economics.md). Organizational budgeting and decision work was absorbed into the broader, **specified but not implemented** [Business Economics and Managerial Decisions](specs/business-economics-managerial-decisions.md) topic; Rule-of-72 practice is specified in [Investment Literacy and Company Analysis](specs/investment-literacy-company-analysis.md). |
@@ -63,13 +64,12 @@ specified** or **Deliberately excluded** below.
 
 ## Specified but not implemented
 
-The following 52 topic specs have no corresponding directory under `apps/`.
+The following 51 topic specs have no corresponding directory under `apps/`.
 They are the implementation backlog; they do not need another proposal document
 before implementation.
 
 ### Computing and operations
 
-- [Unix Shell and Administration Practice](specs/admin-practice.md)
 - [AMD64 Assembly Practice](specs/assembly-practice-amd64.md)
 - [Digital Logic and Computer Architecture](specs/digital-logic-computer-architecture.md)
 - [Game Programming Fundamentals](specs/game-programming-fundamentals.md)

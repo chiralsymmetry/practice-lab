@@ -10,3 +10,4 @@ bun apps/git-version-control/validate.mjs
 bun apps/unicode-encodings-text/validate.mjs
 bun apps/computer-science/validate.mjs
 bun apps/sql-relational-databases/validate.mjs
+bun apps/admin-practice/validate.mjs

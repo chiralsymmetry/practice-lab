@@ -103,6 +103,13 @@ const apps = [
     locales: ["en", "sv"],
   },
   {
+    id: "admin-practice",
+    categoryId: "computing-operations",
+    sourceDir: "apps/admin-practice",
+    outputBase: "admin-practice",
+    locales: ["en", "sv"],
+  },
+  {
     id: "japanese-numbers-dates",
     categoryId: "languages-humanities-other-practice",
     sourceDir: "apps/japanese-numbers-dates",
@@ -171,10 +178,10 @@ async function buildAppLocale(app, locale, source) {
     .replace("<!-- __PRACTICE_TOOLS__ -->", source.practiceTools)
     .replace("<!-- __SETTINGS_EXTRAS__ -->", source.settingsExtras);
   html = applyTemplate(html, locale, app);
-  html = html.replace("/* __INLINE_SHARED_CSS__ */", source.sharedCss.trimEnd());
-  html = html.replace("/* __INLINE_APP_CSS__ */", source.css.trimEnd());
-  html = html.replace("// __INLINE_SHARED_JS__", source.sharedJs.trimEnd());
-  html = html.replace("// __INLINE_APP_JS__", js.trimEnd());
+  html = html.replace("/* __INLINE_SHARED_CSS__ */", () => source.sharedCss.trimEnd());
+  html = html.replace("/* __INLINE_APP_CSS__ */", () => source.css.trimEnd());
+  html = html.replace("// __INLINE_SHARED_JS__", () => source.sharedJs.trimEnd());
+  html = html.replace("// __INLINE_APP_JS__", () => js.trimEnd());
 
   if (html.includes("__INLINE_") || html.includes("__PRACTICE_TOOLS__") || html.includes("__SETTINGS_EXTRAS__") || html.includes("__LOCALE_TEXT__")) {
     throw new Error(`${app.id}/${locale.code}: build placeholders were not replaced`);
