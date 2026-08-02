@@ -10,6 +10,7 @@ Practice Lab is a collection of small offline practice apps for programmer-adjac
 - **C++ Code Reading**: trace runtime state, aliasing, types, overloads, lifetime, and declaration-heavy callables in small controlled snippets.
 - **6502 Assembly Practice**: execute original NMOS 6502 addressing, instructions, flags, arithmetic, branches, stack frames, interrupts, and cycle counts.
 - **Git & Version-Control Reasoning**: predict snapshots, refs, the index, status, branches, merges, conflicts, rewriting, remotes, collaboration, diagnosis, bisect, and recovery in a synthetic repository model.
+- **Unicode, Encodings & Text**: reason about text units, scalar validity, UTF-8/16/32, byte order, legacy encodings, normalization, grapheme clusters, casing, JavaScript strings, and safe text pipelines.
 - **Japanese Numbers & Dates**: practice Japanese readings for numbers, counters, months, dates, weekdays, and relative days.
 - **Electric Circuits**: generated, model-explicit drills spanning DC foundations, resistor networks, transients, AC and filters, semiconductor switches, op-amps, digital interfaces, measurement, tolerance, and ratings.
 
@@ -31,6 +32,8 @@ The built apps are standalone HTML files:
 - `dist/assembly-practice-6502.{{lang}}.html`
 - `dist/git-version-control.html`
 - `dist/git-version-control.{{lang}}.html`
+- `dist/unicode-encodings-text.html`
+- `dist/unicode-encodings-text.{{lang}}.html`
 - `dist/japanese-numbers-dates.html`
 - `dist/japanese-numbers-dates.{{lang}}.html`
 - `dist/electric-circuits.html`
@@ -76,7 +79,7 @@ This inlines the shared shell/runtime, shared CSS, and app-specific CSS and Java
 tools/test.sh
 ```
 
-This rebuilds the apps, checks that every inline script parses, runs the browser-console self-tests through Bun, validates C++ fixtures with GCC and Clang, and runs the extended 6502, number-theory, and Git generator/oracle validations.
+This rebuilds the apps, checks that every inline script parses, runs the browser-console self-tests through Bun, validates C++ fixtures with GCC and Clang, and runs the extended 6502, number-theory, Git, and Unicode generator/oracle validations.
 
 ## GitHub Pages and Releases
 

@@ -82,6 +82,13 @@ const apps = [
     locales: ["en", "sv"],
   },
   {
+    id: "unicode-encodings-text",
+    categoryId: "computing-operations",
+    sourceDir: "apps/unicode-encodings-text",
+    outputBase: "unicode-encodings-text",
+    locales: ["en", "sv"],
+  },
+  {
     id: "japanese-numbers-dates",
     categoryId: "languages-humanities-other-practice",
     sourceDir: "apps/japanese-numbers-dates",

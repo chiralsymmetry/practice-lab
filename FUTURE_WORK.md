@@ -28,6 +28,7 @@ source of truth for family-level scope and validation requirements.
 | C++ Mental Execution | **Implemented** | [spec](specs/cpp-mental-execution.md) | [app](apps/cpp-mental-execution/) |
 | 6502 Assembly Practice | **Implemented** | [spec](specs/assembly-practice-6502.md) | [app](apps/assembly-practice-6502/) |
 | Git and Version-Control Reasoning | **Implemented** | [spec](specs/git-version-control.md) | [app](apps/git-version-control/) |
+| Unicode, Encodings, and Text | **Implemented** | [spec](specs/unicode-encodings-text.md) | [app](apps/unicode-encodings-text/) |
 | Japanese Numbers, Dates, Time, and Money | **Implemented** | [spec](specs/japanese-numbers-dates.md) | [app](apps/japanese-numbers-dates/) |
 | Electric Circuits | **Implemented** | [spec](specs/electric-circuits.md) | [app](apps/electric-circuits/) |
 
@@ -54,13 +55,13 @@ specified** or **Deliberately excluded** below.
 | Economics and Applied Everyday Math | The price, percent, interest, inflation, subscription, expected-value, and shared-charge core is **implemented and specified** as [Everyday Economics](specs/everyday-economics.md). Organizational budgeting and decision work was absorbed into the broader, **specified but not implemented** [Business Economics and Managerial Decisions](specs/business-economics-managerial-decisions.md) topic; Rule-of-72 practice is specified in [Investment Literacy and Company Analysis](specs/investment-literacy-company-analysis.md). |
 | Physics and Chemistry Practice | The combined science idea was **split into two specified but not implemented apps**: [Physics](specs/physics.md) and [Chemistry](specs/chemistry.md). |
 | Calculus and Symbolic Math Practice | **Specified but not implemented** as [Calculus](specs/calculus.md), including the controlled expression grammar and layered checker that the proposal anticipated. |
-| Git, HTTP, SQL, Networking, and Unicode | [Git and Version-Control Reasoning](specs/git-version-control.md) is **implemented and specified**. The other four remain **specified but not implemented**: [HTTP and Web Practice](specs/http-web-practice.md), [SQL and Relational Databases](specs/sql-relational-databases.md), [Networking and Protocols](specs/networking-protocols.md), and [Unicode, Encodings, and Text](specs/unicode-encodings-text.md). |
+| Git, HTTP, SQL, Networking, and Unicode | [Git and Version-Control Reasoning](specs/git-version-control.md) and [Unicode, Encodings, and Text](specs/unicode-encodings-text.md) are **implemented and specified**. The other three remain **specified but not implemented**: [HTTP and Web Practice](specs/http-web-practice.md), [SQL and Relational Databases](specs/sql-relational-databases.md), and [Networking and Protocols](specs/networking-protocols.md). |
 | Japanese Practice | The original idea was **split**. Numbers, counters, dates, time, and money are **implemented** under the [focused spec](specs/japanese-numbers-dates.md); wider kana, vocabulary, particles, inflection, reading, listening, and interaction are **specified but not implemented** in [Japanese Language](specs/japanese-language.md). |
 | Music Practice | **Specified but not implemented** as [Music Practice](specs/music-practice.md); it is no longer merely a possible later architecture experiment. |
 
 ## Specified but not implemented
 
-The following 55 topic specs have no corresponding directory under `apps/`.
+The following 54 topic specs have no corresponding directory under `apps/`.
 They are the implementation backlog; they do not need another proposal document
 before implementation.
 
@@ -77,7 +78,6 @@ before implementation.
 - [Reverse Engineering and Code Recovery](specs/reverse-engineering-code-recovery.md)
 - [SQL and Relational Databases](specs/sql-relational-databases.md)
 - [System Design](specs/system-design.md)
-- [Unicode, Encodings, and Text](specs/unicode-encodings-text.md)
 
 ### Mathematics and data
 

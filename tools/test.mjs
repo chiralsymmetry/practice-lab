@@ -160,6 +160,8 @@ const outputs = [
   "dist/assembly-practice-6502.sv.html",
   "dist/git-version-control.html",
   "dist/git-version-control.sv.html",
+  "dist/unicode-encodings-text.html",
+  "dist/unicode-encodings-text.sv.html",
   "dist/japanese-numbers-dates.html",
   "dist/japanese-numbers-dates.sv.html",
   "dist/electric-circuits.html",
