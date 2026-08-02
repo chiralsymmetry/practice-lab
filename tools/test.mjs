@@ -158,6 +158,8 @@ const outputs = [
   "dist/cpp-mental-execution.sv.html",
   "dist/assembly-practice-6502.html",
   "dist/assembly-practice-6502.sv.html",
+  "dist/git-version-control.html",
+  "dist/git-version-control.sv.html",
   "dist/japanese-numbers-dates.html",
   "dist/japanese-numbers-dates.sv.html",
   "dist/electric-circuits.html",

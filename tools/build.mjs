@@ -75,6 +75,13 @@ const apps = [
     locales: ["en", "sv"],
   },
   {
+    id: "git-version-control",
+    categoryId: "computing-operations",
+    sourceDir: "apps/git-version-control",
+    outputBase: "git-version-control",
+    locales: ["en", "sv"],
+  },
+  {
     id: "japanese-numbers-dates",
     categoryId: "languages-humanities-other-practice",
     sourceDir: "apps/japanese-numbers-dates",
