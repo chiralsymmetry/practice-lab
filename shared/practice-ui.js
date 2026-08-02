@@ -56,6 +56,22 @@
     }
   }
 
+  function unlockedLevels(levels, getStat, options) {
+    if (!Array.isArray(levels)) throw new TypeError("levels must be an array");
+    if (typeof getStat !== "function") throw new TypeError("getStat must be a function");
+    if (!levels.length) return [];
+    var settings = options || {};
+    var minimumAttempts = settings.minimumAttempts === undefined ? 5 : Number(settings.minimumAttempts);
+    var masteryThreshold = settings.masteryThreshold === undefined ? 80 : Number(settings.masteryThreshold);
+    var unlocked = [levels[0]];
+    for (var index = 1; index < levels.length; index += 1) {
+      var previous = getStat(levels[index - 1]) || {};
+      if (Number(previous.attempts) < minimumAttempts || Number(previous.mastery) < masteryThreshold) break;
+      unlocked.push(levels[index]);
+    }
+    return unlocked;
+  }
+
   async function copyText(text, documentObject, navigatorObject) {
     var nav = navigatorObject || global.navigator;
     if (nav && nav.clipboard && typeof nav.clipboard.writeText === "function") {
@@ -281,6 +297,7 @@
     formatMinutes: formatMinutes,
     readJson: readJson,
     writeJson: writeJson,
+    unlockedLevels: unlockedLevels,
     copyText: copyText,
     renderInputGrid: renderInputGrid,
     createTextEditor: createTextEditor,

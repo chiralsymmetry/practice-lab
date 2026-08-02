@@ -694,7 +694,9 @@
     var cells = [];
     FAMILIES.forEach(function (familyItem) {
       if (!progress.settings.enabled[familyItem.categoryId]) return;
-      LEVELS.forEach(function (level) { cells.push({ family: familyItem, level: level, stat: getStat(familyItem.id, level) }); });
+      var levels = PracticeLabUI.unlockedLevels(LEVELS, function (level) { return getStat(familyItem.id, level); });
+      var level = levels[levels.length - 1];
+      cells.push({ family: familyItem, level: level, stat: getStat(familyItem.id, level) });
     });
     return cells;
   }

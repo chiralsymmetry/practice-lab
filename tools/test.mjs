@@ -117,6 +117,17 @@ async function runSharedUiTests() {
   editor.clear();
   assert(input.value === "" && input.selectionStart === 0 && inputEvents === 3, "clear updates state and emits input");
 
+  const levelStats = {
+    1: { attempts: 4, mastery: 100 },
+    2: { attempts: 5, mastery: 79 },
+    3: { attempts: 20, mastery: 100 },
+  };
+  assert(ui.unlockedLevels([1, 2, 3, 4], (level) => levelStats[level]).join(",") === "1", "adaptive levels require enough evidence");
+  levelStats[1].attempts = 5;
+  assert(ui.unlockedLevels([1, 2, 3, 4], (level) => levelStats[level]).join(",") === "1,2", "mastering a level unlocks only its successor");
+  levelStats[2].mastery = 80;
+  assert(ui.unlockedLevels([1, 2, 3, 4], (level) => levelStats[level]).join(",") === "1,2,3,4", "mastered lower levels unlock the remaining progression in order");
+
   const categorySelect = fakeDocument.createElement("select");
   const familySelect = fakeDocument.createElement("select");
   const levelSelect = fakeDocument.createElement("select");
