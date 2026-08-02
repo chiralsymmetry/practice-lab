@@ -176,6 +176,8 @@ const outputs = [
   "dist/unicode-encodings-text.sv.html",
   "dist/computer-science.html",
   "dist/computer-science.sv.html",
+  "dist/sql-relational-databases.html",
+  "dist/sql-relational-databases.sv.html",
   "dist/japanese-numbers-dates.html",
   "dist/japanese-numbers-dates.sv.html",
   "dist/electric-circuits.html",

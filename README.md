@@ -12,6 +12,7 @@ Practice Lab is a collection of small offline practice apps for programmer-adjac
 - **Git & Version-Control Reasoning**: predict snapshots, refs, the index, status, branches, merges, conflicts, rewriting, remotes, collaboration, diagnosis, bisect, and recovery in a synthetic repository model.
 - **Unicode, Encodings & Text**: reason about text units, scalar validity, UTF-8/16/32, byte order, legacy encodings, normalization, grapheme clusters, casing, JavaScript strings, and safe text pipelines.
 - **Computer Science: Algorithms & Discrete Reasoning**: analyze growth and recurrences, trace data structures and graph algorithms, evaluate logic, and solve exact counting and finite-probability problems.
+- **SQL & Relational Database Reasoning**: execute small PracticeSQL-1 queries, reason about NULL, bags, ordering, joins, aggregates, subqueries, transactions, normalization, and bounded index plans.
 - **Japanese Numbers & Dates**: practice Japanese readings for numbers, counters, months, dates, weekdays, and relative days.
 - **Electric Circuits**: generated, model-explicit drills spanning DC foundations, resistor networks, transients, AC and filters, semiconductor switches, op-amps, digital interfaces, measurement, tolerance, and ratings.
 
@@ -37,6 +38,8 @@ The built apps are standalone HTML files:
 - `dist/unicode-encodings-text.{{lang}}.html`
 - `dist/computer-science.html`
 - `dist/computer-science.{{lang}}.html`
+- `dist/sql-relational-databases.html`
+- `dist/sql-relational-databases.{{lang}}.html`
 - `dist/japanese-numbers-dates.html`
 - `dist/japanese-numbers-dates.{{lang}}.html`
 - `dist/electric-circuits.html`

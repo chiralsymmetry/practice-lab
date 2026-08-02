@@ -96,6 +96,13 @@ const apps = [
     locales: ["en", "sv"],
   },
   {
+    id: "sql-relational-databases",
+    categoryId: "computing-operations",
+    sourceDir: "apps/sql-relational-databases",
+    outputBase: "sql-relational-databases",
+    locales: ["en", "sv"],
+  },
+  {
     id: "japanese-numbers-dates",
     categoryId: "languages-humanities-other-practice",
     sourceDir: "apps/japanese-numbers-dates",
