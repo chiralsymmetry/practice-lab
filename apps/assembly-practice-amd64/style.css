@@ -1,0 +1,75 @@
+:root {
+  --bg: #f3f4f7;
+  --surface: #ffffff;
+  --surface-soft: #e9edf3;
+  --ink: #1d2530;
+  --muted: #606b78;
+  --line: #d2d9e2;
+  --blue: #315d8a;
+  --blue-soft: #e2edf7;
+  --teal: #4b657f;
+  --teal-soft: #e5ebf1;
+  --amber: #8b5b00;
+  --amber-soft: #fff0cf;
+  --red: #a52c28;
+  --red-soft: #fbe7e3;
+  --green: #326a3d;
+  --green-soft: #e5f2e5;
+  --shadow: 0 14px 38px rgba(28, 43, 58, 0.08);
+  --radius: 8px;
+  color-scheme: light;
+}
+
+.educational-note,
+.prompt-row,
+.answer-control input,
+.answer-control select,
+.expected-code,
+.learn-card code {
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+}
+
+.prompt {
+  min-height: 180px;
+  background: #fbfcfe;
+}
+
+.prompt-row {
+  margin-top: 10px;
+  padding: 9px 11px;
+  border-left: 3px solid var(--blue);
+  background: #edf2f7;
+  font-size: 0.96rem;
+  font-weight: 650;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.register-strip,
+.byte-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 10px;
+}
+
+.register-strip span,
+.byte-strip span {
+  padding: 5px 7px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--surface);
+  font-family: "SFMono-Regular", Consolas, monospace;
+  font-size: 0.82rem;
+}
+
+.answer-control input.active-keypad-target:not(:disabled) {
+  border-color: var(--blue);
+  box-shadow: 0 0 0 3px rgba(49, 93, 138, 0.16);
+}
+
+.feedback-detail { white-space: pre-wrap; }
+
+@media (max-width: 540px) {
+  .prompt-row { font-size: 0.84rem; }
+}

@@ -9,6 +9,7 @@ Practice Lab is a collection of small offline practice apps for programmer-adjac
 - **Floating Point Practice**: FP4 through FP32 drills for classification, exact decoding/encoding, spacing, exactness, and small additions that disappear.
 - **C++ Code Reading**: trace runtime state, aliasing, types, overloads, lifetime, and declaration-heavy callables in small controlled snippets.
 - **6502 Assembly Practice**: execute original NMOS 6502 addressing, instructions, flags, arithmetic, branches, stack frames, interrupts, and cycle counts.
+- **AMD64 Assembly Practice**: trace register aliases, operand widths, effective addresses, integer instructions and flags, signed and unsigned branches, stack and call behavior, Intel/AT&T syntax, and the System V AMD64 ABI.
 - **Git & Version-Control Reasoning**: predict snapshots, refs, the index, status, branches, merges, conflicts, rewriting, remotes, collaboration, diagnosis, bisect, and recovery in a synthetic repository model.
 - **Unicode, Encodings & Text**: reason about text units, scalar validity, UTF-8/16/32, byte order, legacy encodings, normalization, grapheme clusters, casing, JavaScript strings, and safe text pipelines.
 - **Computer Science: Algorithms & Discrete Reasoning**: analyze growth and recurrences, trace data structures and graph algorithms, evaluate logic, and solve exact counting and finite-probability problems.
@@ -34,6 +35,8 @@ The built apps are standalone HTML files:
 - `dist/cpp-mental-execution.{{lang}}.html`
 - `dist/assembly-practice-6502.html`
 - `dist/assembly-practice-6502.{{lang}}.html`
+- `dist/assembly-practice-amd64.html`
+- `dist/assembly-practice-amd64.{{lang}}.html`
 - `dist/git-version-control.html`
 - `dist/git-version-control.{{lang}}.html`
 - `dist/unicode-encodings-text.html`
@@ -91,7 +94,7 @@ This inlines the shared shell/runtime, shared CSS, and app-specific CSS and Java
 tools/test.sh
 ```
 
-This rebuilds the apps, checks that every inline script parses, runs the browser-console self-tests through Bun, validates C++ fixtures with GCC and Clang, and runs every registered extended domain validator, including the large administration and HTTP/web generator/oracle sweeps.
+This rebuilds the apps, checks that every inline script parses, runs the browser-console self-tests through Bun, validates C++ fixtures with GCC and Clang, checks AMD64 Intel/AT&T fixtures with GNU binutils, and runs every registered extended domain validator, including the large administration and HTTP/web generator/oracle sweeps.
 
 ## GitHub Pages and Releases
 

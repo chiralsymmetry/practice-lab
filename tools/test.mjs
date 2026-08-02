@@ -170,6 +170,8 @@ const outputs = [
   "dist/cpp-mental-execution.sv.html",
   "dist/assembly-practice-6502.html",
   "dist/assembly-practice-6502.sv.html",
+  "dist/assembly-practice-amd64.html",
+  "dist/assembly-practice-amd64.sv.html",
   "dist/git-version-control.html",
   "dist/git-version-control.sv.html",
   "dist/unicode-encodings-text.html",

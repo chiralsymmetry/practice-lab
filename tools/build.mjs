@@ -75,6 +75,13 @@ const apps = [
     locales: ["en", "sv"],
   },
   {
+    id: "assembly-practice-amd64",
+    categoryId: "computing-operations",
+    sourceDir: "apps/assembly-practice-amd64",
+    outputBase: "assembly-practice-amd64",
+    locales: ["en", "sv"],
+  },
+  {
     id: "git-version-control",
     categoryId: "computing-operations",
     sourceDir: "apps/git-version-control",

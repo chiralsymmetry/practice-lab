@@ -27,6 +27,7 @@ source of truth for family-level scope and validation requirements.
 | Floating-Point Practice | **Implemented** | [spec](specs/floating-point-practice.md) | [app](apps/floating-point-practice/) |
 | C++ Mental Execution | **Implemented** | [spec](specs/cpp-mental-execution.md) | [app](apps/cpp-mental-execution/) |
 | 6502 Assembly Practice | **Implemented** | [spec](specs/assembly-practice-6502.md) | [app](apps/assembly-practice-6502/) |
+| AMD64 Assembly Practice | **Implemented** | [spec](specs/assembly-practice-amd64.md) | [app](apps/assembly-practice-amd64/) |
 | Git and Version-Control Reasoning | **Implemented** | [spec](specs/git-version-control.md) | [app](apps/git-version-control/) |
 | Unicode, Encodings, and Text | **Implemented** | [spec](specs/unicode-encodings-text.md) | [app](apps/unicode-encodings-text/) |
 | Computer Science: Algorithms and Discrete Reasoning | **Implemented** | [spec](specs/computer_science.md) | [app](apps/computer-science/) |
@@ -54,7 +55,7 @@ specified** or **Deliberately excluded** below.
 | Mental Arithmetic | **Implemented and specified** for core integer arithmetic in the [Mental Arithmetic spec](specs/mental-arithmetic.md). The original idea was also split by ownership: divisibility, modular arithmetic, and clock arithmetic moved to [Number Theory and Modular Arithmetic](specs/number-theory-modular-arithmetic.md), while byte addresses, offsets, and alignment moved to [Programmer Low-Level Numeracy](specs/programmer-low-level-numeracy.md). |
 | Theoretical CS and Algorithms | **Implemented and specified** as [Computer Science: Algorithms and Discrete Reasoning](specs/computer_science.md), with generated asymptotic, recurrence, data-structure, graph, logic, counting, and finite-probability drills. |
 | Shell, Regex, and Admin Practice | **Implemented and specified** as [Unix Shell and Administration Practice](specs/admin-practice.md), using a bounded offline `bash-gnu-v1` model rather than real command execution. Its networking and HTTP edge also grew into the broader [Networking and Protocols](specs/networking-protocols.md) and [HTTP and Web Practice](specs/http-web-practice.md) specs. |
-| Assembly Practice | The original idea was split into two apps. [6502 Assembly Practice](specs/assembly-practice-6502.md) is **implemented and specified**; [AMD64 Assembly Practice](specs/assembly-practice-amd64.md) remains **specified but not implemented**. |
+| Assembly Practice | The original idea was split into two **implemented and specified** apps: [6502 Assembly Practice](specs/assembly-practice-6502.md) and [AMD64 Assembly Practice](specs/assembly-practice-amd64.md). |
 | Electric Circuits and Electronics | **Implemented and specified** as [Electric Circuits](specs/electric-circuits.md). |
 | Economics and Applied Everyday Math | The price, percent, interest, inflation, subscription, expected-value, and shared-charge core is **implemented and specified** as [Everyday Economics](specs/everyday-economics.md). Organizational budgeting and decision work was absorbed into the broader, **specified but not implemented** [Business Economics and Managerial Decisions](specs/business-economics-managerial-decisions.md) topic; Rule-of-72 practice is specified in [Investment Literacy and Company Analysis](specs/investment-literacy-company-analysis.md). |
 | Physics and Chemistry Practice | The combined science idea was **split into two specified but not implemented apps**: [Physics](specs/physics.md) and [Chemistry](specs/chemistry.md). |
@@ -65,13 +66,12 @@ specified** or **Deliberately excluded** below.
 
 ## Specified but not implemented
 
-The following 50 topic specs have no corresponding directory under `apps/`.
+The following 49 topic specs have no corresponding directory under `apps/`.
 They are the implementation backlog; they do not need another proposal document
 before implementation.
 
 ### Computing and operations
 
-- [AMD64 Assembly Practice](specs/assembly-practice-amd64.md)
 - [Digital Logic and Computer Architecture](specs/digital-logic-computer-architecture.md)
 - [Game Programming Fundamentals](specs/game-programming-fundamentals.md)
 - [Networking and Protocols](specs/networking-protocols.md)
