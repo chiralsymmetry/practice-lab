@@ -19,6 +19,7 @@ Practice Lab is a collection of small offline practice apps for programmer-adjac
 - **Unix Shell & Administration Practice**: reason about shell words and paths, streams and status, controlled text tools, POSIX EREs, permissions, filesystems, processes, IPv4 routing, synthetic services, and robust troubleshooting without executing real commands.
 - **HTTP & Web Protocol Practice**: reason through synthetic URLs, requests, responses, methods, statuses, media negotiation, redirects, caches, validators, cookies, sessions, origins, CORS, proxies, CDNs, and exchange diagnosis under a pinned offline model.
 - **Japanese Numbers & Dates**: practice Japanese readings for numbers, counters, months, dates, weekdays, and relative days.
+- **Japanese Language**: practice kana and mora timing, contextual vocabulary and kanji, particles, inflection, connected grammar, reading, and human-recorded offline listening and shadowing.
 - **Electric Circuits**: generated, model-explicit drills spanning DC foundations, resistor networks, transients, AC and filters, semiconductor switches, op-amps, digital interfaces, measurement, tolerance, and ratings.
 
 The built apps are standalone HTML files:
@@ -57,6 +58,8 @@ The built apps are standalone HTML files:
 - `dist/http-web-practice.{{lang}}.html`
 - `dist/japanese-numbers-dates.html`
 - `dist/japanese-numbers-dates.{{lang}}.html`
+- `dist/japanese-language.html`
+- `dist/japanese-language.{{lang}}.html`
 - `dist/electric-circuits.html`
 - `dist/electric-circuits.{{lang}}.html`
 
@@ -100,7 +103,7 @@ This inlines the shared shell/runtime, shared CSS, and app-specific CSS and Java
 tools/test.sh
 ```
 
-This rebuilds the apps, checks that every inline script parses, runs the browser-console self-tests through Bun, validates C++ fixtures with GCC and Clang, checks AMD64 Intel/AT&T fixtures with GNU binutils, and runs every registered extended domain validator, including the large administration, HTTP/web, finite-logic, and practical-cryptography generator/oracle sweeps.
+This rebuilds the apps, checks that every inline script parses, runs the browser-console self-tests through Bun, validates C++ fixtures with GCC and Clang, checks AMD64 Intel/AT&T fixtures with GNU binutils, and runs every registered extended domain validator, including the large administration, HTTP/web, finite-logic, practical-cryptography, and Japanese-language generator/oracle sweeps.
 
 ## GitHub Pages and Releases
 
@@ -130,4 +133,7 @@ Release notes:
 
 ## License
 
-Practice Lab is released under the MIT License. See `LICENSE`.
+Practice Lab's code and original content are released under the MIT License. See
+`LICENSE`. Embedded Japanese recordings retain their separately documented
+licenses and attribution in `apps/japanese-language/audio/README.md` and in the
+standalone app itself.

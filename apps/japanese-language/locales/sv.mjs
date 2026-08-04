@@ -1,0 +1,80 @@
+const rows = [
+  ["kana_recognition","Känn igen kana","Koppla ett hiragana- eller katakanatecken till rätt ljud utan att blanda ihop närliggande former."],
+  ["kana_production","Skriv kana","Skriv den efterfrågade moran med angivet japanskt skriftsystem."],
+  ["kana_script_conversion","Växla mellan hiragana och katakana","Behåll varje mora och ändra bara skriftsystemet."],
+  ["voicing_marks","Använd tonande tecken","Dakuten och handakuten ändrar grundtecknets konsonant; jämför hela moran."],
+  ["small_tsu","Läs litet っ","Litet っ markerar tillslutning före nästa konsonant och räknas som en mora."],
+  ["long_vowel","Läs långa vokaler","Långa vokaler ändrar moraantal och ibland betydelse; ー är en egen mora."],
+  ["contracted_kana","Läs sammandraget kana","Ett fullstort tecken ur i-raden plus litet ゃ, ゅ eller ょ bildar en mora."],
+  ["mora_segmentation","Dela upp i mora","Dela efter japanska tidsenheter: litet っ, ん och ー räknas var för sig."],
+  ["contextual_vocabulary","Välj ord efter sammanhang","Använd satsrollen och betydelsen, inte bara en lösryckt glosa."],
+  ["collocation_choice","Välj naturliga kollokationer","Välj den vedertagna kombinationen av verb och substantiv i nutida standardjapanska."],
+  ["kanji_word_reading","Läs kanjiord","Ange hela ordets lagrade läsning; sätt inte godtyckligt ihop tecknens läsningar."],
+  ["reading_to_kanji_word","Välj kanji från en läsning","Använd sammanhanget för att skilja ord som uttalas lika."],
+  ["okurigana","Fyll i okurigana","Behåll kanjistammen och skriv kanaändelsen som formen kräver."],
+  ["kanji_component","Känn igen kanjikomponenter","Använd komponentens form och plats som igenkänningshjälp, inte som säker etymologi."],
+  ["kanji_stroke_order","Resonera om streckordning","Tillämpa appens fastlagda undervisningsmodell på vanliga tecken."],
+  ["homophone_context","Skilj homofoner åt","Den omgivande frasen avgör vilket likalydande ord och kanji som passar."],
+  ["orthography_register_choice","Välj lämplig ortografi","Välj kana, katakana eller kanji efter ordtyp och grammatisk roll."],
+  ["topic_subject","Välj は eller が","Använd は för etablerat eller kontrasterat tema och が för fokuserad subjektsinformation i modellen."],
+  ["direct_object_particle","Använd を","Markera direkt objekt och angivna väganvändningar med を."],
+  ["ni_de_e","Skilj に, で och へ åt","Använd に för mål och existens, で för handlingsplats och へ för riktning."],
+  ["no_nominalization","Använd の","Skilj ägande, ellips och kontrollerad nominalisering med の åt."],
+  ["to_roles","Använd と","Känn igen rollerna sällskap, citat och uttömmande uppräkning."],
+  ["mo_kara_made_yori","Använd も, から, まで och より","Koppla partiklarna till tillägg, källa, slutpunkt eller jämförelsebas."],
+  ["existence_location","Använd ある och いる","Använd いる för levande och ある för icke-levande existens eller ägandemönster."],
+  ["demonstratives","Använd ko-so-a-do-ord","Välj form efter avstånd, diskursanknytning och om ordet bestämmer ett substantiv."],
+  ["sentence_order","Sätt ihop satsdelar","Placera tema, plats, objekt, bestämning och predikat i en grammatisk japansk följd."],
+  ["question_response","Slutför frågor och svar","Svara på talhandlingen och den efterfrågade informationen, inte bara på ett upprepat ord."],
+  ["noun_copula","Böj substantiv med kopula","Samordna hövlighet, tempus och polaritet i だ／です och negativa former."],
+  ["i_adjective_inflection","Böj い-adjektiv","Byt slutligt い mot rätt く- eller かった-mönster; いい använder よ-."],
+  ["na_adjective_inflection","Böj な-adjektiv","Använd な före substantiv och kopulaformer i predikativ ställning."],
+  ["verb_group","Identifiera verbgrupper","Klassificera ichidan-, godan- och oregelbundna verb, inklusive vanliga る-undantag."],
+  ["polite_plain","Växla mellan hövligt och ledigt verb","Ändra själva verbformen; lägg inte です efter ett ledigt verb."],
+  ["verb_tense_polarity","Böj verb efter tempus och polaritet","Tillämpa rätt gruppregel och angivet register för dåtid/icke-dåtid och jakande/nekande."],
+  ["te_form","Bild て-formen","Välj ljudförändring efter verbgrupp och ändelse; 行く är ett fast undantag."],
+  ["te_iru_aspect","Tolka ている","Sammanhanget skiljer på pågående handling, fortgående tillstånd och resultattillstånd."],
+  ["potential_desire","Uttryck förmåga och önskan","Håll potentiell förmåga skild från önskan med ～たい och följ angivet perspektiv."],
+  ["permission_prohibition_obligation","Tolka tillåtelse och krav","Skilj ～てもいい, ～てはいけない och ～なければならない åt."],
+  ["volitional_request","Bild uppmaningar och förslag","Välj viljeform, ～ましょう eller ～てください efter talhandlingen."],
+  ["transitive_intransitive_pair","Skilj transitiva och intransitiva par åt","Följ om en aktör förändrar ett objekt eller om objektet beskrivs som förändrat."],
+  ["relative_clause","Bygg relativa satser","Sätt en sats i ledig form direkt före huvudordet utan relativt pronomen."],
+  ["comparison_superlative","Gör jämförelser","Använd より för basen, のほうが för den föredragna sidan och いちばん inom en mängd."],
+  ["reason_and_contrast","Bind ihop orsak och kontrast","Välj から, ので, が eller けど efter betydelse och register."],
+  ["conditional_choice","Välj villkorsform","Använd と för regelbundna följder, たら för fullbordade villkor och なら för en given premiss."],
+  ["giving_receiving","Följ givande och mottagande","Välj あげる, くれる eller もらう efter perspektiv och nyttans riktning."],
+  ["sequence_experience","Uttryck följd och erfarenhet","Skilj ～てから, ～たり～たり och ～たことがある åt."],
+  ["register_pragmatics","Välj lämpligt register","Anpassa hövlighet, direkthet och formulering efter relation och situation."],
+  ["sentence_segmentation_parse","Analysera satsstruktur","Hitta predikat- och bestämningsgränser innan enskilda ord tolkas."],
+  ["short_reading_comprehension","Läs kort sammanhängande text","Kombinera uttryckliga fakta, referenser, kontrast och händelseordning."],
+  ["notice_message","Tolka skyltar och meddelanden","Identifiera den nödvändiga handlingen eller platsen i kort praktisk japanska."],
+  ["dialogue_completion","Slutför dialoger","Välj en socialt och grammatiskt sammanhängande nästa replik."],
+  ["reference_ellipsis","Lös referenser och ellips","Återskapa utelämnade subjekt eller objekt bara från det styrda samtalssammanhanget."],
+  ["listening_word_contrast","Skilj talade ord åt","Lyssna efter moralängd, toning och exakt inspelat ord."],
+  ["listening_dictation","Skriv det du hör","Transkribera den mänskliga inspelningen med tillåten skrift utan webbläsarens taligenkänning."],
+  ["listening_comprehension","Förstå inspelad japanska","Välj betydelsen som stöds av det mänskligt inspelade yttrandet."],
+  ["guided_speaking_shadowing","Skugga och självbedöm","Lyssna, upprepa, spela in lokalt och bedöm själv; appen påstår aldrig att den poängsätter uttal."]
+];
+const categoryTrap=["Jämför mora och skrift exakt; liknande former och romanisering är distraktorer.","Använd sammanhanget; ett tecken eller en glosa kan vara tvetydig.","Partikeln följer semantisk roll och informationsstruktur, inte en enskild svensk översättning.","Håll ordklass, tempus, polaritet och register åtskilda.","Tolka hela händelsen och perspektivet innan konstruktionen väljs.","Utgå bara från visad eller inspelad information; avslöjad transkription är en stödfunktion."];
+const families=Object.fromEntries(rows.map((r,i)=>[r[0],{title:r[1],rule:r[2],trap:categoryTrap[i<8?0:i<17?1:i<27?2:i<38?3:i<46?4:5],example:"Styrd japansk fråga → ett exakt svar i sitt sammanhang."}]));
+const prompts=Object.fromEntries(rows.map(r=>[r[0],`${r[1]}: välj eller skriv svaret som det visade sammanhanget kräver.`]));
+const answerMap={
+  second_mora_voiced:"Den andra moran är tonande",first_mora_voiced:"Den första moran är tonande",no_voicing_difference:"Ingen skillnad i toning",geminate_second:"Den andra har en geminerad konsonant",same_morae:"Samma mora",long_vowel_second:"Den andra har lång vokal",contains_small_tsu:"Innehåller litet っ",contains_long_vowel:"Innehåller lång vokal",contains_small_y:"Innehåller litet ゃ/ゅ/ょ",second_has_long_a:"Den andra har långt a",first_has_long_a:"Den första har långt a",same_length:"Samma längd",two_long_marks:"Två längdstreck",one_long_mark:"Ett längdstreck",no_long_marks:"Inga längdstreck",final_long_e:"Avslutande långt e",final_geminate:"Avslutande geminering",final_moraic_n:"Avslutande moraiskt n",first_contracted:"Den första är sammandragen",second_contracted:"Den andra är sammandragen",both_contracted:"Båda är sammandragna",
+  person_and_tree:"Person och träd",sun_and_moon:"Sol och måne",water_and_every:"Vatten och varje",inner_stroke_orientation:"De inre streckens riktning",dakuten:"Dakuten",same_character:"Samma tecken",horizontal_then_vertical:"Vågrätt före lodrätt",vertical_then_horizontal:"Lodrätt före vågrätt",either_order:"Vilken ordning som helst",left_middle_right:"Vänster, mitten, höger",right_middle_left:"Höger, mitten, vänster",middle_left_right:"Mitten, vänster, höger",person_component_then_tree:"Personkomponenten före trädet",tree_then_person_component:"Trädet före personkomponenten",outside_then_inside:"Utsida före insida",
+  have_older_brother:"Talaren har en äldre bror",older_brother_is_classroom:"Den äldre brodern är ett klassrum",speaker_is_older_brother:"Talaren är den äldre brodern",yes_drink:"Ja, det gör jag",yes_coffee_is:"Ja, det är kaffe",no_where:"Nej, var?",yes_gladly:"Ja, gärna",it_is_a_book:"Det är en bok",where_is_station:"Var ligger stationen?",ichidan:"Ichidanverb",godan:"Godanverb",irregular:"Oregelbundet verb",ongoing:"Pågående handling",resultant_state:"Resultattillstånd",completed_once:"Fullbordat en gång",continuing_state:"Fortgående tillstånd",action_this_second:"Handling just nu",future_intention:"Framtida avsikt",someone_is_opening_now:"Någon öppnar just nu",permission:"Tillåtelse",prohibition:"Förbud",obligation:"Skyldighet",desire:"Önskan",invitation:"Inbjudan",experience:"Erfarenhet",
+  tanaka:"Tanaka",book:"Boken",shop:"Butiken",the_bag:"Väskan",speaker_a:"Talare A",lightness:"Lättheten",sister:"Systern",speaker:"Talaren",library:"Biblioteket",station:"Stationen",school:"Skolan",eat_then_walk:"Äta och sedan promenera",walk_then_eat:"Promenera och sedan äta",only_walk:"Bara promenera",train:"Tåget",bus:"Bussen",walk:"Gå",do_not_take_photos:"Ta inte fotografier",take_photos_here:"Ta fotografier här",show_your_photo:"Visa ditt fotografi",ask_at_reception:"Fråga i receptionen",leave_building:"Lämna byggnaden",cancel_meeting:"Ställ in mötet",arrive_station:"Anlända till stationen",leave_station:"Lämna stationen",walk_home:"Gå hem",air:"Luft",silver:"Silver",heart:"Hjärta",high_school_student:"Gymnasieelev",teacher:"Lärare",university:"Universitet",comfortable:"Tillräckligt bekvämt för att fortsätta",retry:"Upprepa och försök igen"
+};
+const contextKeys=`actionLocation addDakuten addHandakuten afterArrival also animateExists askWhat attachRelative automaticResult bookBoughtYesterday borrowBook boundedSet chosenTransport comitative compareGeminate compareLength compareVoicing comparisonBaseline contrast contrastTopics crossBridge destination dictionaryForm distinguishComponents doorOpened drinkWater ellipsisNo establishedTopic eventOrder examples exhaustiveList existenceLocation focusedSubject friendContext friendGivesSpeaker givenPlan identifyPredicate ikuException inanimateExists interestingBook invitation lifeExperience lightIsOn listenChoose listenMeaning listenType loanword messageAction modifiesNoun nearSpeaker nominalizedActivity noticeAction omittedObject omittedSubject particleSpelling pathRole personOpenedDoor personTeachesJapanese politeDecline possession preferCats questionLocation quotation reason relativeChunk riverContext ruException selfContext sequence serviceContext shadowSelfCheck smallY softReason soreReference source speakerGives speakerReceives teacherContext todayReading townWhereLive waterComponent weatherContext whereEnter whereGoes`.split(/\s+/);
+const contexts=Object.fromEntries(contextKeys.map(id=>[id,"Använd det angivna sammanhanget och den efterfrågade rollen."]));
+const surfaceReplacements=[
+  ["speaker-near object","föremål nära talaren"],["unknown location","okänd plats"],["service request","förfrågan i servicesituation"],["polite repeat request","hövlig begäran om upprepning"],["friend invitation response","svar på en väns inbjudan"],["polite nonpast","hövlig icke-dåtid"],["plain negative","ledig nekande form"],["polite past negative","hövlig nekande dåtid"],["negative past","nekande dåtid"],["negative","nekande"],["past","dåtid"],["before 町","före 町"],["polite invitation","hövlig inbjudan"],["polite request","hövlig begäran"],["first-person desire","önskan i första person"],["plain volitional","ledig viljeform"],["potential","potentialform"],["polite","hövlig"],["plain","ledig"],["topic particle","temapartikel"],["direction particle","riktningspartikel"],["katakana","katakana"],["hiragana","hiragana"]
+];
+export default {code:"sv",lang:"sv",suffix:".sv",text:{
+  localeCode:"sv",appTitle:"Japanska språket",brandSubtitle:"Öva kana, ordförråd, kanji, partiklar, böjning, sammanhängande grammatik, läsning, hörförståelse och styrt tal.",educationalNote:"Nutida standardjapanska · styrda lokala modeller · mänskligt inspelat offlineljud · tal och datum finns kvar i systerappen",
+  summary:{aria:"Sammanfattning av framsteg",mastery:"Genomsnittlig nivå",accuracy:"Träffsäkerhet",attempts:"Försök"},nav:{aria:"Huvudmeny",practice:"Öva",matrix:"Matris",stats:"Statistik",settings:"Inställningar",learn:"Lär dig"},
+  practice:{modeAria:"Övningsläge",adaptive:"Adaptiv",manual:"Manuell",pause:"Pausa",paused:"Pausad",learnThis:"Lär dig detta",category:"Kategori",family:"Frågetyp",level:"Nivå",mastery:"0 % nivå",masterySuffix:"nivå",check:"Kontrollera",next:"Nästa",skip:"Hoppa över",choose:"Välj…",keypadAria:"Hjälpknappar för japansk inmatning",delete:"Radera",clear:"Töm",pauseText:"Tidtagningen är stoppad för frågan.",resume:"Fortsätt",controlsAria:"Övningskontroller",masteryMetric:"Kunskapsnivå",accuracyMetric:"Träffsäkerhet",streak:"Svit",avgTime:"Snittid"},
+  matrix:{title:"Kunskapsmatris för japanska",intro:"Varje cell öppnar en stabil språkfrågetyp på en strukturell svårighetsnivå."},stats:{title:"Statistik",intro:"Framsteg följs separat för varje frågetyp och nivå.",totalAttempts:"Totalt antal försök",totalCorrect:"Totalt antal rätt",totalTime:"Total tid",practicedLevels:"Övade nivåer",needsWork:"Behöver övas",strongest:"Starkast",tries:"försök",noAttemptsYet:"Inga försök ännu"},settings:{title:"Inställningar",intro:"Lagras lokalt i den här webbläsaren.",adaptiveCategories:"Adaptiva kategorier",data:"Data",dataIntro:"Exportera, importera eller nollställ lokala framsteg.",progressJson:"Framsteg som JSON",export:"Exportera",copy:"Kopiera",import:"Importera",reset:"Nollställ"},learn:{title:"Lär dig",intro:"Regler, exempel och vanliga fallgropar i appens styrda modell för nutida japanska.",commonTrap:"Använd det visade sammanhanget och angivet register."},
+  messages:{correct:"Rätt",notQuite:"Inte riktigt",expected:"Förväntat",time:"Tid",invalidJson:"Ogiltig JSON",resetConfirm:"Nollställ alla lokala framsteg?"},
+  audio:{play:"Spela mänsklig inspelning",playError:"Ljudet kunde inte spelas.",reveal:"Visa textalternativ (stöd)",credit:"Inspelning",record:"Spela in dig själv",stop:"Stoppa",delete:"Radera inspelning",recording:"Spelar in…",ready:"Inspelningen är klar för privat uppspelning.",private:"Din inspelning stannar i minnet och varken poängsätts eller laddas upp.",deleted:"Inspelningen raderades.",permissionError:"Tillstånd till mikrofonen gavs inte.",unsupported:"Inspelning stöds inte i den här webbläsaren.",creditsTitle:"Källor för offlineljud"},
+  categories:{kanaSound:"Kana, ljud och inmatning",vocabularyKanji:"Ordförråd, kanji och ortografi",particlesSentences:"Partiklar och satsstruktur",inflectionCore:"Böjning och grundkonstruktioner",connectedGrammar:"Sammanhängande och medelsvår grammatik",readingListening:"Läsning, hörförståelse och interaktion"},families,prompts,answers:answerMap,contexts,labels:{answer:"Svar"},surfaceReplacements
+}};

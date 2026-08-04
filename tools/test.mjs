@@ -190,6 +190,8 @@ const outputs = [
   "dist/http-web-practice.sv.html",
   "dist/japanese-numbers-dates.html",
   "dist/japanese-numbers-dates.sv.html",
+  "dist/japanese-language.html",
+  "dist/japanese-language.sv.html",
   "dist/electric-circuits.html",
   "dist/electric-circuits.sv.html",
 ];

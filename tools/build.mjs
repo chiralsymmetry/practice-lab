@@ -145,6 +145,22 @@ const apps = [
     locales: ["en", "sv"],
   },
   {
+    id: "japanese-language",
+    categoryId: "languages-humanities-other-practice",
+    sourceDir: "apps/japanese-language",
+    outputBase: "japanese-language",
+    locales: ["en", "sv"],
+    embeddedAssets: [
+      ["arigatou", "arigatou.ogg"],
+      ["gin", "gin.ogg"],
+      ["kokoro", "kokoro.ogg"],
+      ["kuuki", "kuuki.ogg"],
+      ["aruku", "aruku.ogg"],
+      ["eki", "eki-ni-tsukimasu.ogg"],
+      ["koukousei", "koukousei.ogg"],
+    ],
+  },
+  {
     id: "electric-circuits",
     categoryId: "science-engineering-spatial-reasoning",
     sourceDir: "apps/electric-circuits",
@@ -202,6 +218,7 @@ async function loadLocale(app, code) {
 
 async function buildAppLocale(app, locale, source) {
   let js = source.js.replace("__LOCALE_TEXT__", JSON.stringify(locale.text));
+  js = js.replace("__EMBEDDED_ASSETS__", JSON.stringify(source.embeddedAssets));
   let html = source.shell
     .replace("<!-- __PRACTICE_TOOLS__ -->", source.practiceTools)
     .replace("<!-- __SETTINGS_EXTRAS__ -->", source.settingsExtras);
@@ -211,7 +228,7 @@ async function buildAppLocale(app, locale, source) {
   html = html.replace("// __INLINE_SHARED_JS__", () => source.sharedJs.trimEnd());
   html = html.replace("// __INLINE_APP_JS__", () => js.trimEnd());
 
-  if (html.includes("__INLINE_") || html.includes("__PRACTICE_TOOLS__") || html.includes("__SETTINGS_EXTRAS__") || html.includes("__LOCALE_TEXT__")) {
+  if (html.includes("__INLINE_") || html.includes("__PRACTICE_TOOLS__") || html.includes("__SETTINGS_EXTRAS__") || html.includes("__LOCALE_TEXT__") || html.includes("__EMBEDDED_ASSETS__")) {
     throw new Error(`${app.id}/${locale.code}: build placeholders were not replaced`);
   }
 
@@ -226,6 +243,11 @@ async function buildAppLocale(app, locale, source) {
 }
 
 async function buildApp(app) {
+  const embeddedAssets = {};
+  for (const [id, filename] of app.embeddedAssets || []) {
+    const bytes = await Bun.file(`${app.sourceDir}/audio/${filename}`).arrayBuffer();
+    embeddedAssets[id] = `data:audio/ogg;base64,${Buffer.from(bytes).toString("base64")}`;
+  }
   const source = {
     shell: await readText("shared/practice-shell.html"),
     sharedCss: await readText("shared/practice.css"),
@@ -234,6 +256,7 @@ async function buildApp(app) {
     js: await readText(`${app.sourceDir}/main.js`),
     practiceTools: app.practiceTools ? await readText(app.practiceTools) : "",
     settingsExtras: app.settingsExtras ? await readText(app.settingsExtras) : "",
+    embeddedAssets,
   };
 
   for (const code of app.locales) {
