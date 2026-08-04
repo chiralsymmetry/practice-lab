@@ -23,6 +23,7 @@ source of truth for family-level scope and validation requirements.
 | Programmer Low-Level Numeracy | **Implemented** | [spec](specs/programmer-low-level-numeracy.md) | [app](apps/programmer-low-level-numeracy/) |
 | Mental Arithmetic | **Implemented** | [spec](specs/mental-arithmetic.md) | [app](apps/mental-arithmetic/) |
 | Number Theory and Modular Arithmetic | **Implemented** | [spec](specs/number-theory-modular-arithmetic.md) | [app](apps/number-theory-modular-arithmetic/) |
+| Logic | **Implemented** | [spec](specs/logic.md) | [app](apps/logic/) |
 | Everyday Economics | **Implemented** | [spec](specs/everyday-economics.md) | [app](apps/everyday-economics/) |
 | Floating-Point Practice | **Implemented** | [spec](specs/floating-point-practice.md) | [app](apps/floating-point-practice/) |
 | C++ Mental Execution | **Implemented** | [spec](specs/cpp-mental-execution.md) | [app](apps/cpp-mental-execution/) |
@@ -53,7 +54,7 @@ specified** or **Deliberately excluded** below.
 | Floating Point Practice | **Implemented and specified** in the [floating-point spec](specs/floating-point-practice.md), covering FP4, FP6, FP8, binary16, bfloat16, and binary32. The original machine-epsilon idea is handled through format-specific spacing and exactness families. FP64 has a deliberate disposition below. |
 | C++ Mental Execution | **Implemented and specified** in the [C++ spec](specs/cpp-mental-execution.md). The original state tracing, aliasing, parameter, type, overload, lifetime, ownership, container, callable, bitwise, and behavior-classification ideas are now bounded families rather than a proposal for a general compiler. |
 | Mental Arithmetic | **Implemented and specified** for core integer arithmetic in the [Mental Arithmetic spec](specs/mental-arithmetic.md). The original idea was also split by ownership: divisibility, modular arithmetic, and clock arithmetic moved to [Number Theory and Modular Arithmetic](specs/number-theory-modular-arithmetic.md), while byte addresses, offsets, and alignment moved to [Programmer Low-Level Numeracy](specs/programmer-low-level-numeracy.md). |
-| Theoretical CS and Algorithms | **Implemented and specified** as [Computer Science: Algorithms and Discrete Reasoning](specs/computer_science.md), with generated asymptotic, recurrence, data-structure, graph, logic, counting, and finite-probability drills. |
+| Theoretical CS and Algorithms | **Implemented and specified** as [Computer Science: Algorithms and Discrete Reasoning](specs/computer_science.md), with generated asymptotic, recurrence, data-structure, graph, compact logic, counting, and finite-probability drills. Formal logic also has an **implemented and specified** dedicated [Logic](specs/logic.md) app covering translation, semantics, equivalence, arguments, short proofs, and finite predicate models. |
 | Shell, Regex, and Admin Practice | **Implemented and specified** as [Unix Shell and Administration Practice](specs/admin-practice.md), using a bounded offline `bash-gnu-v1` model rather than real command execution. Its networking and HTTP edge also grew into the broader [Networking and Protocols](specs/networking-protocols.md) and [HTTP and Web Practice](specs/http-web-practice.md) specs. |
 | Assembly Practice | The original idea was split into two **implemented and specified** apps: [6502 Assembly Practice](specs/assembly-practice-6502.md) and [AMD64 Assembly Practice](specs/assembly-practice-amd64.md). |
 | Electric Circuits and Electronics | **Implemented and specified** as [Electric Circuits](specs/electric-circuits.md). |
@@ -66,7 +67,7 @@ specified** or **Deliberately excluded** below.
 
 ## Specified but not implemented
 
-The following 49 topic specs have no corresponding directory under `apps/`.
+The following 48 topic specs have no corresponding directory under `apps/`.
 They are the implementation backlog; they do not need another proposal document
 before implementation.
 
@@ -87,7 +88,6 @@ before implementation.
 - [Differential Equations](specs/differential-equations.md)
 - [Geometry and Trigonometry](specs/geometry-trigonometry.md)
 - [Linear Algebra](specs/linear-algebra.md)
-- [Logic](specs/logic.md)
 - [Probability and Statistics](specs/probability-statistics.md)
 - [Spreadsheet Practice](specs/spreadsheet-practice.md)
 

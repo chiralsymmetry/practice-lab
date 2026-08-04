@@ -45,6 +45,13 @@ const apps = [
     locales: ["en", "sv"],
   },
   {
+    id: "logic",
+    categoryId: "mathematics-data",
+    sourceDir: "apps/logic",
+    outputBase: "logic",
+    locales: ["en", "sv"],
+  },
+  {
     id: "everyday-economics",
     categoryId: "business",
     sourceDir: "apps/everyday-economics",

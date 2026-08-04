@@ -1,0 +1,28 @@
+.logic-formula {
+  font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
+  font-size: clamp(1rem, 2.3vw, 1.3rem);
+  line-height: 1.65;
+  overflow-wrap: anywhere;
+}
+
+.logic-block {
+  border: 1px solid var(--line);
+  border-radius: 0.65rem;
+  background: color-mix(in srgb, var(--panel) 86%, var(--accent) 14%);
+  padding: 0.75rem 0.9rem;
+  white-space: pre-wrap;
+}
+
+.logic-table-wrap { overflow-x: auto; }
+.logic-table { width: 100%; border-collapse: collapse; }
+.logic-table th, .logic-table td { border: 1px solid var(--line); padding: 0.42rem 0.55rem; text-align: center; }
+.logic-table th { background: color-mix(in srgb, var(--panel) 78%, var(--accent) 22%); }
+.logic-model { display: grid; gap: 0.35rem; }
+.logic-proof { border-left: 0.28rem solid var(--accent); padding-left: 0.85rem; }
+.logic-proof .scope { margin-left: 1rem; border-left: 1px solid var(--line); padding-left: 0.65rem; }
+.answer-field.active-target { outline: 3px solid color-mix(in srgb, var(--accent) 48%, transparent); }
+
+@media (max-width: 640px) {
+  .logic-block { padding: 0.62rem; }
+  .logic-table th, .logic-table td { padding: 0.34rem; }
+}

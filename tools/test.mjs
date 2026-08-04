@@ -162,6 +162,8 @@ const outputs = [
   "dist/mental-arithmetic.sv.html",
   "dist/number-theory-modular-arithmetic.html",
   "dist/number-theory-modular-arithmetic.sv.html",
+  "dist/logic.html",
+  "dist/logic.sv.html",
   "dist/everyday-economics.html",
   "dist/everyday-economics.sv.html",
   "dist/floating-point-practice.html",
