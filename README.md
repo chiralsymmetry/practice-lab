@@ -6,6 +6,7 @@ Practice Lab is a collection of small offline practice apps for programmer-adjac
 - **Mental Arithmetic**: fast integer addition, subtraction, multiplication, division, complements, and percentages.
 - **Number Theory & Modular Arithmetic**: divisibility, primes, factorization, GCD/LCM, Euclid, congruences, powers, inverses, CRT, Diophantine equations, checksums, and bounded toy cryptography.
 - **Logic Practice**: translate and evaluate propositions, build truth tables, transform equivalent formulas, test arguments, complete bounded natural-deduction proofs, and reason over explicit finite predicate models.
+- **Practical Cryptography**: classify security goals and roles; work exact Caesar, affine, substitution, Vigenère, XOR, and one-time-pad mechanics; and reason about nonce discipline, AEAD, hashes, MACs, password records, signatures, certificates, replay state, and compromise under bounded educational models.
 - **Everyday Economics**: applied math for prices, percentages, interest, inflation, subscriptions, and expected value.
 - **Floating Point Practice**: FP4 through FP32 drills for classification, exact decoding/encoding, spacing, exactness, and small additions that disappear.
 - **C++ Code Reading**: trace runtime state, aliasing, types, overloads, lifetime, and declaration-heavy callables in small controlled snippets.
@@ -30,6 +31,8 @@ The built apps are standalone HTML files:
 - `dist/number-theory-modular-arithmetic.{{lang}}.html`
 - `dist/logic.html`
 - `dist/logic.{{lang}}.html`
+- `dist/practical-cryptography.html`
+- `dist/practical-cryptography.{{lang}}.html`
 - `dist/everyday-economics.html`
 - `dist/everyday-economics.{{lang}}.html`
 - `dist/floating-point-practice.html`
@@ -97,7 +100,7 @@ This inlines the shared shell/runtime, shared CSS, and app-specific CSS and Java
 tools/test.sh
 ```
 
-This rebuilds the apps, checks that every inline script parses, runs the browser-console self-tests through Bun, validates C++ fixtures with GCC and Clang, checks AMD64 Intel/AT&T fixtures with GNU binutils, and runs every registered extended domain validator, including the large administration, HTTP/web, and finite-logic generator/oracle sweeps.
+This rebuilds the apps, checks that every inline script parses, runs the browser-console self-tests through Bun, validates C++ fixtures with GCC and Clang, checks AMD64 Intel/AT&T fixtures with GNU binutils, and runs every registered extended domain validator, including the large administration, HTTP/web, finite-logic, and practical-cryptography generator/oracle sweeps.
 
 ## GitHub Pages and Releases
 

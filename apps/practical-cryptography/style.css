@@ -1,0 +1,10 @@
+.crypto-block { border: 1px solid var(--line); border-radius: .65rem; padding: .75rem .9rem; background: color-mix(in srgb,var(--panel) 86%,var(--accent) 14%); white-space: pre-wrap; overflow-wrap: anywhere; }
+.crypto-code { font-family: ui-monospace,"SFMono-Regular",Consolas,monospace; font-size: clamp(.95rem,2.2vw,1.18rem); line-height: 1.6; }
+.crypto-table-wrap { overflow-x: auto; }
+.crypto-table { width: 100%; border-collapse: collapse; }
+.crypto-table th,.crypto-table td { border: 1px solid var(--line); padding: .42rem .55rem; text-align: left; }
+.crypto-table th { background: color-mix(in srgb,var(--panel) 78%,var(--accent) 22%); }
+.toy-warning { border-inline-start: .3rem solid #b96b18; font-weight: 700; }
+.byte-string { word-spacing: .38rem; overflow-wrap: anywhere; }
+.answer-field.active-target { outline: 3px solid color-mix(in srgb,var(--accent) 48%,transparent); }
+@media(max-width:640px){.crypto-block{padding:.6rem}.crypto-table th,.crypto-table td{padding:.32rem}.input-grid button{min-height:2.6rem}}

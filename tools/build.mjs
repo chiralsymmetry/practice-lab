@@ -52,6 +52,13 @@ const apps = [
     locales: ["en", "sv"],
   },
   {
+    id: "practical-cryptography",
+    categoryId: "computing-operations",
+    sourceDir: "apps/practical-cryptography",
+    outputBase: "practical-cryptography",
+    locales: ["en", "sv"],
+  },
+  {
     id: "everyday-economics",
     categoryId: "business",
     sourceDir: "apps/everyday-economics",

@@ -24,6 +24,7 @@ source of truth for family-level scope and validation requirements.
 | Mental Arithmetic | **Implemented** | [spec](specs/mental-arithmetic.md) | [app](apps/mental-arithmetic/) |
 | Number Theory and Modular Arithmetic | **Implemented** | [spec](specs/number-theory-modular-arithmetic.md) | [app](apps/number-theory-modular-arithmetic/) |
 | Logic | **Implemented** | [spec](specs/logic.md) | [app](apps/logic/) |
+| Practical Cryptography | **Implemented** | [spec](specs/practical-cryptography.md) | [app](apps/practical-cryptography/) |
 | Everyday Economics | **Implemented** | [spec](specs/everyday-economics.md) | [app](apps/everyday-economics/) |
 | Floating-Point Practice | **Implemented** | [spec](specs/floating-point-practice.md) | [app](apps/floating-point-practice/) |
 | C++ Mental Execution | **Implemented** | [spec](specs/cpp-mental-execution.md) | [app](apps/cpp-mental-execution/) |
@@ -64,10 +65,11 @@ specified** or **Deliberately excluded** below.
 | Git, HTTP, SQL, Networking, and Unicode | [Git and Version-Control Reasoning](specs/git-version-control.md), [HTTP and Web Practice](specs/http-web-practice.md), [SQL and Relational Databases](specs/sql-relational-databases.md), and [Unicode, Encodings, and Text](specs/unicode-encodings-text.md) are **implemented and specified**. [Networking and Protocols](specs/networking-protocols.md) remains **specified but not implemented**. |
 | Japanese Practice | The original idea was **split**. Numbers, counters, dates, time, and money are **implemented** under the [focused spec](specs/japanese-numbers-dates.md); wider kana, vocabulary, particles, inflection, reading, listening, and interaction are **specified but not implemented** in [Japanese Language](specs/japanese-language.md). |
 | Music Practice | **Specified but not implemented** as [Music Practice](specs/music-practice.md); it is no longer merely a possible later architecture experiment. |
+| Practical Cryptography | **Implemented and specified** as [Practical Cryptography](specs/practical-cryptography.md), with exact educational classical-cipher, XOR, and one-time-pad mechanics plus bounded modern primitive, password, public-key, and protocol-state reasoning. It deliberately does not reimplement modern cryptographic algorithms or handle real secrets. |
 
 ## Specified but not implemented
 
-The following 48 topic specs have no corresponding directory under `apps/`.
+The following 47 topic specs have no corresponding directory under `apps/`.
 They are the implementation backlog; they do not need another proposal document
 before implementation.
 
@@ -76,7 +78,6 @@ before implementation.
 - [Digital Logic and Computer Architecture](specs/digital-logic-computer-architecture.md)
 - [Game Programming Fundamentals](specs/game-programming-fundamentals.md)
 - [Networking and Protocols](specs/networking-protocols.md)
-- [Practical Cryptography](specs/practical-cryptography.md)
 - [Reverse Engineering and Code Recovery](specs/reverse-engineering-code-recovery.md)
 - [System Design](specs/system-design.md)
 
