@@ -267,7 +267,7 @@
 
     case "small_modular_power":
       m=smallModulus(r,level);a=bi(level<3?r.int(0,scale):r.int(-scale,scale));e=bi(r.int(2,4+level));result=powmod(a,e,m);
-      return question(id,level,prompt("Compute the modular power.",[a+"^"+e+" mod "+m],"Reduce after each multiplication."),[integerField("answer",t("fieldLabels.answer","Answer"),result)],"Exact modular exponentiation gives "+result+".",[a,e,m],{integers:[a,e,m],modulus:m,acceptedAnswerClass:"canonical residue"});
+      return question(id,level,prompt("Compute the modular power.",[(a<0?"("+a+")":String(a))+"^"+e+" mod "+m],"Reduce after each multiplication."),[integerField("answer",t("fieldLabels.answer","Answer"),result)],"Exact modular exponentiation gives "+result+".",[a,e,m],{integers:[a,e,m],modulus:m,acceptedAnswerClass:"canonical residue"});
     case "repeated_squaring_trace":
       m=smallModulus(r,level);a=bi(r.int(2,scale));e=bi(r.int(5,20+level*8));values=[];for(q=1n;q<=e;q*=2n)values.push([q,powmod(a,q,m)]);c=r.int(0,values.length-1);result=values[c][1];
       return question(id,level,prompt("Fill the missing repeated-squaring entry.",values.map(function(pair,index){return a+"^"+pair[0]+" mod "+m+" = "+(index===c?"?":pair[1]);}),"Each row squares the preceding residue."),[integerField("answer",t("fieldLabels.answer","Answer"),result)],"Squaring the preceding entry and reducing modulo "+m+" gives "+result+".",[a,e,m,c],{integers:[a,e,m],modulus:m,acceptedAnswerClass:"canonical residue"});

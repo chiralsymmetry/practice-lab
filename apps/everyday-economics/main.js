@@ -258,7 +258,7 @@
     var text = formatScaled(cents, 2);
     if (format.position === "none") return text;
     if (format.position === "after") return text + " " + format.symbol;
-    return format.symbol + text;
+    return text.charAt(0) === "-" ? "-" + format.symbol + text.slice(1) : format.symbol + text;
   }
 
   function percentFromBasisPoints(value) {
@@ -822,16 +822,16 @@
     var principal = moneyRat(s.principalCents);
     var simple = mulRat(principal, addRat(rat(1n), mulRat(rateRat(s.rateBp), rat(s.years))));
     var compound = mulRat(principal, powRat(factorRat(s.rateBp), s.years));
-    var difference = subRat(compound, simple);
+    var difference = subRat(moneyRat(centsOf(compound)), moneyRat(centsOf(simple)));
     if (centsOf(difference) === 0n) return GENERATORS.simple_vs_compound(level, rng);
-    return makeQuestion("simple_vs_compound", level, "multi-money", { principalCents: s.principalCents.toString(), rateBp: s.rateBp, years: s.years }, prompt("Compare simple and annually compounded balances.", ["Principal: " + moneyFromCents(s.principalCents), "Annual rate: " + rateLabel(s.rateBp), "Horizon: " + s.years + " years"], "Give both balances and compound-minus-simple difference."), [fieldMoney("simple", "Simple balance", simple), fieldMoney("compound", "Compound balance", compound), fieldMoney("difference", "Compound minus simple", difference)], ["simple: " + moneyFromCents(centsOf(simple)), "compound: " + moneyFromCents(centsOf(compound)), "interest-on-interest difference: " + moneyFromCents(centsOf(difference))], ["years-" + s.years, "rate-" + s.rateBp], { units: ["currency"], timeBasis: "same annual rate and " + s.years + "-year horizon", interpretation: "This compares only the two stated mathematical models." }, ["models-confused"]);
+    return makeQuestion("simple_vs_compound", level, "multi-money", { principalCents: s.principalCents.toString(), rateBp: s.rateBp, years: s.years }, prompt("Compare simple and annually compounded balances.", ["Principal: " + moneyFromCents(s.principalCents), "Annual rate: " + rateLabel(s.rateBp), "Horizon: " + s.years + " years"], "Give both balances rounded to cents, then the difference between those rounded balances."), [fieldMoney("simple", "Simple balance", simple), fieldMoney("compound", "Compound balance", compound), fieldMoney("difference", "Compound minus simple", difference)], ["simple: " + moneyFromCents(centsOf(simple)), "compound: " + moneyFromCents(centsOf(compound)), "interest-on-interest difference: " + moneyFromCents(centsOf(difference))], ["years-" + s.years, "rate-" + s.rateBp], { units: ["currency"], timeBasis: "same annual rate and " + s.years + "-year horizon", interpretation: "This compares only the two stated mathematical models." }, ["models-confused"]);
   };
 
   DERIVERS.simple_vs_compound = function (p) {
     var principal = moneyRat(p.principalCents);
     var simple = mulRat(principal, addRat(rat(1n), mulRat(rateRat(p.rateBp), rat(p.years))));
     var compound = mulRat(principal, powRat(factorRat(p.rateBp), p.years));
-    return { simple: simple, compound: compound, difference: subRat(compound, simple) };
+    return { simple: simple, compound: compound, difference: subRat(moneyRat(centsOf(compound)), moneyRat(centsOf(simple))) };
   };
 
   GENERATORS.interest_missing_principal = function (level, rng) {

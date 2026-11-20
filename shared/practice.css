@@ -657,3 +657,11 @@ th {
     font-size: 0.8rem;
   }
 }
+
+/* Domain text keeps its case: units (mV is not MV), variable names (x is not X), column names. */
+#answerControls label,
+#answerControls legend,
+#questionPrompt th,
+#feedback th {
+  text-transform: none;
+}

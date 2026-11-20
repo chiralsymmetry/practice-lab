@@ -368,7 +368,7 @@ export default {
       ["Give total interest only.", "Ange endast den totala räntan."],
       ["Give ending balance.", "Ange slutsaldot."],
       ["Give total interest; round only the final amount.", "Ange den totala räntan och avrunda endast slutbeloppet."],
-      ["Give both balances and compound-minus-simple difference.", "Ange båda saldona och skillnaden mellan ränta på ränta och enkel ränta."],
+      ["Give both balances rounded to cents, then the difference between those rounded balances.", "Ange båda saldona avrundade till ören och sedan skillnaden mellan de avrundade saldona."],
       ["Compound annually; round only the final nominal price.", "Beräkna med årlig ränta på ränta och avrunda endast det slutliga nominella priset."],
       ["Compound the annual factor; round the cumulative percentage to 2 decimals.", "Ackumulera årsfaktorn och avrunda den kumulativa procentsatsen till två decimaler."],
       ["Multiply by the cumulative price factor.", "Multiplicera med den kumulativa prisfaktorn."],

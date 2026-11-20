@@ -91,6 +91,10 @@
   function sameAst(a, b) { return JSON.stringify(a) === JSON.stringify(b); }
   function isLiteral(node) { return node.op === "atom" || (node.op === "not" && node.a.op === "atom"); }
   function isCnf(node) { if (isLiteral(node)) return true; if (node.op === "or") return cnfClause(node); if (node.op === "and") return isCnf(node.a) && isCnf(node.b); return false; }
+  // Negation pushed to the atoms (De Morgan, ¬(A→B) ≡ A∧¬B, ¬(A↔B) ≡ A↔¬B).
+  function nnfNegation(node) { if (node.op === "atom") return not(node); if (node.op === "not") return nnfPositive(node.a); if (node.op === "and") return or(nnfNegation(node.a), nnfNegation(node.b)); if (node.op === "or") return and(nnfNegation(node.a), nnfNegation(node.b)); if (node.op === "imp") return and(nnfPositive(node.a), nnfNegation(node.b)); return iff(nnfPositive(node.a), nnfNegation(node.b)); }
+  function nnfPositive(node) { if (node.op === "atom") return node; if (node.op === "not") return nnfNegation(node.a); return { op: node.op, a: nnfPositive(node.a), b: nnfPositive(node.b) }; }
+  function isNnf(node) { if (node.op === "atom") return true; if (node.op === "not") return node.a.op === "atom"; return isNnf(node.a) && isNnf(node.b); }
   function cnfClause(node) { return isLiteral(node) || (node.op === "or" && cnfClause(node.a) && cnfClause(node.b)); }
   function astKey(node) { return JSON.stringify(node); }
   function assignmentText(env) { return Object.keys(env).sort().map(function (key) { return key + "=" + (env[key] ? "T" : "F"); }).join(", "); }
@@ -203,7 +207,8 @@
       return output(title("verbalize"), [block("formula", propText(vv.ast))], [choiceField("answer", t("generated.question", "Answer"), vv.kind, options)], familyById(id).learn.concept, vv.kind + ":" + r.int(0, 2), { formulaAst: vv.ast });
     case "identify_main_connective":
       source = level < 2 ? (r.bool() ? and(P,Q) : not(P)) : level < 4 ? imp(not(P), and(Q,R)) : iff(imp(P,Q), or(not(R),P));
-      options = [[source.op, connectiveName(source.op) + " — " + (TEXT.localeCode === "sv" ? "ytterst" : "outermost")]].concat(["not","and","or","imp","iff"].filter(function (op) { return op !== source.op; }).slice(0,3).map(function (op) { return [op, connectiveName(op)]; }));
+      // All five connectives in canonical order: the answer's position varies and no option is marked.
+      options = ["not","and","or","imp","iff"].map(function (op) { return [op, connectiveName(op)]; });
       return output(title("mainConnective"), [block("formula", propText(source))], [choiceField("answer", t("generated.question", "Answer"), source.op, options)], familyById(id).learn.concept, source.op + ":" + level + ":" + r.int(0,2), { formulaAst: source, sourceSpan: "root" });
     case "scope_parenthesization":
       source = level < 2 ? and(not(P),Q) : level < 4 ? imp(or(P,Q),R) : imp(P,imp(Q,or(not(R),atom("S"))));
@@ -236,7 +241,7 @@
 
     case "negate_formula":
       source=level<2?r.pick([and(P,Q),or(P,Q)]):level<4?r.pick([imp(P,Q),iff(P,Q)]):imp(or(P,Q),R); target=not(source);
-      return output(title("negate"),[block("formula","¬("+propText(source)+")")],[formulaField("answer",t("generated.formula","Formula"),target,"equivalent")],familyById(id).learn.concept,propText(source)+":"+r.int(0,2),{formulaAst:source,targetAst:target});
+      return output(title("negate"),[block("formula",propText(source)),block("note",TEXT.localeCode==="sv"?"¬ får bara stå framför enskilda bokstäver.":"¬ may apply only to single letters.")],[formulaField("answer",t("generated.formula","Formula"),nnfNegation(source),"nnf")],familyById(id).learn.concept,propText(source)+":"+r.int(0,2),{formulaAst:source,targetAst:target});
     case "conditional_forms":
       source=imp(p.a,p.b); form=r.pick(["converse","inverse","contrapositive"]); target=form==="converse"?imp(p.b,p.a):form==="inverse"?imp(not(p.a),not(p.b)):imp(not(p.b),not(p.a));
       return output(title("conditionalForm"),[block("note",conditionalFormName(form)),block("formula",propText(source))],[formulaField("answer",t("generated.formula","Formula"),target,"ast")],familyById(id).learn.concept,form+":"+propText(source)+":"+r.int(0,2),{formulaAst:source,targetAst:target,form:form});
@@ -369,7 +374,7 @@
   }
   function checkQuestion(answers, question) {
     try {
-      var correct=question.fields.every(function(field){var value=String(answers&&answers[field.id]!==undefined?answers[field.id]:"").trim();if(field.kind==="choice")return field.accepted.includes(value);var parsed=parseFormula(value);if(!parsed)return false;if(field.mode==="equivalent")return equivalent(parsed,field.target);if(field.mode==="cnf")return equivalent(parsed,field.target)&&isCnf(parsed);return sameAst(parsed,field.target);});
+      var correct=question.fields.every(function(field){var value=String(answers&&answers[field.id]!==undefined?answers[field.id]:"").trim();if(field.kind==="choice")return field.accepted.includes(value);var parsed=parseFormula(value);if(!parsed)return false;if(field.mode==="equivalent")return equivalent(parsed,field.target);if(field.mode==="cnf")return equivalent(parsed,field.target)&&isCnf(parsed);if(field.mode==="nnf")return equivalent(parsed,field.target)&&isNnf(parsed);return sameAst(parsed,field.target);});
       return {correct:correct,expectedText:question.expectedText};
     } catch(error){return{correct:false,expectedText:question.expectedText};}
   }

@@ -87,6 +87,16 @@
   }
   function scalePow2(value, exponent) { return mul(value, pow2(exponent)); }
   function rationalText(value) { return value.d === 1n ? String(value.n) : String(value.n) + "/" + String(value.d); }
+  // Display-only: long dyadic fractions (1/85070591730234615865843651857942052864) read better as 2^-126 or 49×2^-132.
+  function readableRational(value) {
+    var text = rationalText(value);
+    if (text.length <= 14 || !value.n) return text;
+    var sign = value.n < 0n ? "-" : "", numerator = value.n < 0n ? -value.n : value.n, denominator = value.d, exponent = 0;
+    while (numerator % 2n === 0n) { numerator /= 2n; exponent += 1; }
+    while (denominator % 2n === 0n) { denominator /= 2n; exponent -= 1; }
+    if (denominator !== 1n) return text;
+    return exponent === 0 ? sign + String(numerator) : numerator === 1n ? sign + "2^" + exponent : sign + String(numerator) + "×2^" + exponent;
+  }
   function compactExactText(value) {
     if (!value.n) return "0";
     var sign=value.n<0n?"-":"",numerator=value.n<0n?-value.n:value.n,denominator=value.d,exponent=0;
@@ -405,14 +415,14 @@
   }
   GENERATORS.decode_normal = function (level, rng) {
     var format = chooseFormat(level, rng), raw = normalRaw(format, rng, level >= 4), decoded = decode(format, raw);
-    return makeQuestion("decode_normal", level, format, { raw: String(raw) }, prompt("Decode this normal value exactly.", [formatSpec(format), "Pattern: " + pattern(format, raw, level >= 4 ? "hex" : level === 1 ? "fields" : "bits")], "Enter an exact integer, fraction, terminating decimal, mixed number, or power-of-two form."), [rationalField("value","Exact value",decoded.value)], ["e = " + decoded.exponent + " − " + format.bias + " = " + decoded.effectiveExponent + ".", "significand = " + rationalText(decoded.significand) + " (hidden one included).", "value = " + (decoded.sign ? "−" : "") + rationalText(decoded.significand) + " × 2^" + decoded.effectiveExponent + " = " + compactExactText(decoded.value) + "."], ["sign-"+decoded.sign,"e-"+(decoded.effectiveExponent<0?"neg":"nonneg"),representation(level,format)], { rawBits: raw, exactValue: rationalText(decoded.value), valueClass: "normal", fields: { sign: decoded.sign, exponent: String(decoded.exponent), fraction: String(decoded.fraction) }, misconception: "hidden-one" });
+    return makeQuestion("decode_normal", level, format, { raw: String(raw) }, prompt("Decode this normal value exactly.", [formatSpec(format), "Pattern: " + pattern(format, raw, level >= 4 ? "hex" : level === 1 ? "fields" : "bits")], "Enter an exact integer, fraction, terminating decimal, mixed number, or power-of-two form."), [rationalField("value","Exact value",decoded.value)], ["e = " + decoded.exponent + " − " + format.bias + " = " + decoded.effectiveExponent + ".", "significand = " + readableRational(decoded.significand) + " (hidden one included).", "value = " + (decoded.sign ? "−" : "") + rationalText(decoded.significand) + " × 2^" + decoded.effectiveExponent + " = " + compactExactText(decoded.value) + "."], ["sign-"+decoded.sign,"e-"+(decoded.effectiveExponent<0?"neg":"nonneg"),representation(level,format)], { rawBits: raw, exactValue: rationalText(decoded.value), valueClass: "normal", fields: { sign: decoded.sign, exponent: String(decoded.exponent), fraction: String(decoded.fraction) }, misconception: "hidden-one" });
   };
   DERIVERS.decode_normal = function (p, format) { return { value: rationalText(decode(format,p.raw).value) }; };
 
   GENERATORS.decode_subnormal = function (level, rng) {
     var format = chooseFormat(level, rng), fraction = rng.pick([1n, maxF(format), format.f > 1 ? 1n << BigInt(format.f-1) : 1n]);
     var raw = rawFromFields(format, level >= 3 ? rng.int(0,1) : 0, 0, fraction), decoded = decode(format,raw);
-    return makeQuestion("decode_subnormal", level, format, { raw: String(raw) }, prompt("Decode this subnormal exactly.", [formatSpec(format), "Pattern: " + pattern(format,raw,level>=4?"hex":level===1?"fields":"bits")], "There is no hidden leading one; exact power-of-two forms are accepted."), [rationalField("value","Exact value",decoded.value)], ["effective exponent = 1 − bias = " + decoded.effectiveExponent + ".", "significand = F/2^f = " + rationalText(decoded.significand) + ".", "value = " + compactExactText(decoded.value) + "."], ["sign-"+decoded.sign,"fraction-"+(fraction===1n?"min":fraction===maxF(format)?"max":"middle")], { rawBits: raw, exactValue: rationalText(decoded.value), valueClass: "subnormal", fields: { sign:decoded.sign, exponent:"0", fraction:String(fraction) }, misconception: "subnormal-hidden-one" });
+    return makeQuestion("decode_subnormal", level, format, { raw: String(raw) }, prompt("Decode this subnormal exactly.", [formatSpec(format), "Pattern: " + pattern(format,raw,level>=4?"hex":level===1?"fields":"bits")], "There is no hidden leading one; exact power-of-two forms are accepted."), [rationalField("value","Exact value",decoded.value)], ["effective exponent = 1 − bias = " + decoded.effectiveExponent + ".", "significand = F/2^f = " + readableRational(decoded.significand) + ".", "value = " + compactExactText(decoded.value) + "."], ["sign-"+decoded.sign,"fraction-"+(fraction===1n?"min":fraction===maxF(format)?"max":"middle")], { rawBits: raw, exactValue: rationalText(decoded.value), valueClass: "subnormal", fields: { sign:decoded.sign, exponent:"0", fraction:String(fraction) }, misconception: "subnormal-hidden-one" });
   };
   DERIVERS.decode_subnormal = DERIVERS.decode_normal;
 
@@ -424,14 +434,14 @@
       integerField("exponent","Effective exponent",decoded.effectiveExponent),
       rationalField("significand","Unsigned significand",decoded.significand),
       rationalField("value","Signed exact value",decoded.value)
-    ],["effective exponent: "+decoded.effectiveExponent+".","significand: "+rationalText(decoded.significand)+".","signed product: "+rationalText(decoded.value)+"."],[decoded.kind,"sign-"+decoded.sign],{rawBits:raw,exactValue:rationalText(decoded.value),valueClass:decoded.kind,fields:{sign:decoded.sign,exponent:String(decoded.exponent),fraction:String(decoded.fraction)},misconception:"stored-versus-effective-exponent"});
+    ],["effective exponent: "+decoded.effectiveExponent+".","significand: "+readableRational(decoded.significand)+".","signed product: "+readableRational(decoded.value)+"."],[decoded.kind,"sign-"+decoded.sign],{rawBits:raw,exactValue:rationalText(decoded.value),valueClass:decoded.kind,fields:{sign:decoded.sign,exponent:String(decoded.exponent),fraction:String(decoded.fraction)},misconception:"stored-versus-effective-exponent"});
   };
   DERIVERS.decode_components=function(p,format){var d=decode(format,p.raw);return{exponent:String(d.effectiveExponent),significand:rationalText(d.significand),value:rationalText(d.value)};};
 
   GENERATORS.encode_exact_finite=function(level,rng){
     var format=chooseFormat(level,rng), raws=finiteRawSamples(format,level>=2).filter(function(raw){var d=decode(format,raw);return d.kind==="normal"||(level>=2&&d.kind==="subnormal");});
     var raw=rng.pick(raws),d=decode(format,raw);
-    return makeQuestion("encode_exact_finite",level,format,{value:rationalText(d.value)},prompt("Encode this exactly representable finite value.",[formatSpec(format),"Value: "+rationalText(d.value)],level>=4?"Give exact-width binary or hexadecimal.":"Give the complete bit pattern."),[bitsField("bits","Encoding",format,raw)],["normalize magnitude and choose sign "+d.sign+".","stored exponent "+d.exponent+", trailing fraction "+bits(d.fraction,format.f)+".","encoding: "+pattern(format,raw,level>=4?"hex":"fields")+"."],["class-"+d.kind,"sign-"+d.sign],{rawBits:raw,exactValue:rationalText(d.value),valueClass:d.kind,fields:{sign:d.sign,exponent:String(d.exponent),fraction:String(d.fraction)},misconception:"storing-hidden-one"});
+    return makeQuestion("encode_exact_finite",level,format,{value:rationalText(d.value)},prompt("Encode this exactly representable finite value.",[formatSpec(format),"Value: "+readableRational(d.value)],level>=4?"Give exact-width binary or hexadecimal.":"Give the complete bit pattern."),[bitsField("bits","Encoding",format,raw)],["normalize magnitude and choose sign "+d.sign+".","stored exponent "+d.exponent+", trailing fraction "+bits(d.fraction,format.f)+".","encoding: "+pattern(format,raw,level>=4?"hex":"fields")+"."],["class-"+d.kind,"sign-"+d.sign],{rawBits:raw,exactValue:rationalText(d.value),valueClass:d.kind,fields:{sign:d.sign,exponent:String(d.exponent),fraction:String(d.fraction)},misconception:"storing-hidden-one"});
   };
   DERIVERS.encode_exact_finite=function(p,format){return{bits:bits(encodeExact(format,parseRational(p.value)),format.bits)};};
 
@@ -464,7 +474,7 @@
   }
   GENERATORS.round_to_format=function(level,rng){
     var format=chooseFormat(level,rng),c=roundingCase(format,rng,level>=3&&rng.chance(0.55));
-    return makeQuestion("round_to_format",level,format,{value:rationalText(c.value)},prompt("Round the exact value to the format.",[formatSpec(format),"Exact value: "+rationalText(c.value),"Mode: nearest, ties to even"],"Give the resulting complete encoding."),[bitsField("bits","Rounded encoding",format,c.rounded.raw)],["neighbors: "+rationalText(c.lower.value)+" and "+rationalText(c.upper.value)+".",c.tie?"equal distances; retained parity selects "+rationalText(c.rounded.value)+".":"the nearer neighbor is "+rationalText(c.rounded.value)+".","encoding: "+pattern(format,c.rounded.raw,level>=4?"hex":"bits")+"."],[c.tie?"tie":"non-tie","winner-"+(c.rounded.raw===c.lower.raw?"lower":"upper")],{rawBits:c.rounded.raw,exactValue:rationalText(c.value),valueClass:c.rounded.kind,misconception:c.tie?"ties-always-up":"truncation"});
+    return makeQuestion("round_to_format",level,format,{value:rationalText(c.value)},prompt("Round the exact value to the format.",[formatSpec(format),"Exact value: "+readableRational(c.value),"Mode: nearest, ties to even"],"Give the resulting complete encoding."),[bitsField("bits","Rounded encoding",format,c.rounded.raw)],["neighbors: "+readableRational(c.lower.value)+" and "+readableRational(c.upper.value)+".",c.tie?"equal distances; retained parity selects "+readableRational(c.rounded.value)+".":"the nearer neighbor is "+readableRational(c.rounded.value)+".","encoding: "+pattern(format,c.rounded.raw,level>=4?"hex":"bits")+"."],[c.tie?"tie":"non-tie","winner-"+(c.rounded.raw===c.lower.raw?"lower":"upper")],{rawBits:c.rounded.raw,exactValue:rationalText(c.value),valueClass:c.rounded.kind,misconception:c.tie?"ties-always-up":"truncation"});
   };
   DERIVERS.round_to_format=function(p,format){return{bits:bits(roundToFormat(format,parseRational(p.value)).raw,format.bits)};};
 
@@ -548,7 +558,7 @@
     else if(kind==="normal"){value=midpoint(decode(format,rawFromFields(format,0,0,maxF(format))).value,minNormal(format));expected=rationalText(minNormal(format));}
     else{value=add(maxFinite(format),div(ulp(format,Number(maxE(format)-1n)-format.bias),rat(2)));expected="+∞";}
     var rounded=decode(format,roundToFormat(format,value).raw);
-    return makeQuestion("rounding_boundary_result",level,format,{value:rationalText(value)},prompt("Determine the nearest-even boundary result.",[formatSpec(format),"Exact positive value: "+rationalText(value),"Boundary: "+kind],"Choose the signed special or enter the exact finite value."),[textField("result","Rounded result",rounded.kind==="zero"?"+0":rounded.kind==="infinity"?"+∞":"rational",rounded.kind==="zero"?"+0":rounded.kind==="infinity"?"+∞":rationalText(rounded.value))],["locate the "+kind+" boundary.","the value is exactly at its midpoint.","nearest-even gives "+expected+"."],[kind],{rawBits:rounded.raw,exactValue:rationalText(value),valueClass:rounded.kind,misconception:"boundary-rounding"});
+    return makeQuestion("rounding_boundary_result",level,format,{value:rationalText(value)},prompt("Determine the nearest-even boundary result.",[formatSpec(format),"Exact positive value: "+readableRational(value),"Boundary: "+kind],"Choose the signed special or enter the exact finite value."),[textField("result","Rounded result",rounded.kind==="zero"?"+0":rounded.kind==="infinity"?"+∞":"rational",rounded.kind==="zero"?"+0":rounded.kind==="infinity"?"+∞":rationalText(rounded.value))],["locate the "+kind+" boundary.","the value is exactly at its midpoint.","nearest-even gives "+expected+"."],[kind],{rawBits:rounded.raw,exactValue:rationalText(value),valueClass:rounded.kind,misconception:"boundary-rounding"});
   };
   DERIVERS.rounding_boundary_result=function(p,format){var d=decode(format,roundToFormat(format,parseRational(p.value)).raw);return{result:d.kind==="zero"?"+0":d.kind==="infinity"?"+∞":rationalText(d.value)};};
 
@@ -561,7 +571,7 @@
   GENERATORS.ulp_spacing=function(level,rng){
     var format=chooseFormat(level,rng),subnormal=level>=3&&rng.chance(0.3),exponent=subnormal?1-format.bias:rng.pick([-3,-1,0,1,3,format.id==="fp32"?20:2]);
     var spacing=subnormal?minSubnormal(format):ulp(format,exponent);
-    return makeQuestion("ulp_spacing",level,format,{subnormal:subnormal,exponent:exponent},prompt("Find the adjacent representable spacing.",[formatSpec(format),subnormal?"Region: subnormal":"Normal binade near 2^"+exponent],"Give an exact value; this is spacing at the stated magnitude, not a universal epsilon."),[rationalField("spacing","ULP spacing",spacing)],[subnormal?"spacing = 2^(1−bias−f).":"spacing = 2^(e−(p−1)).","spacing = "+rationalText(spacing)+"."],[subnormal?"subnormal":"normal","e-"+exponent],{exactValue:rationalText(spacing),misconception:"ulp-is-epsilon"});
+    return makeQuestion("ulp_spacing",level,format,{subnormal:subnormal,exponent:exponent},prompt("Find the adjacent representable spacing.",[formatSpec(format),subnormal?"Region: subnormal":"Normal binade near 2^"+exponent],"Give an exact value; this is spacing at the stated magnitude, not a universal epsilon."),[rationalField("spacing","ULP spacing",spacing)],[subnormal?"spacing = 2^(1−bias−f).":"spacing = 2^(e−(p−1)).","spacing = "+readableRational(spacing)+"."],[subnormal?"subnormal":"normal","e-"+exponent],{exactValue:rationalText(spacing),misconception:"ulp-is-epsilon"});
   };
   DERIVERS.ulp_spacing=function(p,format){return{spacing:rationalText(p.subnormal?minSubnormal(format):ulp(format,p.exponent))};};
 
@@ -579,11 +589,11 @@
   GENERATORS.compare_binary16_bfloat16_spacing=function(level,rng){
     var format=formatById("bf16"),exponents=level===2?[0,5]:level===3?[-14,-10,0,10]:level===4?[-20,-17,-14,0]:[-24,-20,-17,-14,0,15];
     var exponent=rng.pick(exponents),value=pow2(exponent),result=spacingComparison(value);
-    return makeQuestion("compare_binary16_bfloat16_spacing",level,format,{exponent:exponent},prompt("Compare upward spacing at the same exact value.",["Shared value: 2^"+exponent+" = "+rationalText(value),formatSpec(formatById("fp16")),formatSpec(format)],"Give both exact successor gaps; at powers of two, use upward spacing."),[
+    return makeQuestion("compare_binary16_bfloat16_spacing",level,format,{exponent:exponent},prompt("Compare upward spacing at the same exact value.",["Shared value: 2^"+exponent+" = "+readableRational(value),formatSpec(formatById("fp16")),formatSpec(format)],"Give both exact successor gaps; at powers of two, use upward spacing."),[
       rationalField("fp16","binary16 upward spacing",result.fp16),
       rationalField("bf16","bfloat16 upward spacing",result.bf16),
       choiceField("winner","Finer spacing",result.winner,["binary16","bfloat16","equal"])
-    ],["binary16 upward spacing = "+rationalText(result.fp16)+".","bfloat16 upward spacing = "+rationalText(result.bf16)+".","finer spacing: "+result.winner+"."],["e-"+exponent,result.winner,exponent<-14?"binary16-subnormal":"shared-normal"],{exactValue:rationalText(value),valueClass:exponent<-14?"subnormal/normal":"normal/normal",misconception:"binary16-always-finer"});
+    ],["binary16 upward spacing = "+readableRational(result.fp16)+".","bfloat16 upward spacing = "+readableRational(result.bf16)+".","finer spacing: "+result.winner+"."],["e-"+exponent,result.winner,exponent<-14?"binary16-subnormal":"shared-normal"],{exactValue:rationalText(value),valueClass:exponent<-14?"subnormal/normal":"normal/normal",misconception:"binary16-always-finer"});
   };
   DERIVERS.compare_binary16_bfloat16_spacing=function(p){
     var result=spacingComparison(pow2(p.exponent));
@@ -596,7 +606,7 @@
     else raw=normalRaw(format,rng,false);
     var d=decode(format,raw),direction=rng.pick(["predecessor","successor"]),n=neighbors(format,d.value),target=direction==="predecessor"?n.lower:n.upper;
     if(!target||!target.value)return GENERATORS.adjacent_values(level,rng);
-    return makeQuestion("adjacent_values",level,format,{raw:String(raw),direction:direction},prompt("Find the exact "+direction+".",[formatSpec(format),"Starting value: "+rationalText(d.value)+" ("+pattern(format,raw,level>=5?"hex":"bits")+")"],"Enter the adjacent finite value exactly."),[rationalField("value",direction,target.value)],["decode the starting pattern exactly.","step one representable value in numeric order.",""+direction+" = "+rationalText(target.value)+"."],[direction,d.sign?"negative":"positive",d.kind],{rawBits:raw,exactValue:rationalText(target.value),valueClass:target.kind,misconception:"sign-aware-neighbor"});
+    return makeQuestion("adjacent_values",level,format,{raw:String(raw),direction:direction},prompt("Find the exact "+direction+".",[formatSpec(format),"Starting value: "+readableRational(d.value)+" ("+pattern(format,raw,level>=5?"hex":"bits")+")"],"Enter the adjacent finite value exactly."),[rationalField("value",direction,target.value)],["decode the starting pattern exactly.","step one representable value in numeric order.",""+direction+" = "+readableRational(target.value)+"."],[direction,d.sign?"negative":"positive",d.kind],{rawBits:raw,exactValue:rationalText(target.value),valueClass:target.kind,misconception:"sign-aware-neighbor"});
   };
   DERIVERS.adjacent_values=function(p,format){var d=decode(format,p.raw),n=neighbors(format,d.value),target=p.direction==="predecessor"?n.lower:n.upper;return{value:rationalText(target.value)};};
 
@@ -617,7 +627,7 @@
     else if(kind==="normal-range"){answer="bfloat16";detail="normal exponents: binary16 −14..15, bfloat16 −126..127";}
     else if(kind==="normal-precision"){answer="binary16";detail="normal precision: binary16 p=11, bfloat16 p=8";}
     else if(kind==="consecutive-integers"){answer="binary16";detail="consecutive integers: binary16 through 2048, bfloat16 through 256";}
-    else{var spacing=spacingComparison(pow2(exponent));answer=spacing.winner;detail="at 2^"+exponent+": binary16 spacing "+rationalText(spacing.fp16)+", bfloat16 spacing "+rationalText(spacing.bf16);}
+    else{var spacing=spacingComparison(pow2(exponent));answer=spacing.winner;detail="at 2^"+exponent+": binary16 spacing "+readableRational(spacing.fp16)+", bfloat16 spacing "+readableRational(spacing.bf16);}
     return{answer:answer,detail:detail};
   }
   GENERATORS.compare_binary16_bfloat16_capability=function(level,rng){
@@ -659,7 +669,7 @@
   function isExact(format,value){return encodeExact(format,value,false)!==null;}
   GENERATORS.rational_exactness=function(level,rng){
     var format=chooseFormat(level,rng),cases=[rat(1,10),rat(3,8),rat(1,2),rat(7,16),mul(minSubnormal(format),rat(3)),div(minSubnormal(format),rat(2)),add(maxFinite(format),ulp(format,Number(maxE(format)-1n)-format.bias))],value=rng.pick(cases),exact=isExact(format,value);
-    return makeQuestion("rational_exactness",level,format,{value:rationalText(value)},prompt("Is this rational exactly representable?",[formatSpec(format),"Value: "+rationalText(value)],"Consider denominator, precision alignment, and range."),[choiceField("answer","Exactly representable?",exact?"yes":"no",["yes","no"])],["reduce the rational: "+rationalText(value)+".",exact?"it lands on the format lattice.":"it fails denominator, spacing alignment, or range.","answer: "+(exact?"yes":"no")+"."],[exact?"exact":"inexact",value.d&(value.d-1n)?"denominator-trap":"precision-or-range"],{exactValue:rationalText(value),misconception:"power-of-two-is-sufficient"});
+    return makeQuestion("rational_exactness",level,format,{value:rationalText(value)},prompt("Is this rational exactly representable?",[formatSpec(format),"Value: "+readableRational(value)],"Consider denominator, precision alignment, and range."),[choiceField("answer","Exactly representable?",exact?"yes":"no",["yes","no"])],["reduce the rational: "+readableRational(value)+".",exact?"it lands on the format lattice.":"it fails denominator, spacing alignment, or range.","answer: "+(exact?"yes":"no")+"."],[exact?"exact":"inexact",value.d&(value.d-1n)?"denominator-trap":"precision-or-range"],{exactValue:rationalText(value),misconception:"power-of-two-is-sufficient"});
   };
   DERIVERS.rational_exactness=function(p,format){return{answer:isExact(format,parseRational(p.value))?"yes":"no"};};
 
@@ -701,7 +711,7 @@
   function operation(a,b,op){return op==="+"?add(a,b):op==="-"?sub(a,b):mul(a,b);}
   GENERATORS.operation_exactness=function(level,rng){
     var format=chooseFormat(level,rng),op=level===3?"+":rng.pick(["+","-","×"]),a=rng.pick([rat(1),rat(1,2),rat(3,2),pow2(format.p)]),b=rng.pick([rat(1,4),rat(1,1n<<BigInt(format.p)),rat(3,2),rat(-1)]),result=operation(a,b,op),exact=isExact(format,result);
-    return makeQuestion("operation_exactness",level,format,{a:rationalText(a),b:rationalText(b),op:op},prompt("Is the exact mathematical result representable?",[formatSpec(format),rationalText(a)+" "+op+" "+rationalText(b)],"Evaluate exactly before considering stored rounding."),[choiceField("answer","Exact result representable?",exact?"yes":"no",["yes","no"])],["mathematical result = "+rationalText(result)+".","format lattice test: "+(exact?"exact":"inexact")+"."],[op,exact?"exact":"inexact"],{exactValue:rationalText(result),misconception:"rounded-versus-mathematical-result"});
+    return makeQuestion("operation_exactness",level,format,{a:rationalText(a),b:rationalText(b),op:op},prompt("Is the exact mathematical result representable?",[formatSpec(format),readableRational(a)+" "+op+" "+readableRational(b)],"Evaluate exactly before considering stored rounding."),[choiceField("answer","Exact result representable?",exact?"yes":"no",["yes","no"])],["mathematical result = "+readableRational(result)+".","format lattice test: "+(exact?"exact":"inexact")+"."],[op,exact?"exact":"inexact"],{exactValue:rationalText(result),misconception:"rounded-versus-mathematical-result"});
   };
   DERIVERS.operation_exactness=function(p,format){return{answer:isExact(format,operation(parseRational(p.a),parseRational(p.b),p.op))?"yes":"no"};};
 
@@ -715,19 +725,19 @@
   }
   GENERATORS.addition_changes_value=function(level,rng){
     var format=chooseFormat(level,rng),c=additionCase(format,rng,level>=3&&rng.chance(.5)),changes=c.result.raw!==c.baseRaw;
-    return makeQuestion("addition_changes_value",level,format,{baseRaw:String(c.baseRaw),increment:rationalText(c.increment)},prompt("Will the stored value change after this addition?",[formatSpec(format),"x = "+rationalText(c.base.value),"exact increment y = "+rationalText(c.increment),"operation: round(x+y)"],"Use nearest-even, including parity at a half-ULP tie."),[choiceField("answer","Stored value changes?",changes?"yes":"no",["yes","no"])],["local spacing = "+rationalText(c.spacing)+".","exact sum = "+rationalText(add(c.base.value,c.increment))+".","rounded result = "+rationalText(c.result.value)+"; "+(changes?"changes":"does not change")+"."],[changes?"change":"absorbed",cmp(c.increment,div(c.spacing,rat(2)))===0?"tie":"non-tie"],{rawBits:c.baseRaw,exactValue:rationalText(add(c.base.value,c.increment)),valueClass:"normal",misconception:"half-ulp-always-changes"});
+    return makeQuestion("addition_changes_value",level,format,{baseRaw:String(c.baseRaw),increment:rationalText(c.increment)},prompt("Will the stored value change after this addition?",[formatSpec(format),"x = "+readableRational(c.base.value),"exact increment y = "+readableRational(c.increment),"operation: round(x+y)"],"Use nearest-even, including parity at a half-ULP tie."),[choiceField("answer","Stored value changes?",changes?"yes":"no",["yes","no"])],["local spacing = "+readableRational(c.spacing)+".","exact sum = "+readableRational(add(c.base.value,c.increment))+".","rounded result = "+readableRational(c.result.value)+"; "+(changes?"changes":"does not change")+"."],[changes?"change":"absorbed",cmp(c.increment,div(c.spacing,rat(2)))===0?"tie":"non-tie"],{rawBits:c.baseRaw,exactValue:rationalText(add(c.base.value,c.increment)),valueClass:"normal",misconception:"half-ulp-always-changes"});
   };
   DERIVERS.addition_changes_value=function(p,format){var base=decode(format,p.baseRaw),result=roundToFormat(format,add(base.value,parseRational(p.increment)));return{answer:result.raw!==base.raw?"yes":"no"};};
 
   GENERATORS.rounded_addition_result=function(level,rng){
     var format=chooseFormat(level,rng),c=additionCase(format,rng,level>=3&&rng.chance(.5)),subtract=level>=4&&rng.chance(.3),increment=subtract?neg(c.increment):c.increment,exact=add(c.base.value,increment),rounded=decode(format,roundToFormat(format,exact).raw);
-    return makeQuestion("rounded_addition_result",level,format,{baseRaw:String(c.baseRaw),increment:rationalText(increment)},prompt("Give the stored result of this format operation.",[formatSpec(format),rationalText(c.base.value)+(increment.n<0n?" − ":" + ")+rationalText(absRat(increment))],"Compute exactly, then round once to nearest-even."),[rationalField("result","Stored finite result",rounded.value)],["exact result = "+rationalText(exact)+".","round once on the "+format.label+" lattice.","stored result = "+rationalText(rounded.value)+"."],[subtract?"subtraction":"addition",rounded.raw===c.baseRaw?"absorbed":"changed"],{rawBits:rounded.raw,exactValue:rationalText(exact),valueClass:rounded.kind,misconception:"double-rounding"});
+    return makeQuestion("rounded_addition_result",level,format,{baseRaw:String(c.baseRaw),increment:rationalText(increment)},prompt("Give the stored result of this format operation.",[formatSpec(format),rationalText(c.base.value)+(increment.n<0n?" − ":" + ")+rationalText(absRat(increment))],"Compute exactly, then round once to nearest-even."),[rationalField("result","Stored finite result",rounded.value)],["exact result = "+readableRational(exact)+".","round once on the "+format.label+" lattice.","stored result = "+readableRational(rounded.value)+"."],[subtract?"subtraction":"addition",rounded.raw===c.baseRaw?"absorbed":"changed"],{rawBits:rounded.raw,exactValue:rationalText(exact),valueClass:rounded.kind,misconception:"double-rounding"});
   };
   DERIVERS.rounded_addition_result=function(p,format){var base=decode(format,p.baseRaw),d=decode(format,roundToFormat(format,add(base.value,parseRational(p.increment))).raw);return{result:rationalText(d.value)};};
 
   GENERATORS.absorption_threshold=function(level,rng){
     var format=chooseFormat(level,rng),c=additionCase(format,rng,level>=4),candidates=[div(c.spacing,rat(4)),div(c.spacing,rat(2)),c.spacing],first=candidates.find(function(increment){return roundToFormat(format,add(c.base.value,increment)).raw!==c.baseRaw;});
-    return makeQuestion("absorption_threshold",level,format,{baseRaw:String(c.baseRaw),candidates:candidates.map(rationalText)},prompt("Choose the smallest positive increment that changes the stored value.",[formatSpec(format),"Base x = "+rationalText(c.base.value),"Candidates: "+candidates.map(rationalText).join(", ")],"Candidates are ordered by magnitude."),[choiceField("increment","First-changing increment",rationalText(first),candidates.map(rationalText))],candidates.map(function(increment){return rationalText(increment)+" → "+(roundToFormat(format,add(c.base.value,increment)).raw===c.baseRaw?"no change":"changes");}),["parity-"+(c.base.fraction%2n?"odd":"even")],{rawBits:c.baseRaw,exactValue:rationalText(first),valueClass:"normal",misconception:"half-ulp-parity"});
+    return makeQuestion("absorption_threshold",level,format,{baseRaw:String(c.baseRaw),candidates:candidates.map(rationalText)},prompt("Choose the smallest positive increment that changes the stored value.",[formatSpec(format),"Base x = "+readableRational(c.base.value),"Candidates: "+candidates.map(rationalText).join(", ")],"Candidates are ordered by magnitude."),[choiceField("increment","First-changing increment",rationalText(first),candidates.map(rationalText))],candidates.map(function(increment){return rationalText(increment)+" → "+(roundToFormat(format,add(c.base.value,increment)).raw===c.baseRaw?"no change":"changes");}),["parity-"+(c.base.fraction%2n?"odd":"even")],{rawBits:c.baseRaw,exactValue:rationalText(first),valueClass:"normal",misconception:"half-ulp-parity"});
   };
   DERIVERS.absorption_threshold=function(p,format){var base=decode(format,p.baseRaw),first=p.candidates.map(parseRational).find(function(increment){return roundToFormat(format,add(base.value,increment)).raw!==base.raw;});return{increment:rationalText(first)};};
 
@@ -736,7 +746,7 @@
     var format=chooseFormat(level,rng),large=level===5&&format.id==="fp32"?rat(16777216):pow2(format.p),small=rat(1),negative=neg(large);
     var left=roundedBinary(format,roundedBinary(format,large,small,"+"),negative,"+"),right=roundedBinary(format,large,roundedBinary(format,small,negative,"+"),"+");
     if(cmp(left,right)===0)return GENERATORS.non_associativity(level,new Rng(rng.next()+1));
-    return makeQuestion("non_associativity",level,format,{large:rationalText(large)},prompt("Evaluate both explicitly parenthesized format operations.",[formatSpec(format),"A: ("+rationalText(large)+" + 1) + ("+rationalText(negative)+")","B: "+rationalText(large)+" + (1 + "+rationalText(negative)+")"],"Round after each shown addition; no reassociation."),[rationalField("a","Result A",left),rationalField("b","Result B",right)],["A rounds its first sum, then gives "+rationalText(left)+".","B rounds its inner sum, then gives "+rationalText(right)+".","The results differ because each intermediate is stored."],["landmark-"+format.id],{exactValue:rationalText(left)+","+rationalText(right),misconception:"real-arithmetic-associativity"});
+    return makeQuestion("non_associativity",level,format,{large:rationalText(large)},prompt("Evaluate both explicitly parenthesized format operations.",[formatSpec(format),"A: ("+readableRational(large)+" + 1) + ("+readableRational(negative)+")","B: "+readableRational(large)+" + (1 + "+readableRational(negative)+")"],"Round after each shown addition; no reassociation."),[rationalField("a","Result A",left),rationalField("b","Result B",right)],["A rounds its first sum, then gives "+readableRational(left)+".","B rounds its inner sum, then gives "+readableRational(right)+".","The results differ because each intermediate is stored."],["landmark-"+format.id],{exactValue:rationalText(left)+","+rationalText(right),misconception:"real-arithmetic-associativity"});
   };
   DERIVERS.non_associativity=function(p,format){var large=parseRational(p.large),negative=neg(large);return{a:rationalText(roundedBinary(format,roundedBinary(format,large,rat(1),"+"),negative,"+")),b:rationalText(roundedBinary(format,large,roundedBinary(format,rat(1),negative,"+"),"+"))};};
 
