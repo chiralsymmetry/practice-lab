@@ -134,7 +134,7 @@
   function flagFootprint(mnemonic) {
     if (["ADC", "SBC"].includes(mnemonic)) return "N,V,Z,C";
     if (["ASL", "LSR", "ROL", "ROR", "CMP", "CPX", "CPY"].includes(mnemonic)) return "N,Z,C";
-    if (["LDA", "LDX", "LDY", "TAX", "TAY", "TSX", "TXA", "TYA", "INC", "DEC", "INX", "INY", "DEX", "DEY", "PLA"].includes(mnemonic)) return "N,Z";
+    if (["LDA", "LDX", "LDY", "AND", "ORA", "EOR", "TAX", "TAY", "TSX", "TXA", "TYA", "INC", "DEC", "INX", "INY", "DEX", "DEY", "PLA"].includes(mnemonic)) return "N,Z";
     if (mnemonic === "BIT") return "N,V,Z";
     if (["PLP", "RTI"].includes(mnemonic)) return "N,V,D,I,Z,C";
     if (["CLC", "SEC"].includes(mnemonic)) return "C";

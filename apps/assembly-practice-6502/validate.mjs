@@ -19,6 +19,31 @@ if (sbcReference.A !== 0x49 || sbcReference.C !== 1) {
   throw new Error(`NMOS decimal SBC reference mismatch: ${JSON.stringify(sbcReference)}`);
 }
 
+// Independent NMOS flag-footprint table for every documented mnemonic (B is not a modeled latch).
+const footprintGroups = {
+  "N,V,Z,C": ["ADC", "SBC"],
+  "N,Z,C": ["ASL", "LSR", "ROL", "ROR", "CMP", "CPX", "CPY"],
+  "N,Z": ["LDA", "LDX", "LDY", "AND", "ORA", "EOR", "TAX", "TAY", "TSX", "TXA", "TYA", "INC", "DEC", "INX", "INY", "DEX", "DEY", "PLA"],
+  "N,V,Z": ["BIT"],
+  "N,V,D,I,Z,C": ["PLP", "RTI"],
+  "C": ["CLC", "SEC"],
+  "V": ["CLV"],
+  "D": ["CLD", "SED"],
+  "I": ["CLI", "SEI", "BRK"],
+  "none": ["STA", "STX", "STY", "TXS", "PHA", "PHP", "JMP", "JSR", "RTS", "NOP", "BCC", "BCS", "BEQ", "BMI", "BNE", "BPL", "BVC", "BVS"]
+};
+const referenceFootprint = new Map(Object.entries(footprintGroups).flatMap(([flags, ops]) => ops.map((op) => [op, flags])));
+const footprintSeen = new Set();
+for (let seed = 1; seed <= 4000; seed += 1) {
+  const q = app.generateQuestion("instruction_flag_footprint", 3 + (seed % 3), seed);
+  const mnemonic = (JSON.stringify(q).match(/"([A-Z]{3}) changes /) || [])[1];
+  if (!mnemonic || !referenceFootprint.has(mnemonic)) throw new Error(`Flag footprint: unknown mnemonic in seed ${seed}`);
+  const expected = referenceFootprint.get(mnemonic);
+  if (q.canonicalAnswer.flags !== expected) throw new Error(`Flag footprint for ${mnemonic}: app says ${q.canonicalAnswer.flags}, reference ${expected}`);
+  footprintSeen.add(mnemonic);
+}
+if (footprintSeen.size !== referenceFootprint.size) throw new Error(`Flag footprint coverage ${footprintSeen.size}/${referenceFootprint.size}`);
+
 let generated = 0;
 for (let familyIndex = 0; familyIndex < app.families.length; familyIndex += 1) {
   const family = app.families[familyIndex];

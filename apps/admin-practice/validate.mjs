@@ -100,4 +100,16 @@ if (failures.length) {
   console.error(failures.join("\n"));
   process.exit(1);
 }
+// Choice-position bias: the correct option must not sit in a predictable position.
+{
+  let choiceFields = 0, firstPosition = 0;
+  for (const family of en.families) for (let level = 1; level <= 5; level += 1) for (let sample = 1; sample <= 40; sample += 1) {
+    const question = en.generateQuestion(family.id, level, sample * 7919 + level);
+    for (const field of question.fields) if (field.kind === "choice" && field.options.length >= 3) {
+      choiceFields += 1;
+      if (field.options[0].value === field.answer) firstPosition += 1;
+    }
+  }
+  if (!choiceFields || firstPosition / choiceFields > 0.45) throw new Error(`Choice-position bias: correct option first in ${firstPosition}/${choiceFields}`);
+}
 console.log(`Administration extended validation passed: 354,096 independent oracle/property cases and ${generated.toLocaleString("en-US")} generated questions (10,000 per family and level), with bilingual seed parity.`);

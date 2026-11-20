@@ -19,4 +19,16 @@ for(let i=0;i<100_000;i+=1){const seq=i%3===0?[0x1F600]:i%3===1?[0x65,0x301]:[0x
 for(let i=0;i<50_000;i+=1){const byte=i%2?0xE9:0x80,enc=i%2?"ISO-8859-1":"Windows-1252",cp=o.legacyDecode(byte,enc),utf8=o.utf8Encode(cp),back=o.utf8Decode(utf8);if(!back.ok||back.scalar!==cp)fail("transcode",i);}
 for(let i=0;i<50_000;i+=1){const seq=i%2?[0x41,0x20AC,0x42]:[0x41,0x1F469,0x200D,0x1F4BB,0x42],gb=o.graphemeBoundaries(seq);for(const boundary of gb){const prefix=seq.slice(0,boundary);if(!o.utf8Decode(o.utf8Encode(prefix[0]??0x41)).ok)fail("pipeline scalar",i);}}
 let generated=0;for(let fi=0;fi<app.families.length;fi+=1){const f=app.families[fi];for(let level=1;level<=5;level+=1){const signatures=new Set();for(let sample=0;sample<200;sample+=1){const seed=((fi+1)*10_000_000+level*10_000+sample+1)>>>0,q=app.generateQuestion(f.id,level,seed,true);if(!app.checkQuestion(q.canonicalAnswer,q).correct)fail("canonical",`${f.id}:${level}:${seed}`);signatures.add(q.structuralSignature);generated+=1;}if(signatures.size<2)fail("variation",`${f.id}:${level}`);}}
+// Choice-position bias: the correct option must not sit in a predictable position.
+{
+  let choiceFields = 0, firstPosition = 0;
+  for (const family of app.families) for (let level = 1; level <= 5; level += 1) for (let sample = 1; sample <= 40; sample += 1) {
+    const question = app.generateQuestion(family.id, level, sample * 7919 + level);
+    for (const field of question.fields) if (field.kind === "choice" && field.options.length >= 3) {
+      choiceFields += 1;
+      if (field.options[0].value === field.answer) firstPosition += 1;
+    }
+  }
+  if (!choiceFields || firstPosition / choiceFields > 0.45) throw new Error(`Choice-position bias: correct option first in ${firstPosition}/${choiceFields}`);
+}
 console.log(`Unicode extended validation passed: ${scalarCases.toLocaleString("en-US")} exhaustive scalar codec round trips, 400,000 mixed property cases, and ${generated.toLocaleString("en-US")} generated questions`);

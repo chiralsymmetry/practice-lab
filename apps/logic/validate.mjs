@@ -13,6 +13,9 @@ const o = app.oracles;
 const c = app.constructors;
 function fail(label, details = []) { throw new Error(`${label}: ${details.join(", ")}`); }
 
+const naturalProse = { MP: "If P, then Q. P. Therefore Q.", MT: "If P, then Q. Not Q. Therefore not P.", AC: "If P, then Q. Q. Therefore P.", DA: "If P, then Q. Not P. Therefore not Q.", HS: "If P, then Q. If Q, then R. Therefore, if P, then R.", DS: "P or Q. Not P. Therefore Q." };
+const naturalProseValid = { MP: true, MT: true, AC: false, DA: false, HS: true, DS: true };
+
 function referenceEval(node, env) {
   switch (node.op) {
     case "atom": return Boolean(env[node.name]);
@@ -112,6 +115,23 @@ for (let familyIndex = 0; familyIndex < app.families.length; familyIndex += 1) {
         const counters = o.argumentCountermodels(question.metadata.premiseAsts, question.metadata.conclusionAst);
         for (const env of counters) {
           if (!question.metadata.premiseAsts.every((premise) => referenceEval(premise, env)) || referenceEval(question.metadata.conclusionAst, env)) fail("generated countermodel", [family.id, level, seed]);
+        }
+      }
+      if (question.metadata.premiseAsts && question.metadata.conclusionAst) {
+        // Independent validity by exhaustive enumeration over the four atoms.
+        const vars = ["P", "Q", "R", "S"];
+        let referenceValid = true;
+        for (let mask = 0; mask < 16 && referenceValid; mask += 1) {
+          const env = Object.fromEntries(vars.map((name, index) => [name, Boolean(mask & (1 << index))]));
+          if (question.metadata.premiseAsts.every((premise) => referenceEval(premise, env)) && !referenceEval(question.metadata.conclusionAst, env)) referenceValid = false;
+        }
+        if (family.id === "infer_rule_conclusion" && !referenceValid) fail("'what follows' offered an invalid conclusion", [level, seed, question.metadata.ruleId]);
+        if (family.id === "argument_validity" && question.canonicalAnswer.answer !== (referenceValid ? "yes" : "no")) fail("argument validity", [level, seed]);
+        if (family.id === "symbolized_natural_argument") {
+          if (question.canonicalAnswer.answer !== (referenceValid ? "valid" : "invalid")) fail("natural argument validity", [level, seed]);
+          const prose = JSON.stringify(question.prompt);
+          const proseForm = Object.entries(naturalProse).find(([, sentence]) => prose.includes(sentence));
+          if (!proseForm || proseForm[1] && naturalProseValid[proseForm[0]] !== referenceValid) fail("natural prose disagrees with formulas", [level, seed, proseForm && proseForm[0]]);
         }
       }
       if (question.metadata.proofState && question.metadata.proofState.lines && !o.validateProof(question.metadata.proofState.lines)) fail("scope-aware proof validation", [family.id, level, seed]);

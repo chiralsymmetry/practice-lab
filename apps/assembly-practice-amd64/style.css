@@ -73,3 +73,8 @@
 @media (max-width: 540px) {
   .prompt-row { font-size: 0.84rem; }
 }
+
+/* Four character keys plus a two-column function key per row (see the keypad rows in main.js). */
+.keypad {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+}

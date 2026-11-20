@@ -50,4 +50,4 @@ input:focus, select:focus, textarea:focus { border-color: var(--blue); box-shado
 .learn-card code { white-space: pre-wrap; }
 .learn-card.spotlight { border-color: var(--teal); box-shadow: 0 0 0 3px var(--teal-soft); }
 @media(max-width:860px){.topbar,.practice-layout,.settings-grid,.split-grid{grid-template-columns:1fr}.summary-strip{min-width:0}.stats-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
-@media(max-width:540px){.app{width:min(100% - 16px,1220px);padding-top:8px}.nav{grid-template-columns:repeat(5,minmax(56px,1fr));overflow-x:auto}.mode-row button{min-width:0;flex:1 1 42%}.practice-main{padding:13px}.keypad{gap:5px;padding:8px;grid-template-columns:repeat(4,minmax(0,1fr)) minmax(60px,.95fr)}.keypad button{min-height:42px;padding:0 3px;font-size:.87rem}}
+@media(max-width:540px){.app{width:min(100% - 16px,1220px);padding-top:8px}.mode-row button{min-width:0;flex:1 1 42%}.practice-main{padding:13px}.keypad{gap:5px;padding:8px;grid-template-columns:repeat(4,minmax(0,1fr)) minmax(60px,.95fr)}.keypad button{min-height:42px;padding:0 3px;font-size:.87rem}}
