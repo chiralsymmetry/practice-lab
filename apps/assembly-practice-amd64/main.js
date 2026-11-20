@@ -569,7 +569,7 @@
   function renderPrompt(promptData) {
     var container = document.getElementById("questionPrompt"); container.replaceChildren(); var title = document.createElement("div"); title.className = "prompt-title"; title.textContent = promptData.title; container.appendChild(title);
     promptData.rows.forEach(function (row) { var element = document.createElement("div"); element.className = "prompt-row"; element.textContent = row; container.appendChild(element); });
-    var note = document.createElement("div"); note.className = "prompt-note"; note.textContent = promptData.note + " " + t("generated.modelNote", "All state is initialized synthetic data."); container.appendChild(note);
+    var note = document.createElement("div"); note.className = "prompt-note"; note.textContent = promptData.note; container.appendChild(note);
   }
   function textInputs() { return Array.from(document.querySelectorAll("#answerControls input[data-answer-field]")); }
   function customInput(input) { return input && ["hex", "integer", "bytes"].includes(input.dataset.inputKind); }

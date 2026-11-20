@@ -4,7 +4,7 @@ export default {
     localeCode: "en",
     appTitle: "SQL & Relational Database Reasoning",
     brandSubtitle: "Practice exact mental execution of queries, NULL logic, joins, groups, transactions, normalization, and indexes on small synthetic tables.",
-    educationalNote: "Pinned model: PracticeSQL-1 · synthetic local data only · no database connection, backend, or execution against real systems.",
+    educationalNote: "Pinned model: PracticeSQL-1 · synthetic local data only · no database connection, backend, or execution against real systems · NULL is a distinct marker; results are unordered bags unless the query says otherwise.",
     summary: { aria: "Progress summary", mastery: "Avg mastery", accuracy: "Accuracy", attempts: "Attempts" },
     nav: { aria: "Main", practice: "Practice", matrix: "Matrix", stats: "Stats", settings: "Settings", learn: "Learn" },
     practice: { modeAria:"Practice mode", adaptive:"Adaptive", manual:"Manual", pause:"Pause", paused:"Paused", learnThis:"Learn this", category:"Category", family:"Question family", level:"Level", mastery:"0% mastery", masterySuffix:"mastery", check:"Check", next:"Next", skip:"Skip", choose:"Choose…", keypadAria:"Structured answer keypad", delete:"Del", clear:"Clear", nextField:"Move to the next answer field", nextFieldShort:"Field →", pauseText:"The timer is stopped for this question.", resume:"Resume", controlsAria:"Practice controls", masteryMetric:"Mastery", accuracyMetric:"Accuracy", streak:"Streak", avgTime:"Avg time" },

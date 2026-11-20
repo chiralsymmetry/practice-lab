@@ -4,7 +4,7 @@ export default {
     localeCode:"sv",
     appTitle:"SQL och relationsdatabaser",
     brandSubtitle:"Öva exakt mental exekvering av frågor, NULL-logik, joinar, grupper, transaktioner, normalisering och index i små syntetiska tabeller.",
-    educationalNote:"Fast modell: PracticeSQL-1 · endast syntetiska lokala data · ingen databasanslutning, serverdel eller körning mot verkliga system.",
+    educationalNote:"Fast modell: PracticeSQL-1 · endast syntetiska lokala data · ingen databasanslutning, serverdel eller körning mot verkliga system · NULL är en särskild markör; resultat är oordnade påsar om frågan inte säger annat.",
     summary:{aria:"Sammanfattning av framsteg",mastery:"Snittnivå",accuracy:"Träffsäkerhet",attempts:"Försök"},
     nav:{aria:"Huvudmeny",practice:"Öva",matrix:"Matris",stats:"Statistik",settings:"Inställningar",learn:"Lär dig"},
     practice:{modeAria:"Övningsläge",adaptive:"Adaptivt",manual:"Manuellt",pause:"Pausa",paused:"Pausad",learnThis:"Lär dig detta",category:"Kategori",family:"Frågefamilj",level:"Nivå",mastery:"0 % behärskning",masterySuffix:"behärskning",check:"Kontrollera",next:"Nästa",skip:"Hoppa över",choose:"Välj…",keypadAria:"Strukturerad svarsknappsats",delete:"Radera",clear:"Rensa",nextField:"Flytta till nästa svarsfält",nextFieldShort:"Fält →",pauseText:"Tidtagningen är stoppad för den här frågan.",resume:"Fortsätt",controlsAria:"Övningskontroller",masteryMetric:"Behärskning",accuracyMetric:"Träffsäkerhet",streak:"Svit",avgTime:"Snittid"},

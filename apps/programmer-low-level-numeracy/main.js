@@ -230,6 +230,15 @@
         return rng.choice(sets[level]);
       }
 
+      // Families that read or write decimal values stop at 32 bits: past that, 20-digit decimal
+      // arithmetic is tedium rather than reasoning. Pattern-only families keep 48/64-bit widths.
+      function decimalWidthForLevel(level, rng, kind) {
+        var sets = kind === "memory"
+          ? { 1: [16], 2: [16], 3: [16, 24], 4: [24, 32], 5: [32] }
+          : { 1: [4], 2: [8], 3: [12, 16], 4: [16, 24], 5: [24, 32] };
+        return rng.choice(sets[level]);
+      }
+
       function compactWidth(level, rng) {
         return rng.choice(level === 1 ? [4] : level === 2 ? [4, 8] : level === 3 ? [8, 12] : level === 4 ? [12, 16] : [16, 24, 32]);
       }
@@ -569,7 +578,7 @@
       };
 
       FAMILY_GENERATORS.unsigned_base_conversion = function (level, rng) {
-        var width = widthForLevel(level, rng);
+        var width = decimalWidthForLevel(level, rng);
         var value = randomNontrivial(rng, width);
         var variants = level === 1 ? ["decimal-to-binary", "binary-to-decimal"] : ["decimal-to-binary", "binary-to-decimal", "decimal-to-hex", "hex-to-decimal"];
         var variant = rng.choice(variants);
@@ -580,14 +589,14 @@
       };
 
       FAMILY_GENERATORS.interpret_pattern = function (level, rng) {
-        var width = widthForLevel(level, rng);
+        var width = decimalWidthForLevel(level, rng);
         var raw = randomNontrivial(rng, width);
         if (level >= 2 && rng.chance(0.65)) raw |= 1n << BigInt(width - 1);
         return makeQuestion("interpret_pattern", level, width, "binary", { raw: raw.toString() }, prompt("Interpret this " + width + "-bit pattern both ways.", [bin(raw, width)], "Give unsigned and two's-complement decimal values."), [field("unsigned", "Unsigned", "integer", raw), field("signed", "Signed", "integer", toSigned(raw, width))], "Unsigned is " + raw + ". The top bit is " + ((raw >> BigInt(width - 1)) & 1n) + ", so signed is " + toSigned(raw, width) + ".", ["top-" + Number(raw >> BigInt(width - 1))], ["dual-interpretation"], ["sign-magnitude"]);
       };
 
       FAMILY_GENERATORS.encode_fixed_width = function (level, rng) {
-        var width = widthForLevel(level, rng);
+        var width = decimalWidthForLevel(level, rng);
         var signed = level >= 2 && rng.chance(0.6);
         var raw = randomNontrivial(rng, width);
         var value = signed ? toSigned(raw, width) : raw;
@@ -596,7 +605,7 @@
       };
 
       FAMILY_GENERATORS.reinterpret_decimal_view = function (level, rng) {
-        var width = widthForLevel(level, rng);
+        var width = decimalWidthForLevel(level, rng);
         var raw = rng.bigint(width) | (1n << BigInt(width - 1));
         var direction = rng.chance(0.5) ? "unsigned-to-signed" : "signed-to-unsigned";
         var source = direction === "unsigned-to-signed" ? raw : toSigned(raw, width);
@@ -605,7 +614,7 @@
       };
 
       FAMILY_GENERATORS.range_boundary = function (level, rng) {
-        var width = widthForLevel(level, rng);
+        var width = decimalWidthForLevel(level, rng);
         var type = rng.choice(level === 1 ? ["unsigned-max", "signed-min", "signed-max"] : ["unsigned-max", "signed-min", "signed-max", "pattern-count"]);
         var value = type === "unsigned-max" ? widthMask(width) : type === "signed-min" ? signedMin(width) : type === "signed-max" ? signedMax(width) : 1n << BigInt(width);
         var label = type === "pattern-count" ? "number of distinct patterns" : type.replace("-", " ");
@@ -613,7 +622,7 @@
       };
 
       FAMILY_GENERATORS.representability = function (level, rng) {
-        var width = widthForLevel(level, rng);
+        var width = decimalWidthForLevel(level, rng);
         var signed = rng.chance(0.55);
         var low = signed ? signedMin(width) : 0n;
         var high = signed ? signedMax(width) : widthMask(width);
@@ -1441,7 +1450,7 @@
       };
 
       FAMILY_GENERATORS.signed_load_interpretation = function (level, rng) {
-        var width = widthForLevel(level, rng, "memory");
+        var width = decimalWidthForLevel(level, rng, "memory");
         var raw = memoryPattern(width, rng, rng.chance(0.5));
         var order = rng.chance(0.5) ? "big" : "little";
         var bytes = byteArray(raw, width);
