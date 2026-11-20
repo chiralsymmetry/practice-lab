@@ -18,6 +18,28 @@ for(let i=0;i<100_000;i+=1){const [input,form,expected]=normFixtures[i%normFixtu
 for(let i=0;i<100_000;i+=1){const seq=i%3===0?[0x1F600]:i%3===1?[0x65,0x301]:[0x1F469,0x200D,0x1F4BB],units=o.jsUnits(seq);if(units.length!==seq.reduce((sum,cp)=>sum+(cp>0xFFFF?2:1),0))fail("JS units",i);const gb=o.graphemeBoundaries(seq);if(gb[0]!==0||gb.at(-1)!==seq.length)fail("grapheme endpoints",i);}
 for(let i=0;i<50_000;i+=1){const byte=i%2?0xE9:0x80,enc=i%2?"ISO-8859-1":"Windows-1252",cp=o.legacyDecode(byte,enc),utf8=o.utf8Encode(cp),back=o.utf8Decode(utf8);if(!back.ok||back.scalar!==cp)fail("transcode",i);}
 for(let i=0;i<50_000;i+=1){const seq=i%2?[0x41,0x20AC,0x42]:[0x41,0x1F469,0x200D,0x1F4BB,0x42],gb=o.graphemeBoundaries(seq);for(const boundary of gb){const prefix=seq.slice(0,boundary);if(!o.utf8Decode(o.utf8Encode(prefix[0]??0x41)).ok)fail("pipeline scalar",i);}}
+// Pinned character data and algorithms versus the host's ICU (independent implementation).
+{
+  const P=o.pinned,str=(a)=>String.fromCodePoint(...a),cps=(x)=>[...x].map((c)=>c.codePointAt(0)),FORMS=["NFC","NFD","NFKC","NFKD"];
+  const checkNorm=(seq,label)=>{for(const f of FORMS){const want=cps(str(seq).normalize(f));if(!eq(o.normalize(seq,f),want))fail(`${f} ${label}`,seq.map((c)=>c.toString(16)).join(" "));}};
+  for(const cp of [...P.canon,...P.compat,...P.latin.map((r)=>r[0])])checkNorm([cp],"table");
+  for(let cp=0xAC00;cp<0xAC00+11172;cp+=1)checkNorm([cp],"hangul");
+  for(const cp of P.ccc){const ccc=new Map([[0x300,230],[0x301,230],[0x302,230],[0x303,230],[0x308,230],[0x30A,230],[0x327,202],[0x323,220]]);if(!ccc.has(cp))fail("unexpected CCC entry",cp.toString(16));}
+  let seed=12345;const rnd=(n)=>{seed=(seed*1103515245+12345)>>>0;return seed%n;};
+  const rep=[0x41,0x43,0x45,0x61,0x63,0x65,0x6F,0x69,0x55,...P.ccc,...P.ccc,...P.latin.map((r)=>r[0]),...P.compat,0x212B,0x1EC7,0x1100,0x1161,0x11A8,0xAC00,0xAC01];
+  for(let i=0;i<50_000;i+=1){const n=1+rnd(6),seq=[];for(let k=0;k<n;k+=1)seq.push(rep[rnd(rep.length)]);checkNorm(seq,"random");}
+  const graph=new Intl.Segmenter("en",{granularity:"grapheme"}),gref=(seq)=>{const out=[0];let n=0;for(const s of graph.segment(str(seq))){n+=cps(s.segment).length;out.push(n);}return out;};
+  const parts=[[0x41],[0x62],[0x0D],[0x0A],[0x0D,0x0A],[0x301],[0x323],[0x65,0x302],[0x200D],[0xFE0F],[0x1F3FD],[0x1F1F8],[0x1F1EA],[0x1F1EF],[0x1100],[0x1161],[0x11A8],[0xAC00],[0xAC01],...Object.values(P.emoji)];
+  for(let i=0;i<50_000;i+=1){let seq=[];const n=1+rnd(5);for(let k=0;k<n;k+=1)seq=seq.concat(parts[rnd(parts.length)]);if(!eq(o.graphemeBoundaries(seq),gref(seq)))fail("grapheme boundaries",seq.map((c)=>c.toString(16)).join(" "));}
+  const caseRep=[0x41,0x49,0x69,0x5A,0x61,0x7A,0xC5,0xDF,0xE9,0xF6,0xFF,0x178,0x130,0x391,0x3A3,0x3C2,0x3C3,0x3B1,0x20,0x31];
+  for(let i=0;i<50_000;i+=1){const n=1+rnd(6),seq=[];for(let k=0;k<n;k+=1)seq.push(caseRep[rnd(caseRep.length)]);const s=str(seq);
+    if(!eq(o.toUpper(seq,""),cps(s.toUpperCase())))fail("uppercase",s);if(!eq(o.toLower(seq,""),cps(s.toLowerCase())))fail("lowercase",s);
+    if(!eq(o.toUpper(seq,"tr"),cps(s.toLocaleUpperCase("tr"))))fail("tr uppercase",s);if(!eq(o.toLower(seq,"tr"),cps(s.toLocaleLowerCase("tr"))))fail("tr lowercase",s);
+    const fold=seq.flatMap((c)=>cps(String.fromCodePoint(c).toUpperCase().toLowerCase()));if(c0(seq)&&!eq(o.caseFold(seq),fold))fail("case fold",s);}
+  function c0(seq){return !seq.includes(0x130);}
+  const word=new Intl.Segmenter("en",{granularity:"word"}),wordRep="ab Z09 ' . , ; - !".split("");
+  for(let i=0;i<50_000;i+=1){const n=1+rnd(9);let s="";for(let k=0;k<n;k+=1)s+=wordRep[rnd(wordRep.length)];const want=[...word.segment(s)].filter((x)=>x.isWordLike).map((x)=>x.segment);if(!eq(o.wordSpans(s),want))fail("word spans",JSON.stringify(s));}
+}
 let generated=0;for(let fi=0;fi<app.families.length;fi+=1){const f=app.families[fi];for(let level=1;level<=5;level+=1){const signatures=new Set();for(let sample=0;sample<200;sample+=1){const seed=((fi+1)*10_000_000+level*10_000+sample+1)>>>0,q=app.generateQuestion(f.id,level,seed,true);if(!app.checkQuestion(q.canonicalAnswer,q).correct)fail("canonical",`${f.id}:${level}:${seed}`);signatures.add(q.structuralSignature);generated+=1;}if(signatures.size<2)fail("variation",`${f.id}:${level}`);}}
 // Choice-position bias: the correct option must not sit in a predictable position.
 {
@@ -31,4 +53,4 @@ let generated=0;for(let fi=0;fi<app.families.length;fi+=1){const f=app.families[
   }
   if (!choiceFields || firstPosition / choiceFields > 0.45) throw new Error(`Choice-position bias: correct option first in ${firstPosition}/${choiceFields}`);
 }
-console.log(`Unicode extended validation passed: ${scalarCases.toLocaleString("en-US")} exhaustive scalar codec round trips, 400,000 mixed property cases, and ${generated.toLocaleString("en-US")} generated questions`);
+console.log(`Unicode extended validation passed: ${scalarCases.toLocaleString("en-US")} exhaustive scalar codec round trips, 400,000 mixed property cases, 200,000 ICU cross-checks of pinned normalization, segmentation, and casing, and ${generated.toLocaleString("en-US")} generated questions`);
