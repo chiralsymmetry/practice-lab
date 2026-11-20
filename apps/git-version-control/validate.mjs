@@ -94,6 +94,15 @@ for (let i = 0; i < 50_000; i += 1) {
 
 for(let length=3;length<=14;length+=1){const path=Array.from({length},(_,i)=>String.fromCharCode(65+i));for(let good=0;good<length-1;good+=1)for(let bad=good+1;bad<length;bad+=1)for(const tie of ["lower","upper"]){const candidates=[];for(let i=good+1;i<bad;i+=1)candidates.push(i);const expected=!candidates.length?path[bad]:path[candidates[tie==="upper"?Math.floor(candidates.length/2):Math.floor((candidates.length-1)/2)]];if(o.bisectMidpoint(path,good,bad,tie)!==expected)fail("bisect",`${length}:${good}:${bad}:${tie}`);}}
 
+// Independent fixtures for anchored, directory, and negated ignore rules.
+const ignoreFixtures=[
+  [["/build"],"build",true],[["/build"],"src/build",false],[["/build"],"build/out.o",true],
+  [["tmp/"],"tmp/a.txt",true],[["tmp/"],"src/tmp/b.txt",true],[["tmp/"],"tmp",false],[["tmp/"],"tmp.txt",false],
+  [["*.log"],"logs/x.log",true],[["*.log"],"log.txt",false],[["src/*.tmp"],"src/a.tmp",true],[["src/*.tmp"],"src/x/a.tmp",false],
+  [["*.tmp","!src/*.tmp"],"src/a.tmp",false],[["*.tmp","!src/*.tmp"],"a.tmp",true],[["*.log","!keep.log"],"keep.log",false]
+];
+for(const [rules,path,expected] of ignoreFixtures) if(o.ignoreMatch(path,rules)!==expected) fail("ignore fixture",`${rules.join(" ")} ${path}`);
+
 let generated=0;
 for(let familyIndex=0;familyIndex<app.families.length;familyIndex+=1){const family=app.families[familyIndex];for(let level=1;level<=5;level+=1){const signatures=new Set();for(let sample=0;sample<200;sample+=1){const seed=((familyIndex+1)*10_000_000+level*10_000+sample+1)>>>0,item=app.generateQuestion(family.id,level,seed,true);if(!app.checkQuestion(item.canonicalAnswer,item).correct)fail("canonical",`${family.id}:${level}:${seed}`);signatures.add(item.structuralSignature);generated+=1;}if(signatures.size<2)fail("variation",`${family.id}:${level}`);}}
 
