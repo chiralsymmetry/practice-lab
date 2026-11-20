@@ -54,6 +54,7 @@ rt { font-size: 0.55em; color: var(--muted); }
 .transcript-fallback[open] { border-left: 0.3rem solid var(--warning, #b27a00); padding-left: 0.7rem; }
 .record-status { color: var(--muted); }
 .license-note { font-size: 0.85rem; color: var(--muted); }
+.format-hint { font-size: 0.9rem; color: var(--muted); text-align: center; }
 
 .answer-field.active-target {
   outline: 3px solid color-mix(in srgb, var(--accent) 45%, transparent);
