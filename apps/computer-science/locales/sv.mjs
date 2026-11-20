@@ -60,6 +60,10 @@ export default {
       finite_probability:"Begränsa till det angivna likformiga utfallsrummet, räkna gynnsamma utfall och förkorta bråket."
     },
     generatedReplacements:[
+      [", then ",", sedan "],["delete-min","ta bort minsta"],["They differ at ","De skiljer sig vid "],
+      ["The contrapositive swaps and negates both sides; the converse and inverse are not equivalent.","Kontrapositionen byter plats på och negerar båda leden; omvändningen och inversen är inte ekvivalenta."],
+      ["A biconditional is two implications, one in each direction, joined by ∧.","En ekvivalens är två implikationer, en i varje riktning, förenade med ∧."],
+      ["∨ distributes over ∧: A ∨ (B ∧ C) ≡ (A ∨ B) ∧ (A ∨ C).","∨ distribuerar över ∧: A ∨ (B ∧ C) ≡ (A ∨ B) ∧ (A ∨ C)."],
       ["All models, orders, cost regimes, and tie rules needed for the answer are explicit.","Alla modeller, ordningar, kostnadsfall och skiljeregler som behövs för svaret anges uttryckligen."],
       ["Which displayed term dominates as n→∞?","Vilket visat asymptotiskt led dominerar när n→∞?"],["Give the simplest standard form.","Ange den enklaste standardformen."],
       ["Compare the functions as n→∞.","Jämför funktionerna när n→∞."],["Order these by asymptotic growth, slowest first.","Ordna dessa efter asymptotisk tillväxt, långsammast först."],

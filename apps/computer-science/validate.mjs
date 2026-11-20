@@ -35,7 +35,7 @@ const masterClass = (a, b, d, logk) => {
   if (d < p) return p === 1 ? "n" : "n2";
   if (d > p) return d === 1 ? "n" : d === 2 ? "n2" : "n3";
   if (p === 0) return logk === 0 ? "log" : "log2";
-  return p === 1 ? "nlog" : "n2log";
+  return p === 1 ? (logk === 0 ? "nlog" : "nlog2") : "n2log";
 };
 for (let seed = 1; seed <= 10_000; seed += 1) {
   const question = app.generateQuestion("master_recurrence_class", 5, seed);
