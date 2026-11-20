@@ -360,7 +360,7 @@ git diff --check
 tools/test.sh
 ```
 
-`tools/test.sh` rebuilds first, runs all localized standalone self-tests, and runs registered extended validators. If a full validator is exceptionally expensive and the user asked for a narrow documentation-only change, state what was and was not run; do not imply full validation.
+`tools/test.sh` rebuilds first, runs all localized standalone self-tests, runs the headless-browser smoke test (`tools/smoke.mjs`), and runs registered extended validators. The smoke test loads every built page in both locales, renders and submits every family, and fails on page errors, missing answer controls or feedback, and overflowing or overlapping controls at phone width; it needs Chromium or Chrome (see `README.md`). If a full validator is exceptionally expensive and the user asked for a narrow documentation-only change, state what was and was not run; do not imply full validation.
 
 ## 14. New-app acceptance checklist
 

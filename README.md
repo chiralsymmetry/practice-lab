@@ -103,7 +103,9 @@ This inlines the shared shell/runtime, shared CSS, and app-specific CSS and Java
 tools/test.sh
 ```
 
-This rebuilds the apps, checks that every inline script parses, runs the browser-console self-tests through Bun, validates C++ fixtures with GCC and Clang, checks AMD64 Intel/AT&T fixtures with GNU binutils, and runs every registered extended domain validator, including the large administration, HTTP/web, finite-logic, practical-cryptography, and Japanese-language generator/oracle sweeps.
+This rebuilds the apps, checks that every inline script parses, runs the browser-console self-tests through Bun, runs a headless-browser smoke test (`tools/smoke.mjs`: every built page in English and Swedish, every family's question and feedback, no page errors, and no overflowing or overlapping controls at phone width), validates C++ fixtures with GCC and Clang, checks AMD64 Intel/AT&T fixtures with GNU binutils, and runs every registered extended domain validator, including the large administration, HTTP/web, finite-logic, practical-cryptography, and Japanese-language generator/oracle sweeps.
+
+The smoke test needs Chromium or Google Chrome on `PATH` (or `PRACTICE_LAB_BROWSER=/path/to/browser`); set `PRACTICE_LAB_SKIP_BROWSER=1` to skip it explicitly. `bun tools/smoke.mjs logic` limits it to matching pages.
 
 ## GitHub Pages and Releases
 
