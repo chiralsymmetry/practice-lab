@@ -145,6 +145,13 @@ const apps = [
     locales: ["en", "sv"],
   },
   {
+    id: "digital-logic",
+    categoryId: "computing-operations",
+    sourceDir: "apps/digital-logic",
+    outputBase: "digital-logic",
+    locales: ["en", "sv"],
+  },
+  {
     id: "japanese-numbers-dates",
     categoryId: "languages-humanities-other-practice",
     sourceDir: "apps/japanese-numbers-dates",

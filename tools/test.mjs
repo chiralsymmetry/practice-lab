@@ -188,6 +188,8 @@ const outputs = [
   "dist/admin-practice.sv.html",
   "dist/networking-protocols.html",
   "dist/networking-protocols.sv.html",
+  "dist/digital-logic.html",
+  "dist/digital-logic.sv.html",
   "dist/http-web-practice.html",
   "dist/http-web-practice.sv.html",
   "dist/japanese-numbers-dates.html",
