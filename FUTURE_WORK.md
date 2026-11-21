@@ -38,6 +38,7 @@ source of truth for family-level scope and validation requirements.
 | HTTP and Web Protocol Practice | **Implemented** | [spec](specs/http-web-practice.md) | [app](apps/http-web-practice/) |
 | Networking and Protocols | **Implemented** | [spec](specs/networking-protocols.md) | [app](apps/networking-protocols/) |
 | Digital Logic and Computer Architecture | **Implemented** | [spec](specs/digital-logic-computer-architecture.md) | [app](apps/digital-logic/) |
+| Linear Algebra | **Partially implemented** (3 of 8 categories) | [spec](specs/linear-algebra.md) | [app](apps/linear-algebra/) |
 | Japanese Numbers, Dates, Time, and Money | **Implemented** | [spec](specs/japanese-numbers-dates.md) | [app](apps/japanese-numbers-dates/) |
 | Japanese Language | **Implemented** | [spec](specs/japanese-language.md) | [app](apps/japanese-language/) |
 | Electric Circuits | **Implemented** | [spec](specs/electric-circuits.md) | [app](apps/electric-circuits/) |
@@ -72,7 +73,7 @@ specified** or **Deliberately excluded** below.
 
 ## Specified but not implemented
 
-The following 44 topic specs have no corresponding directory under `apps/`.
+The following 44 topic specs are not fully implemented. All except Linear Algebra, which is partially implemented, have no corresponding directory under `apps/`.
 They are the implementation backlog; they do not need another proposal document
 before implementation.
 
@@ -89,7 +90,7 @@ before implementation.
 - [Data Literacy and Chart Reading](specs/data-literacy-chart-reading.md)
 - [Differential Equations](specs/differential-equations.md)
 - [Geometry and Trigonometry](specs/geometry-trigonometry.md)
-- [Linear Algebra](specs/linear-algebra.md)
+- [Linear Algebra](specs/linear-algebra.md): **partially implemented**. Implemented: vectors and geometry; linear systems and row reduction; matrices and linear transformations. Remaining: determinants and invertibility; vector spaces, span, basis, and dimension; linear maps and change of basis; eigenvalues, eigenvectors, and dynamics; orthogonality, least squares, and spectral structure.
 - [Probability and Statistics](specs/probability-statistics.md)
 - [Spreadsheet Practice](specs/spreadsheet-practice.md)
 
@@ -150,6 +151,54 @@ define a family or UI requirement:
 - **Generic ratio and recipe scaling** from the original applied-math proposal.
 - **Low-level keypad refinement:** field-aware keypad presets are implemented;
   a user setting for keypad hint dimming remains unspecified.
+- **Cyber Security** as a new topic (needs its own spec). Candidate scope,
+  exercised on synthetic toy machines and fictional systems only:
+  - memory-safety reasoning: trace a stack frame in a toy ISA, predict what an
+    out-of-bounds write overwrites (locals, saved frame pointer, return
+    address), and spot off-by-one and integer-overflow length bugs;
+  - mitigations: stack canaries, non-executable memory (NX/DEP), ASLR, and
+    control-flow integrity (shadow stacks, indirect-branch targets), and which
+    attack each one stops;
+  - return-oriented programming as a concept: why NX alone does not prevent
+    code reuse, how short "gadgets" ending in `ret` chain through
+    attacker-controlled stack data in the toy machine, and how shadow stacks
+    and CFI detect it;
+  - web and application security: injection, XSS, CSRF, same-origin and CORS
+    reasoning, session handling, and authentication versus authorization;
+  - defensive analysis: threat modeling, least privilege, and reading
+    synthetic logs for indicators.
+
+  Ownership notes: the [Admin Practice](specs/admin-practice.md) spec excludes
+  exploit development and offensive scanning, and the
+  [AMD64 spec](specs/assembly-practice-amd64.md) excludes CET and speculative
+  execution; this topic would own those concepts in a bounded, defensive,
+  simulated form. Cryptographic primitives stay with
+  [Practical Cryptography](specs/practical-cryptography.md). The spec should
+  exclude working payloads for real software, real targets or CVEs, evasion,
+  and malware.
+- **Debugging** as a new topic (needs its own spec). Candidate scope, on short
+  generated programs and synthetic tool output rather than live processes:
+  - localization: given a failing test or wrong output, pick the first line
+    where the program state diverges from what was intended; bisect a commit
+    or input range to the first bad step in the fewest probes;
+  - reading evidence: map a stack trace, sanitizer report (out-of-bounds,
+    use-after-free, data race), assertion message, or core-dump summary to
+    the faulty line and the bug class;
+  - debugger reasoning: predict variable values at a breakpoint, choose a
+    watchpoint or conditional breakpoint that catches a corruption, and step
+    over versus step into;
+  - bug patterns: off-by-one, uninitialized state, aliasing, integer overflow,
+    stale caches, ordering and race bugs, and why a bug disappears under a
+    debugger or in a debug build (heisenbugs);
+  - hypothesis discipline: which experiment distinguishes two candidate
+    causes, and minimizing a failing input.
+
+  Ownership notes: [C++ Mental Execution](specs/cpp-mental-execution.md) owns
+  predicting correct program behavior, and the
+  [Reverse Engineering](specs/reverse-engineering-code-recovery.md) spec
+  excludes debugging live processes; this topic would own finding *why*
+  behavior is wrong. Game-specific debugging stays in
+  [Game Programming Fundamentals](specs/game-programming-fundamentals.md).
 
 Before implementation, each exercise-family item should be added to the owning
 topic spec with generation, checking, progression, and validation rules. The UI

@@ -152,6 +152,13 @@ const apps = [
     locales: ["en", "sv"],
   },
   {
+    id: "linear-algebra",
+    categoryId: "mathematics-data",
+    sourceDir: "apps/linear-algebra",
+    outputBase: "linear-algebra",
+    locales: ["en", "sv"],
+  },
+  {
     id: "japanese-numbers-dates",
     categoryId: "languages-humanities-other-practice",
     sourceDir: "apps/japanese-numbers-dates",

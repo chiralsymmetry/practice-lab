@@ -20,6 +20,7 @@ Practice Lab is a collection of small offline practice apps for programmer-adjac
 - **HTTP & Web Protocol Practice**: reason through synthetic URLs, requests, responses, methods, statuses, media negotiation, redirects, caches, validators, cookies, sessions, origins, CORS, proxies, CDNs, and exchange diagnosis under a pinned offline model.
 - **Networking & Protocols**: read packet bytes, lengths, and byte order; follow encapsulation and demultiplexing; trace Ethernet switching and VLANs, ARP and IPv6 Neighbor Discovery, IPv4/IPv6 forwarding, fragmentation, ICMP, path MTU, and tunnels; mentally execute UDP and TCP exchanges; resolve DNS and DHCP exchanges; frame HTTP/1.1, demultiplex HTTP/2, and order TLS 1.3 and QUIC behavior; apply NAT, port forwarding, stateful firewalls, and ordered rules; and diagnose synthetic captures and counters, all under a pinned offline model.
 - **Digital Logic & Computer Architecture**: evaluate gates, buses, and networks; translate between truth tables, expressions, canonical forms, and minimal Karnaugh-map covers; trace multiplexers, decoders, adders, ALUs, and shifters; trace latches, flip-flops, registers, counters, and finite-state machines and check timing; follow the PL16 teaching processor through decoding, control, single-cycle and multicycle datapaths, and a five-stage pipeline with forwarding, stalls, and branch flushes; and reason about caches, DRAM, virtual memory and TLBs, CPU time, Amdahl's law, I/O methods, bus arbitration, and cache coherence.
+- **Linear Algebra** (first categories): combine, project, and measure vectors exactly (fractions and square roots), translate and row-reduce systems, parameterize solution sets, and multiply, invert, factor, and interpret matrices as plane transformations; answers that are not unique, such as direction bases, are accepted in any valid form.
 - **Japanese Numbers & Dates**: practice Japanese readings for numbers, counters, months, dates, weekdays, and relative days.
 - **Japanese Language**: practice kana and mora timing, contextual vocabulary and kanji, particles, inflection, connected grammar, reading, and human-recorded offline listening and shadowing.
 - **Electric Circuits**: generated, model-explicit drills spanning DC foundations, resistor networks, transients, AC and filters, semiconductor switches, op-amps, digital interfaces, measurement, tolerance, and ratings.
@@ -62,6 +63,8 @@ The built apps are standalone HTML files:
 - `dist/networking-protocols.{{lang}}.html`
 - `dist/digital-logic.html`
 - `dist/digital-logic.{{lang}}.html`
+- `dist/linear-algebra.html`
+- `dist/linear-algebra.{{lang}}.html`
 - `dist/japanese-numbers-dates.html`
 - `dist/japanese-numbers-dates.{{lang}}.html`
 - `dist/japanese-language.html`

@@ -16,6 +16,7 @@ bun apps/admin-practice/validate.mjs
 bun apps/http-web-practice/validate.mjs
 bun apps/networking-protocols/validate.mjs
 bun apps/digital-logic/validate.mjs
+bun apps/linear-algebra/validate.mjs
 bun apps/logic/validate.mjs
 bun apps/practical-cryptography/validate.mjs
 bun apps/japanese-language/validate.mjs
