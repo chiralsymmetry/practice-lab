@@ -46,16 +46,35 @@ if (!pages.length) { console.error("Browser smoke test: no matching pages in dis
 
 const sleep = (ms) => new Promise((resolveSleep) => setTimeout(resolveSleep, ms));
 const profile = mkdtempSync(join(tmpdir(), "practice-lab-smoke-"));
-const port = 9400 + Math.floor(Math.random() * 400);
-const args = ["--headless=new", `--remote-debugging-port=${port}`, `--user-data-dir=${profile}`, "--no-first-run", "--no-default-browser-check", "--hide-scrollbars", "--mute-audio", "--disable-gpu", "about:blank"];
-if (typeof process.getuid === "function" && process.getuid() === 0) args.unshift("--no-sandbox");
-const browser = spawn(browserPath, args, { stdio: "ignore" });
 
-let version = null;
-for (let attempt = 0; attempt < 100 && !version; attempt += 1) {
-  try { version = await (await fetch(`http://127.0.0.1:${port}/json/version`)).json(); } catch { await sleep(100); }
+// Launch headless and wait for the DevTools endpoint. Hosts that forbid unprivileged user namespaces
+// (for example GitHub's Ubuntu 24.04 runners under AppArmor) kill Chrome's sandbox at startup, so a
+// failed sandboxed launch is retried once with --no-sandbox; the pages loaded are local build output.
+async function launch(sandbox) {
+  const port = 9400 + Math.floor(Math.random() * 400);
+  const args = ["--headless=new", `--remote-debugging-port=${port}`, `--user-data-dir=${profile}`, "--no-first-run", "--no-default-browser-check", "--hide-scrollbars", "--mute-audio", "--disable-gpu", "about:blank"];
+  if (!sandbox) args.unshift("--no-sandbox");
+  const child = spawn(browserPath, args, { stdio: ["ignore", "ignore", "pipe"] });
+  let stderr = "", exited = false;
+  child.stderr.on("data", (chunk) => { stderr = (stderr + chunk).slice(-4000); });
+  child.on("exit", () => { exited = true; });
+  for (let attempt = 0; attempt < 200 && !exited; attempt += 1) {
+    try { return { child, version: await (await fetch(`http://127.0.0.1:${port}/json/version`)).json() }; } catch { await sleep(100); }
+  }
+  child.kill();
+  return { child: null, version: null, stderr };
 }
-if (!version) { browser.kill(); console.error("Browser smoke test: the browser did not start."); process.exit(1); }
+
+const isRoot = typeof process.getuid === "function" && process.getuid() === 0;
+let { child: browser, version, stderr: launchError } = await launch(!isRoot);
+if (!version && !isRoot) {
+  console.log("Browser smoke test: sandboxed launch failed; retrying with --no-sandbox.");
+  ({ child: browser, version, stderr: launchError } = await launch(false));
+}
+if (!version) {
+  console.error(`Browser smoke test: the browser did not start (${browserPath}).${launchError ? `\n${launchError.trim()}` : ""}`);
+  process.exit(1);
+}
 
 const socket = new WebSocket(version.webSocketDebuggerUrl);
 await new Promise((resolveOpen) => socket.addEventListener("open", resolveOpen, { once: true }));
