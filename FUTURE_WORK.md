@@ -37,7 +37,7 @@ source of truth for family-level scope and validation requirements.
 | Unix Shell and Administration Practice | **Implemented** | [spec](specs/admin-practice.md) | [app](apps/admin-practice/) |
 | HTTP and Web Protocol Practice | **Implemented** | [spec](specs/http-web-practice.md) | [app](apps/http-web-practice/) |
 | Networking and Protocols | **Implemented** | [spec](specs/networking-protocols.md) | [app](apps/networking-protocols/) |
-| Digital Logic and Computer Architecture | **Partially implemented** (3 of 10 categories) | [spec](specs/digital-logic-computer-architecture.md) | [app](apps/digital-logic/) |
+| Digital Logic and Computer Architecture | **Partially implemented** (6 of 10 categories) | [spec](specs/digital-logic-computer-architecture.md) | [app](apps/digital-logic/) |
 | Japanese Numbers, Dates, Time, and Money | **Implemented** | [spec](specs/japanese-numbers-dates.md) | [app](apps/japanese-numbers-dates/) |
 | Japanese Language | **Implemented** | [spec](specs/japanese-language.md) | [app](apps/japanese-language/) |
 | Electric Circuits | **Implemented** | [spec](specs/electric-circuits.md) | [app](apps/electric-circuits/) |
@@ -78,7 +78,7 @@ before implementation.
 
 ### Computing and operations
 
-- [Digital Logic and Computer Architecture](specs/digital-logic-computer-architecture.md): **partially implemented**. Implemented: gates, signals, and truth tables; Boolean design and combinational blocks; arithmetic circuits and ALUs. Remaining: storage, clocks, and sequential timing; finite-state machines; processor datapaths and control; pipelining and hazards; caches and physical memory; virtual memory and protection; performance, I/O, and multicore foundations.
+- [Digital Logic and Computer Architecture](specs/digital-logic-computer-architecture.md): **partially implemented**. Implemented: gates, signals, and truth tables; Boolean design and combinational blocks; arithmetic circuits and ALUs; storage, clocks, and sequential timing; finite-state machines; processor datapaths and control. Remaining: pipelining and hazards; caches and physical memory; virtual memory and protection; performance, I/O, and multicore foundations.
 - [Game Programming Fundamentals](specs/game-programming-fundamentals.md)
 - [Reverse Engineering and Code Recovery](specs/reverse-engineering-code-recovery.md)
 - [System Design](specs/system-design.md)
