@@ -255,7 +255,7 @@ for (let familyIndex = 0; familyIndex < en.families.length; familyIndex += 1) {
         }
       }
       const visible = [question.prompt.title, question.explanation, ...question.prompt.blocks.map((block) => block.text || block.caption || "")].join("\n");
-      for (const match of visible.matchAll(/https?:\/\/([^\s/;"']+)/g)) if (!match[1].replace(/:\d+$/, "").toLowerCase().endsWith(".test")) fail("nonreserved hostname", [family.id, level, seed, match[0]]);
+      for (const match of visible.matchAll(/https?:\/\/([^\s/;"']+)/g)) if (!match[1].replace(/[.,;:)]+$/, "").replace(/:\d+$/, "").toLowerCase().endsWith(".test")) fail("nonreserved hostname", [family.id, level, seed, match[0]]);
       signatures.add(question.structuralSignature);
       if (sample < 50) {
         const translated = sv.generateQuestion(family.id, level, seed);
@@ -267,6 +267,103 @@ for (let familyIndex = 0; familyIndex < en.families.length; familyIndex += 1) {
     }
     if (signatures.size < 2) fail("structural variation", [family.id, level]);
   }
+}
+
+// Independent references for the per-level generators, checked against what each question shows.
+function answerLabel(question, id = "answer") {
+  const field = question.fields.find((item) => item.id === id);
+  return field.options ? field.options.find((option) => option.value === field.answer).label : field.answer;
+}
+function percentEncodeRef(text, safeSet) {
+  return [...new TextEncoder().encode(text)].map((byte) => byte < 128 && safeSet.includes(String.fromCharCode(byte)) ? String.fromCharCode(byte) : `%${byte.toString(16).toUpperCase().padStart(2, "0")}`).join("");
+}
+function percentDecodeRef(text) {
+  if (/%(?![0-9A-Fa-f]{2})/.test(text)) return "error: invalid percent triplet";
+  const bytes = []; for (let i = 0; i < text.length; i += 1) { if (text[i] === "%") { bytes.push(parseInt(text.slice(i + 1, i + 3), 16)); i += 2; } else bytes.push(...new TextEncoder().encode(text[i])); }
+  try { return new TextDecoder("utf-8", { fatal: true }).decode(new Uint8Array(bytes)); } catch { return "error: invalid UTF-8"; }
+}
+function conditionalRef(method, current, lastModified, c) {
+  const strong = (a, b) => a === b && !a.startsWith("W/") && !b.startsWith("W/"), weak = (a, b) => a.replace(/^W\//, "") === b.replace(/^W\//, "");
+  const list = (value, cmp) => value === "*" || value.split(",").some((tag) => cmp(tag.trim(), current));
+  if (c.im !== undefined) { if (!list(c.im, strong)) return 412; } else if (c.ius !== undefined && lastModified > c.ius) return 412;
+  if (c.inm !== undefined) { if (list(c.inm, weak)) return method === "GET" || method === "HEAD" ? 304 : 412; }
+  else if (c.ims !== undefined && (method === "GET" || method === "HEAD") && lastModified <= c.ims) return 304;
+  return 200;
+}
+function storageRef(kind, d, cacheable, authorized) {
+  if (d.noStore) return "no-store"; if (kind === "shared" && d.private) return "private";
+  if (kind === "shared" && authorized && !(d.public || d.sMaxage !== undefined || d.mustRevalidate)) return "authorization";
+  if (!cacheable && d.maxAge === undefined && d.sMaxage === undefined && !d.public) return "notCacheable";
+  return d.noCache ? "storeValidate" : "store";
+}
+function lifetimeRef(kind, m) {
+  if (kind === "shared" && m.sMaxage !== undefined) return [m.sMaxage, "s-maxage"];
+  if (m.maxAge !== undefined) return [m.maxAge, "max-age"];
+  if (m.expires !== undefined && m.date !== undefined) return [Math.max(0, m.expires - m.date), "Expires-Date"];
+  return [0, "none"];
+}
+function cookieSendRef(c, ctx) {
+  const url = new URL(ctx.url);
+  if (c.expiry !== null && c.expiry <= ctx.now) return false;
+  if (c.hostOnly ? url.hostname !== c.domain : !(url.hostname === c.domain || url.hostname.endsWith(`.${c.domain}`))) return false;
+  if (!pathReference(url.pathname, c.path)) return false;
+  if (c.secure && url.protocol !== "https:") return false;
+  if (ctx.credentials === "omit" || (ctx.credentials === "same-origin" && !ctx.sameOrigin)) return false;
+  if (c.sameSite === "Strict" && !ctx.sameSite) return false;
+  if (c.sameSite === "Lax" && !ctx.sameSite && !(ctx.topLevel && ["GET", "HEAD", "OPTIONS"].includes(ctx.method))) return false;
+  return true;
+}
+function corsReasonsRef(req) {
+  if (req.sameOrigin) return [];
+  const reasons = [];
+  if (!["GET", "HEAD", "POST"].includes(req.method)) reasons.push("method");
+  for (const [name, value] of Object.entries(req.fields)) {
+    const lower = name.toLowerCase();
+    if (lower === "content-type") { if (!["application/x-www-form-urlencoded", "multipart/form-data", "text/plain"].includes(value.split(";")[0].trim().toLowerCase())) reasons.push("content-type"); }
+    else if (!["accept", "accept-language", "content-language"].includes(lower)) reasons.push(`field ${lower}`);
+  }
+  return reasons;
+}
+function preflightRef(req, res) {
+  if (!(req.credentials ? res.acao === req.origin && res.acac === true : res.acao === "*" || res.acao === req.origin)) return "origin";
+  if (!["GET", "HEAD", "POST"].includes(req.method) && !res.methods.map((m) => m.toUpperCase()).includes(req.method)) return "method";
+  const allowed = res.headers.map((h) => h.toLowerCase());
+  return req.headers.some((h) => !allowed.includes(h.toLowerCase())) ? "headers" : "ok";
+}
+function timelineRef({ events, versions, policy }) {
+  const store = new Map(); let calls = 0; const out = [];
+  for (const ev of events) {
+    const v = versions.filter((x) => x.from <= ev.t).at(-1), key = policy.vary ? ev.accept : "*", entry = store.get(key), body = policy.vary ? `${v.body}(${ev.accept})` : v.body;
+    if (entry && ev.t - entry.at < policy.maxAge) { out.push(`t${ev.t} fresh hit → ${entry.body}`); continue; }
+    calls += 1;
+    if (entry && policy.etag) { if (entry.tag === v.tag) { entry.at = ev.t; out.push(`t${ev.t} validated, 304 → ${entry.body}`); } else { store.set(key, { body, tag: v.tag, at: ev.t }); out.push(`t${ev.t} validated, new 200 → ${body}`); } continue; }
+    if (policy.noStore) { out.push(`t${ev.t} miss, not stored → ${body}`); continue; }
+    store.set(key, { body, tag: v.tag, at: ev.t }); out.push(`t${ev.t} miss, stored → ${body}`);
+  }
+  return `${out.join("; ")}; origin calls ${calls}`;
+}
+function partition(keys) { const seen = new Map(); return keys.map((k) => { if (!seen.has(k)) seen.set(k, seen.size); return seen.get(k); }).join(","); }
+let referenceChecks = 0;
+for (const family of en.families) for (let level = 1; level <= 5; level += 1) for (let sample = 0; sample < 2_000; sample += 1) {
+  const seed = (level * 9_000_011 + sample * 104_729 + family.id.length) >>> 0, q = en.generateQuestion(family.id, level, seed), m = q.metadata, where = [family.id, level, seed];
+  if (m.resolve) { if (answerLabel(q) !== new URL(m.resolve.ref, m.resolve.base).href) fail("WHATWG Location resolution", where); referenceChecks += 1; }
+  if (m.percent) { const want = m.percent.decode ? percentDecodeRef(m.percent.input) : percentEncodeRef(m.percent.input, m.percent.safe); if (answerLabel(q) !== want) fail("percent-encoding reference", [...where, want]); referenceChecks += 1; }
+  if (m.negotiation && family.id === "accept_negotiation") { const want = negotiateReference(m.negotiation.accept, m.negotiation.offers); if (want === null ? answerLabel(q) !== "406" : !answerLabel(q).startsWith(`${want} (`)) fail("negotiation reference", where); referenceChecks += 1; }
+  if (m.negotiation && family.id === "negotiation_response_fields" && !m.negotiation.accept2) { const want = negotiateReference(m.negotiation.accept, m.negotiation.offers); if (!answerLabel(q).startsWith(want === null ? "status 406" : `status 200; Content-Type ${want};`)) fail("negotiation fields reference", where); referenceChecks += 1; }
+  if (m.chain) {
+    let url = m.chain.start, method = m.chain.method, requests = 1, outcome = "final"; const seen = [url];
+    for (let i = 0; i < m.chain.statuses.length; i += 1) { const next = new URL(m.chain.locs[i], url).href, nextMethod = redirectReference(m.chain.statuses[i], method); if (seen.includes(next)) { outcome = "loop"; method = nextMethod; break; } if (i + 1 > m.chain.limit) { outcome = "limit"; break; } url = next; method = nextMethod; seen.push(url); requests += 1; }
+    if (outcome !== m.chain.outcome || method !== m.chain.finalMethod || requests !== m.chain.requests) fail("redirect chain reference", [...where, outcome, method, requests]); referenceChecks += 1;
+  }
+  if (m.conditional) { const c = m.conditional; if (conditionalRef(c.method, c.cur, c.lm, c.c) !== c.status) fail("conditional request reference", where); referenceChecks += 1; }
+  if (m.storage) { const s = m.storage, want = s.kind === "both" ? [storageRef("private", s.d, s.cacheable, s.authorized), storageRef("shared", s.d, s.cacheable, s.authorized)] : storageRef(s.kind, s.d, s.cacheable, s.authorized); if (!equal(want, s.answer)) fail("cache storage reference", where); referenceChecks += 1; }
+  if (m.freshness) { const [seconds, source] = lifetimeRef(m.freshness.kind, m.freshness.m); if (Number(q.canonicalAnswer.answer) !== seconds || q.canonicalAnswer.source !== source) fail("freshness lifetime reference", where); referenceChecks += 1; }
+  if (m.cookieSelect) { const { jar, ctx } = m.cookieSelect, want = jar.filter((c) => cookieSendRef(c, ctx)).sort((a, b) => b.path.length - a.path.length || a.creationIndex - b.creationIndex).map((c) => `${c.name}=${c.value}`); if (answerLabel(q) !== (want.length ? `Cookie: ${want.join("; ")}` : "no Cookie field")) fail("cookie selection reference", [...where, want]); referenceChecks += 1; }
+  if (m.corsClass) { if (!equal(corsReasonsRef(m.corsClass.req), m.corsClass.res.reasons)) fail("CORS classification reference", where); referenceChecks += 1; }
+  if (m.preflight) { const want = preflightRef(m.preflight.req, m.preflight.res), got = m.preflight.result.ok ? "ok" : m.preflight.result.why; if (want !== got) fail("preflight reference", [...where, want, got]); referenceChecks += 1; }
+  if (m.corsExpose) { const e = m.corsExpose, want = e.acao !== null && (e.cred ? e.acao === e.origin && e.acac === true : e.acao === "*" || e.acao === e.origin); if (want !== e.readable) fail("CORS exposure reference", where); referenceChecks += 1; }
+  if (m.timeline) { if (answerLabel(q) !== timelineRef(m.timeline)) fail("cache timeline reference", where); referenceChecks += 1; }
+  if (m.cacheKey) { const { reqs, vary, keys } = m.cacheKey, ref = reqs.map(({ url, fields }) => { const u = new URL(url); return `${u.origin}${u.pathname}${u.search}` + vary.map((name) => `|${Object.entries(fields).find(([k]) => k.toLowerCase() === name.toLowerCase())?.[1] ?? "<missing>"}`).join(""); }); if (partition(ref) !== partition(keys)) fail("cache key reference", where); referenceChecks += 1; }
 }
 
 if (failures.length) {
@@ -286,4 +383,4 @@ if (failures.length) {
   }
   if (!choiceFields || firstPosition / choiceFields > 0.45) throw new Error(`Choice-position bias: correct option first in ${firstPosition}/${choiceFields}`);
 }
-console.log(`HTTP/web extended validation passed: 495,000 independent oracle/property instances and ${generated.toLocaleString("en-US")} generated questions (10,000 per family and level), with bilingual seed parity.`);
+console.log(`HTTP/web extended validation passed: 495,000 independent oracle/property instances, ${referenceChecks.toLocaleString("en-US")} independent reference checks of generated questions (WHATWG URL, TextDecoder, RFC 9110/9111/6265, Fetch CORS), and ${generated.toLocaleString("en-US")} generated questions (10,000 per family and level), with bilingual seed parity.`);
