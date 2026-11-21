@@ -78,12 +78,19 @@ const hasSympy = Bun.spawnSync(["/usr/bin/env", "python3", "-c", "import sympy"]
 if (hasSympy) {
   const script = String.raw`
 import json, sys
-from sympy import Rational as Q, Matrix, sqrt, nsimplify, acos, deg, simplify, zeros, eye, diag, symbols, solve
+from sympy import Rational as Q, Matrix, sqrt, nsimplify, acos, deg, simplify, zeros, eye, diag, symbols, solve, GramSchmidt
 def q(x): n, d = x.split("/"); return Q(int(n), int(d))
 def V(v): return Matrix([q(x) for x in v])
 def M(A): return Matrix([[q(x) for x in row] for row in A])
 def s(x): return str(nsimplify(x)).replace("**", "^")
 def vs(v): return "(" + ", ".join(s(x) for x in v) + ")"
+def defres(A):
+    ev = sorted([k for k, mu in A.eigenvals().items() for _ in range(mu)], reverse=True)
+    pos, neg, zer = any(x > 0 for x in ev), any(x < 0 for x in ev), any(x == 0 for x in ev)
+    cls = "ind" if pos and neg else ("psd" if zer else "pd") if pos else ("nsd" if zer else "nd")
+    out = {"cls": cls}
+    for i, x in enumerate(ev): out["l%d" % (i + 1)] = s(x)
+    return out
 out = []
 for c in json.load(sys.stdin):
     m, fam, res = c["meta"], c["fam"], {}
@@ -305,6 +312,89 @@ for c in json.load(sys.stdin):
             else:
                 X = M(g["C"]).inv() * M(g["B"]) if g["k"] == "matrix" else M(g["P"]).inv() * M(g["A"]) * M(g["P"])
                 for i in range(X.rows): res["r%d" % (i + 1)] = vs(X.row(i))
+        elif "eig" in m:
+            g = m["eig"]; A = M(g["A"])
+            if g["k"] == "diag":
+                v = V(g["v"]); Av = A * v; res["av"] = vs(Av)
+                res["eig"] = "yes" if v != zeros(v.rows, 1) and Matrix.hstack(v, Av).rank() == 1 else "no"
+            elif g["k"] == "lambda":
+                v = V(g["v"]); Av = A * v; i = [t for t in range(v.rows) if v[t] != 0][0]; lam = Av[i] / v[i]; assert Av == lam * v; res["answer"] = s(lam)
+            else:
+                N = (A - q(g["l"]) * eye(2)).nullspace(); assert len(N) == 1 and N[0][0] != 0; res["answer"] = s(N[0][1] / N[0][0])
+        elif "cp" in m:
+            A = M(m["cp"]["A"]); lam = symbols("lam"); co = A.charpoly(lam).all_coeffs(); n = A.rows
+            for i, c0 in enumerate(co[1:]): res["c%d" % (n - 1 - i)] = s(c0)
+        elif "fe" in m:
+            A = M(m["fe"]["A"]); ev = A.eigenvals(); ms = sorted([k for k, mu in ev.items() for _ in range(mu)], reverse=True)
+            for i, x in enumerate(ms): res["l%d" % (i + 1)] = s(x)
+            rep = [k for k, mu in ev.items() if mu == 2]
+            if rep: res["rep"], res["mult"], res["other"] = s(rep[0]), "2", s([k for k, mu in ev.items() if mu == 1][0])
+        elif "esp" in m:
+            g = m["esp"]; N = (M(g["A"]) - q(g["l"]) * eye(M(g["A"]).rows)).nullspace()
+            res["dim"] = str(len(N)); res["basis"] = ", ".join(vs(b) for b in N); res["answer"] = vs(N[0])
+        elif "dg" in m:
+            g = m["dg"]; A = M(g["A"])
+            if g["k"] == "pd":
+                ev = sorted(A.eigenvals().keys(), reverse=True)
+                for i, l in enumerate(ev): res["l%d" % (i + 1)] = s(l); res["v%d" % (i + 1)] = vs((A - l * eye(2)).nullspace()[0])
+            else:
+                res["answer"] = "yes" if A.is_diagonalizable() else "no"
+                if g["k"] == "rep": res["geo"] = str(len((A - q(g["a"]) * eye(3)).nullspace()))
+        elif "pow" in m:
+            g = m["pow"]
+            if g["k"] == "markov":
+                Mm = M(g["M"]); res["x1"] = vs(Mm * V(g["x0"])); st = (Mm - eye(2)).nullspace()[0]; res["st"] = vs(st / sum(st))
+            else: res["answer"] = vs(M(g["A"]) ** g["n"] * V(g["v"] if g["k"] == "eig" else g["x"]))
+        elif "oc" in m:
+            g = m["oc"]
+            if g["k"] == "fund": res.update({"which": "lnull", "cdim": str(g["m"] - g["rk"]), "rdim": str(g["n"] - g["rk"])})
+            else: N = M(g["W"]).nullspace(); res["dim"] = str(len(N)); res["basis"] = ", ".join(vs(b) for b in N)
+        elif "gs" in m:
+            g = m["gs"]; vv = [V(v) for v in g["V"]]
+            if g["k"] == "two": Qs = GramSchmidt(vv, True); res["q1"], res["q2"] = vs(Qs[0]), vs(Qs[1])
+            else:
+                Us = GramSchmidt(vv)
+                res["answer"] = res["u2"] = vs(Us[1])
+                if g["k"] == "three": res["u3"] = vs(Us[2]); res["n3"] = s(Us[2].norm())
+        elif "qr" in m:
+            g = m["qr"]
+            if g["k"] == "shape": res["q"], res["r"] = "%d × %d" % (g["m"], g["n"]), "%d × %d" % (g["n"], g["n"])
+            else:
+                Qm, Rm = M(g["A"]).QRdecomposition(); assert all(Rm[i, i] > 0 for i in range(Rm.rows))
+                res.update({"r11": s(Rm[0, 0]), "r12": s(Rm[0, 1]), "r22": s(Rm[1, 1]), "q1": vs(Qm.col(0))})
+        elif "ls" in m:
+            g = m["ls"]
+            if g["k"] == "one": a, b = V(g["a"]), V(g["b"]); res["answer"] = s(a.dot(b) / a.dot(a))
+            else:
+                if g["k"] == "line": A = Matrix.hstack(V(g["x"]), Matrix([1, 1, 1])); b = V(g["y"])
+                else: A, b = M(g["A"]), V(g["b"])
+                x = (A.T * A).solve(A.T * b); res["x"] = vs(x); res["res"] = vs(b - A * x)
+                if g["k"] == "line": res["m"], res["c"] = s(x[0]), s(x[1])
+        elif "pm" in m:
+            A = M(m["pm"]["A"]); Pm = A * (A.T * A).inv() * A.T; assert Pm * Pm == Pm and Pm.T == Pm
+            for i in range(Pm.rows): res["r%d" % (i + 1)] = vs(Pm.row(i))
+        elif "ss" in m:
+            g = m["ss"]
+            if g["k"] == "perp": res["answer"] = vs((M(g["A"]) - q(g["l"]) * eye(2)).nullspace()[0])
+            elif g["k"] == "build":
+                sg = g["sg"]; Qm = Matrix([[1, -sg], [sg, 1]]) / sqrt(2); assert simplify(Qm.T * Qm) == eye(2)
+                X = simplify(Qm * diag(*[q(l) for l in g["l"]]) * Qm.T)
+                for i in range(2): res["r%d" % (i + 1)] = vs(X.row(i))
+            if g["k"] == "def": res.update(defres(M(g["A"])))
+        elif "qf" in m:
+            g = m["qf"]; A = M(g["A"]); n = A.rows; X = Matrix(symbols("x0:%d" % n))
+            if g["k"] == "eval": res["answer"] = s((V(g["x"]).T * A * V(g["x"]))[0])
+            elif g["k"] == "matrix":
+                f = (X.T * A * X)[0].expand(); H = Matrix(n, n, lambda i, j: f.diff(X[i]).diff(X[j]) / 2)
+                for i in range(n): res["r%d" % (i + 1)] = vs(H.row(i))
+            else: res.update(defres(A))
+        elif "svd" in m:
+            g = m["svd"]
+            if "U" in g: X = M(g["U"]) * M(g["S"]) * M(g["V"]).T; assert X == M(g["A"])
+            A = M(g["A"]); sv = sorted([sqrt(l) for l, mu in (A.T * A).eigenvals().items() for _ in range(mu)], reverse=True)
+            res.update({"s1": s(sv[0]), "s2": s(sv[1]), "rank": str(A.rank()), "norm": s(sv[0])})
+            if "U" in g:
+                for i in range(A.rows): res["r%d" % (i + 1)] = vs(A.row(i))
     except Exception as e:
         res = {"__error__": repr(e)[:200]}
     out.append({k: v for k, v in res.items() if v is not None})
