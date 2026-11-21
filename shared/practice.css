@@ -689,3 +689,20 @@ select {
 .answer-control {
   grid-template-columns: minmax(0, 1fr);
 }
+
+/* Generated prompts and feedback can contain long unbreakable tokens (comma-joined lines, URLs, cache
+   keys). Grid items may shrink regardless of an app's track definition (1fr has an automatic minimum),
+   and prose/expected answers break inside such tokens instead of widening the page. */
+.practice-layout > *,
+.practice-main,
+.side-stack {
+  min-width: 0;
+}
+
+.prompt-title,
+.prompt-note,
+.feedback,
+.feedback-detail,
+.expected-code {
+  overflow-wrap: anywhere;
+}

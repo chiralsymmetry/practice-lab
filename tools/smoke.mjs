@@ -2,8 +2,9 @@
 //
 // Loads every dist/*.html page in headless Chromium/Chrome through the DevTools protocol (no npm
 // dependencies) and fails on: uncaught exceptions or console errors; a family whose question renders
-// no answer controls or whose submission shows no feedback; and, at phone width, horizontal page
-// overflow, overlapping controls, or button labels wider than their button.
+// no answer controls or whose submission shows no feedback; and, at phone width for every view and for
+// every family at every level (question and feedback), horizontal page overflow, overlapping controls,
+// or button labels wider than their button.
 //
 // Browser lookup: $PRACTICE_LAB_BROWSER, then chromium, chromium-browser, google-chrome,
 // google-chrome-stable on PATH. Set PRACTICE_LAB_SKIP_BROWSER=1 to skip explicitly.
@@ -176,6 +177,28 @@ window.__smoke = {
     if (!families) problems.push("no families in the selectors");
     return problems;
   },
+  // Phone layout for every family at every level: the question as first shown, then with feedback.
+  async exercisePhoneLayout() {
+    const problems = [], cat = document.getElementById("categorySelect"), fam = document.getElementById("familySelect"), lvl = document.getElementById("levelSelect");
+    const fire = (el) => el.dispatchEvent(new Event("change", { bubbles: true }));
+    await __smoke.setView("practice");
+    for (const category of [...cat.options].map((o) => o.value)) {
+      cat.value = category; fire(cat); await __smoke.tick();
+      for (const family of [...fam.options].map((o) => o.value)) {
+        fam.value = family; fire(fam); await __smoke.tick();
+        for (const level of [...lvl.options].map((o) => o.value)) {
+          lvl.value = level; fire(lvl); await __smoke.tick();
+          const where = family + " L" + level;
+          problems.push(...__smoke.layoutProblems("phone/practice " + where));
+          const submit = document.getElementById("submitBtn");
+          submit.click(); await __smoke.tick();
+          if (!__smoke.feedbackShown()) { await __smoke.answerSomething(); submit.click(); await __smoke.tick(); }
+          problems.push(...__smoke.layoutProblems("phone/feedback " + where));
+        }
+      }
+    }
+    return problems;
+  },
   layoutProblems(scope) {
     const problems = [], width = document.documentElement.clientWidth;
     if (document.documentElement.scrollWidth > width + 1) {
@@ -184,6 +207,7 @@ window.__smoke = {
       const outermost = sticking.filter((el) => !sticking.includes(el.parentElement)).slice(0, 3).map((el) => __smoke.describe(el) + (el.className && typeof el.className === "string" ? "." + el.className.trim().split(/\s+/).join(".") : "") + " (right " + Math.round(el.getBoundingClientRect().right) + "px)");
       const shown = [document.getElementById("questionFamily"), document.getElementById("questionLevel")].map((el) => el ? el.textContent.trim() : "").filter(Boolean).join(" ");
       problems.push(scope + ": page scrolls horizontally (" + document.documentElement.scrollWidth + "px > " + width + "px)" + (outermost.length ? "; sticking out: " + outermost.join(", ") : "") + (shown ? "; question: " + shown : ""));
+      return problems; // every control past the edge is a consequence of this overflow
     }
     const view = document.querySelector(".view.active") || document.body;
     const scopeEls = [...document.querySelectorAll("header *, nav *"), ...view.querySelectorAll("*")];
@@ -222,8 +246,7 @@ for (const page of pages) {
         await evaluate(`__smoke.setView(${JSON.stringify(view)})`);
         problems.push(...await evaluate(`__smoke.layoutProblems("phone/${view}")`));
       }
-      await evaluate(`(async () => { await __smoke.setView("practice"); document.getElementById("submitBtn").click(); await __smoke.tick(); if (!__smoke.feedbackShown()) { await __smoke.answerSomething(); document.getElementById("submitBtn").click(); await __smoke.tick(); } })()`);
-      problems.push(...await evaluate(`__smoke.layoutProblems("phone/practice+feedback")`));
+      problems.push(...await evaluate(`__smoke.exercisePhoneLayout()`));
     } else {
       await setViewport(PHONE, true);
       await open(page);

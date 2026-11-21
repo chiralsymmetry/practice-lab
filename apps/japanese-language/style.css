@@ -61,9 +61,10 @@ rt { font-size: 0.55em; color: var(--muted); }
   outline-offset: 2px;
 }
 
-.kana-helper .input-grid-button { min-height: 2.65rem; }
+.kana-helper button { min-height: 2.65rem; }
 
 @media (max-width: 620px) {
   .jp-prompt { font-size: 1.45rem; }
-  .kana-helper .input-grid-button { min-width: 2.25rem; padding-inline: 0.35rem; }
+  /* Two-kana particles (から, まで, より) share seven narrow columns; let them wrap between kana. */
+  .kana-helper button { min-width: 2.25rem; padding-inline: 0.2rem; white-space: normal; line-height: 1.1; }
 }
