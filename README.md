@@ -18,6 +18,7 @@ Practice Lab is a collection of small offline practice apps for programmer-adjac
 - **SQL & Relational Database Reasoning**: execute small PracticeSQL-1 queries, reason about NULL, bags, ordering, joins, aggregates, subqueries, transactions, normalization, and bounded index plans.
 - **Unix Shell & Administration Practice**: reason about shell words and paths, streams and status, controlled text tools, POSIX EREs, permissions, filesystems, processes, IPv4 routing, synthetic services, and robust troubleshooting without executing real commands.
 - **HTTP & Web Protocol Practice**: reason through synthetic URLs, requests, responses, methods, statuses, media negotiation, redirects, caches, validators, cookies, sessions, origins, CORS, proxies, CDNs, and exchange diagnosis under a pinned offline model.
+- **Networking & Protocols** (first categories): read packet bytes, lengths, and byte order; follow encapsulation, demultiplexing, IPv4/IPv6 headers, checksums, longest-prefix routing, TTL, fragmentation, and reassembly; and mentally execute UDP and TCP exchanges under a pinned offline model.
 - **Japanese Numbers & Dates**: practice Japanese readings for numbers, counters, months, dates, weekdays, and relative days.
 - **Japanese Language**: practice kana and mora timing, contextual vocabulary and kanji, particles, inflection, connected grammar, reading, and human-recorded offline listening and shadowing.
 - **Electric Circuits**: generated, model-explicit drills spanning DC foundations, resistor networks, transients, AC and filters, semiconductor switches, op-amps, digital interfaces, measurement, tolerance, and ratings.
@@ -56,6 +57,8 @@ The built apps are standalone HTML files:
 - `dist/admin-practice.{{lang}}.html`
 - `dist/http-web-practice.html`
 - `dist/http-web-practice.{{lang}}.html`
+- `dist/networking-protocols.html`
+- `dist/networking-protocols.{{lang}}.html`
 - `dist/japanese-numbers-dates.html`
 - `dist/japanese-numbers-dates.{{lang}}.html`
 - `dist/japanese-language.html`
@@ -103,7 +106,7 @@ This inlines the shared shell/runtime, shared CSS, and app-specific CSS and Java
 tools/test.sh
 ```
 
-This rebuilds the apps, checks that every inline script parses, runs the browser-console self-tests through Bun, runs a headless-browser smoke test (`tools/smoke.mjs`: every built page in English and Swedish, every family's question and feedback, no page errors, and, at phone width for every view and every family at every level, no horizontal overflow, overflowing labels, or overlapping controls), validates C++ fixtures with GCC and Clang, checks AMD64 Intel/AT&T fixtures with GNU binutils, replays generated administration shell questions against GNU bash, coreutils, grep, sed, gawk, and findutils (skipped with a notice when those are not on `/usr/bin:/bin`), and runs every registered extended domain validator, including the large administration, HTTP/web, finite-logic, practical-cryptography, and Japanese-language generator/oracle sweeps.
+This rebuilds the apps, checks that every inline script parses, runs the browser-console self-tests through Bun, runs a headless-browser smoke test (`tools/smoke.mjs`: every built page in English and Swedish, every family's question and feedback, no page errors, and, at phone width for every view and every family at every level, no horizontal overflow, overflowing labels, or overlapping controls), validates C++ fixtures with GCC and Clang, checks AMD64 Intel/AT&T fixtures with GNU binutils, replays generated administration shell questions against GNU bash, coreutils, grep, sed, gawk, and findutils (skipped with a notice when those are not on `/usr/bin:/bin`), and runs every registered extended domain validator, including the large administration, HTTP/web, networking (with Python `ipaddress` and `tcpdump` cross-checks), finite-logic, practical-cryptography, and Japanese-language generator/oracle sweeps.
 
 The smoke test needs Chromium or Google Chrome on `PATH` (or `PRACTICE_LAB_BROWSER=/path/to/browser`); set `PRACTICE_LAB_SKIP_BROWSER=1` to skip it explicitly. `bun tools/smoke.mjs logic` limits it to matching pages.
 

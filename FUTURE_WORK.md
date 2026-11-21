@@ -36,6 +36,7 @@ source of truth for family-level scope and validation requirements.
 | SQL and Relational Databases | **Implemented** | [spec](specs/sql-relational-databases.md) | [app](apps/sql-relational-databases/) |
 | Unix Shell and Administration Practice | **Implemented** | [spec](specs/admin-practice.md) | [app](apps/admin-practice/) |
 | HTTP and Web Protocol Practice | **Implemented** | [spec](specs/http-web-practice.md) | [app](apps/http-web-practice/) |
+| Networking and Protocols | **Partially implemented** (3 of 10 categories) | [spec](specs/networking-protocols.md) | [app](apps/networking-protocols/) |
 | Japanese Numbers, Dates, Time, and Money | **Implemented** | [spec](specs/japanese-numbers-dates.md) | [app](apps/japanese-numbers-dates/) |
 | Japanese Language | **Implemented** | [spec](specs/japanese-language.md) | [app](apps/japanese-language/) |
 | Electric Circuits | **Implemented** | [spec](specs/electric-circuits.md) | [app](apps/electric-circuits/) |
@@ -63,14 +64,14 @@ specified** or **Deliberately excluded** below.
 | Economics and Applied Everyday Math | The price, percent, interest, inflation, subscription, expected-value, and shared-charge core is **implemented and specified** as [Everyday Economics](specs/everyday-economics.md). Organizational budgeting and decision work was absorbed into the broader, **specified but not implemented** [Business Economics and Managerial Decisions](specs/business-economics-managerial-decisions.md) topic; Rule-of-72 practice is specified in [Investment Literacy and Company Analysis](specs/investment-literacy-company-analysis.md). |
 | Physics and Chemistry Practice | The combined science idea was **split into two specified but not implemented apps**: [Physics](specs/physics.md) and [Chemistry](specs/chemistry.md). |
 | Calculus and Symbolic Math Practice | **Specified but not implemented** as [Calculus](specs/calculus.md), including the controlled expression grammar and layered checker that the proposal anticipated. |
-| Git, HTTP, SQL, Networking, and Unicode | [Git and Version-Control Reasoning](specs/git-version-control.md), [HTTP and Web Practice](specs/http-web-practice.md), [SQL and Relational Databases](specs/sql-relational-databases.md), and [Unicode, Encodings, and Text](specs/unicode-encodings-text.md) are **implemented and specified**. [Networking and Protocols](specs/networking-protocols.md) remains **specified but not implemented**. |
+| Git, HTTP, SQL, Networking, and Unicode | [Git and Version-Control Reasoning](specs/git-version-control.md), [HTTP and Web Practice](specs/http-web-practice.md), [SQL and Relational Databases](specs/sql-relational-databases.md), and [Unicode, Encodings, and Text](specs/unicode-encodings-text.md) are **implemented and specified**. [Networking and Protocols](specs/networking-protocols.md) is **partially implemented**: its encapsulation, IPv4/IPv6 forwarding, and UDP/TCP transport categories exist; the remaining seven categories are listed below. |
 | Japanese Practice | The original idea was split into two **implemented and specified** apps. [Japanese Numbers, Dates, Time, and Money](specs/japanese-numbers-dates.md) owns numbers, counters, calendars, clocks, and money; [Japanese Language](specs/japanese-language.md) owns kana, vocabulary, kanji, particles, inflection, reading, listening, and interaction. |
 | Music Practice | **Specified but not implemented** as [Music Practice](specs/music-practice.md); it is no longer merely a possible later architecture experiment. |
 | Practical Cryptography | **Implemented and specified** as [Practical Cryptography](specs/practical-cryptography.md), with exact educational classical-cipher, XOR, and one-time-pad mechanics plus bounded modern primitive, password, public-key, and protocol-state reasoning. It deliberately does not reimplement modern cryptographic algorithms or handle real secrets. |
 
 ## Specified but not implemented
 
-The following 46 topic specs have no corresponding directory under `apps/`.
+The following 46 topic specs are not fully implemented. All except Networking and Protocols, which is partially implemented, have no corresponding directory under `apps/`.
 They are the implementation backlog; they do not need another proposal document
 before implementation.
 
@@ -78,7 +79,7 @@ before implementation.
 
 - [Digital Logic and Computer Architecture](specs/digital-logic-computer-architecture.md)
 - [Game Programming Fundamentals](specs/game-programming-fundamentals.md)
-- [Networking and Protocols](specs/networking-protocols.md)
+- [Networking and Protocols](specs/networking-protocols.md): **partially implemented**. Implemented: encapsulation and packet representation, IPv4/IPv6 and forwarding, UDP and TCP transport. Remaining: Ethernet switching and VLANs; ARP and IPv6 Neighbor Discovery; ICMP, MTU, and path behavior; DNS, DHCP, and host configuration; HTTP, TLS, and QUIC; NAT, firewalls, and connection state; packet analysis and diagnosis.
 - [Reverse Engineering and Code Recovery](specs/reverse-engineering-code-recovery.md)
 - [System Design](specs/system-design.md)
 

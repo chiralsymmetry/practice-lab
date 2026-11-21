@@ -138,6 +138,13 @@ const apps = [
     locales: ["en", "sv"],
   },
   {
+    id: "networking-protocols",
+    categoryId: "computing-operations",
+    sourceDir: "apps/networking-protocols",
+    outputBase: "networking-protocols",
+    locales: ["en", "sv"],
+  },
+  {
     id: "japanese-numbers-dates",
     categoryId: "languages-humanities-other-practice",
     sourceDir: "apps/japanese-numbers-dates",
