@@ -78,7 +78,7 @@ const hasSympy = Bun.spawnSync(["/usr/bin/env", "python3", "-c", "import sympy"]
 if (hasSympy) {
   const script = String.raw`
 import json, sys
-from sympy import Rational as Q, Matrix, sqrt, nsimplify, acos, deg, simplify, zeros, eye
+from sympy import Rational as Q, Matrix, sqrt, nsimplify, acos, deg, simplify, zeros, eye, diag, symbols, solve
 def q(x): n, d = x.split("/"); return Q(int(n), int(d))
 def V(v): return Matrix([q(x) for x in v])
 def M(A): return Matrix([[q(x) for x in row] for row in A])
@@ -209,6 +209,101 @@ for c in json.load(sys.stdin):
         elif "tf" in m:
             g = m["tf"]; X = M(g["S"]) * M(g["M"]) if g["k"] == "compose" else M(g["M"])
             if g["k"] != "name":
+                for i in range(X.rows): res["r%d" % (i + 1)] = vs(X.row(i))
+        elif "det" in m:
+            g = m["det"]; A = M(g["A"])
+            if g["k"] == "compute": res["answer"] = s(A.det())
+            else:
+                k = symbols("k"); B = A.copy(); B[g["pi"], g["pj"]] = k; sol = solve(B.det(), k); res["answer"] = s(sol[0]) if len(sol) == 1 else "multi"
+        elif "detop" in m:
+            g = m["detop"]
+            def apply(X, op):
+                X = X.copy()
+                if op["k"] == "swap": X.row_swap(op["i"], op["j"])
+                elif op["k"] == "scale": X[op["i"], :] = q(op["c"]) * X.row(op["i"])
+                else: X[op["i"], :] = X.row(op["i"]) + q(op["c"]) * X.row(op["j"])
+                return X
+            if g["k"] == "fwd":
+                X = diag(q(g["d"]), 1, 1)
+                for op in g["ops"]: X = apply(X, op)
+                res["answer"] = s(X.det())
+            else:
+                X = M(g["A"])
+                for op in g["ops"]: X = apply(X, op)
+                assert X == M(g["B"]); res["answer"] = s(M(g["A"]).det())
+        elif "cof" in m:
+            g = m["cof"]; A = M(g["A"])
+            if g["k"] == "one": res["minor"], res["cof"] = s(A.minor(g["i"], g["j"])), s(A.cofactor(g["i"], g["j"]))
+            else:
+                n = A.rows; z = {("r%d" % (i + 1)): sum(1 for t in range(n) if A[i, t] == 0) for i in range(n)}
+                z.update({("c%d" % (j + 1)): sum(1 for t in range(n) if A[t, j] == 0) for j in range(n)})
+                best = sorted(z.values(), reverse=True)
+                res["line"] = max(z, key=z.get) if best[0] > best[1] else "tie"; res["det"] = s(A.det())
+        elif "equiv" in m:
+            g = m["equiv"]; A = M(g["A"]); rk = A.rank(); yn = lambda b: "yes" if b else "no"
+            if g["k"] in ("det", "piv"):
+                inv = A.det() != 0; assert inv == (rk == A.rows) == (A.rref()[0] == eye(A.rows)) == (len(A.nullspace()) == 0)
+                res["inv"] = res["triv"] = res["rref"] = res["null"] = yn(inv); res["det0"] = yn(not inv)
+            else:
+                res["span"] = res["every"] = yn(rk == A.rows); res["indep"] = res["unique"] = yn(rk == A.cols)
+        elif "spanm" in m:
+            g = m["spanm"]; Vc = Matrix.hstack(*[V(v) for v in g["v"]]); w = V(g["w"]); member = Vc.rank() == Matrix.hstack(Vc, w).rank()
+            res["member"] = "yes" if member else "no"
+            if g["k"] == "coef": res["answer"] = vs(Vc.solve_least_squares(w))
+            if g["k"] == "dep": res["dim"] = str(Vc.rank())
+        elif "ind" in m:
+            g = m["ind"]
+            if g["k"] == "two": res["indep"] = "yes" if Matrix.hstack(*[V(v) for v in g["v"]]).rank() == 2 else "no"
+            elif g["k"] == "det": A = M(g["A"]); res["det"] = s(A.det()); res["indep"] = "yes" if A.rank() == 3 else "no"
+            else:
+                N = M(g["V"]).T.nullspace(); assert len(N) == 1; res["answer"] = vs(N[0])
+        elif "basis" in m:
+            g = m["basis"]
+            if g["k"] == "span": B = M(g["V"]).T.columnspace()
+            elif g["k"] == "col": B = M(g["A"]).columnspace()
+            else: B = M(g["A"]).nullspace()
+            res["dim"] = str(len(B)); res["basis"] = ", ".join(vs(b) for b in B)
+        elif "coord" in m:
+            g = m["coord"]; Bm = Matrix.hstack(*[V(b) for b in g["B"]])
+            if g["k"] == "to": res["answer"] = vs(Bm.inv() * V(g["v"]))
+            elif g["k"] == "from": res["answer"] = vs(Bm * V(g["c"]))
+            else: res["answer"] = vs(Matrix.hstack(*[V(b) for b in g["C"]]).inv() * Bm * V(g["c"]))
+        elif "fund" in m:
+            g = m["fund"]; sup = "⁰¹²³⁴⁵⁶"
+            if g["k"] == "ambient":
+                mm, nn = g["m"], g["n"]
+                res.update({"col": "ℝ" + sup[mm], "lnull": "ℝ" + sup[mm], "row": "ℝ" + sup[nn], "null": "ℝ" + sup[nn]})
+            else:
+                A = M(g["A"])
+                B = {"col": A.columnspace, "row": A.T.columnspace, "null": A.nullspace, "comp": A.T.nullspace}[g["k"]]()
+                key = "basis" if g["k"] == "comp" else "answer"; res[key] = ", ".join(vs(b) for b in B)
+                if g["k"] == "comp": res["comp"] = "row"; res["dim"] = str(len(B))
+        elif "rn" in m:
+            g = m["rn"]
+            if g["k"] == "piv": A = M(g["A"]); rk, nn, mm = A.rank(), A.cols, A.rows
+            else: rk, nn, mm = g["rk"], g["n"], g["m"]
+            res.update({"rank": str(rk), "nullity": str(nn - rk), "row": str(rk), "col": str(rk), "lnull": str(mm - rk)})
+        elif "lin" in m:
+            g = m["lin"]
+            if g["k"] == "param": k = symbols("k"); res["answer"] = s(solve(q(g["p"]) * k + q(g["q"]), k)[0])
+        elif "ki" in m:
+            g = m["ki"]
+            if g["k"] == "basis": A = M(g["A"]); res["ker"] = ", ".join(vs(b) for b in A.nullspace()); res["im"] = str(A.rank())
+            elif g["k"] == "props": res.update({"inj": "yes" if g["rk"] == g["n"] else "no", "onto": "yes" if g["rk"] == g["m"] else "no", "ker": str(g["n"] - g["rk"])})
+        elif "mm" in m:
+            g = m["mm"]; X = M(g["C"]).inv() * M(g["A"]) * M(g["B"]) if g["k"] == "bases" else M(g["A"])
+            for i in range(X.rows): res["r%d" % (i + 1)] = vs(X.row(i))
+        elif "comp" in m:
+            g = m["comp"]
+            if g["k"] == "order": res["expr"], res["shp"] = "TS", "%d × %d" % (g["c"], g["a"])
+            else:
+                X = M(g["T"]) * M(g["S"]) if g["k"] == "prod" else M(g["T"]).inv() * M(g["C"]) if g["k"] == "recover" else M(g["U"]) * M(g["T"]) * M(g["S"])
+                for i in range(X.rows): res["r%d" % (i + 1)] = vs(X.row(i))
+        elif "cob" in m:
+            g = m["cob"]
+            if g["k"] == "coords": res["dir"] = "P"; res["answer"] = vs(M(g["P"]).inv() * V(g["v"]))
+            else:
+                X = M(g["C"]).inv() * M(g["B"]) if g["k"] == "matrix" else M(g["P"]).inv() * M(g["A"]) * M(g["P"])
                 for i in range(X.rows): res["r%d" % (i + 1)] = vs(X.row(i))
     except Exception as e:
         res = {"__error__": repr(e)[:200]}

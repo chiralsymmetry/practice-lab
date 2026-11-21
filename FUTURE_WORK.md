@@ -38,7 +38,7 @@ source of truth for family-level scope and validation requirements.
 | HTTP and Web Protocol Practice | **Implemented** | [spec](specs/http-web-practice.md) | [app](apps/http-web-practice/) |
 | Networking and Protocols | **Implemented** | [spec](specs/networking-protocols.md) | [app](apps/networking-protocols/) |
 | Digital Logic and Computer Architecture | **Implemented** | [spec](specs/digital-logic-computer-architecture.md) | [app](apps/digital-logic/) |
-| Linear Algebra | **Partially implemented** (3 of 8 categories) | [spec](specs/linear-algebra.md) | [app](apps/linear-algebra/) |
+| Linear Algebra | **Partially implemented** (6 of 8 categories) | [spec](specs/linear-algebra.md) | [app](apps/linear-algebra/) |
 | Japanese Numbers, Dates, Time, and Money | **Implemented** | [spec](specs/japanese-numbers-dates.md) | [app](apps/japanese-numbers-dates/) |
 | Japanese Language | **Implemented** | [spec](specs/japanese-language.md) | [app](apps/japanese-language/) |
 | Electric Circuits | **Implemented** | [spec](specs/electric-circuits.md) | [app](apps/electric-circuits/) |
@@ -90,7 +90,7 @@ before implementation.
 - [Data Literacy and Chart Reading](specs/data-literacy-chart-reading.md)
 - [Differential Equations](specs/differential-equations.md)
 - [Geometry and Trigonometry](specs/geometry-trigonometry.md)
-- [Linear Algebra](specs/linear-algebra.md): **partially implemented**. Implemented: vectors and geometry; linear systems and row reduction; matrices and linear transformations. Remaining: determinants and invertibility; vector spaces, span, basis, and dimension; linear maps and change of basis; eigenvalues, eigenvectors, and dynamics; orthogonality, least squares, and spectral structure.
+- [Linear Algebra](specs/linear-algebra.md): **partially implemented**. Implemented: vectors and geometry; linear systems and row reduction; matrices and linear transformations; determinants and invertibility; vector spaces, span, basis, and dimension; linear maps and change of basis. Remaining: eigenvalues, eigenvectors, and dynamics; orthogonality, least squares, and spectral structure.
 - [Probability and Statistics](specs/probability-statistics.md)
 - [Spreadsheet Practice](specs/spreadsheet-practice.md)
 
