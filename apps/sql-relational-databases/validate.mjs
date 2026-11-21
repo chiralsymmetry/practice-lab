@@ -1,4 +1,5 @@
 import vm from "node:vm";
+import { Database } from "bun:sqlite";
 
 async function loadApp(localeCode) {
   const locale = (await import(`./locales/${localeCode}.mjs`)).default;
@@ -14,7 +15,7 @@ const en = await loadApp("en");
 const sv = await loadApp("sv");
 const failures = [];
 const fail = (name, data) => {
-  if (failures.length < 100) failures.push(`${name}: ${JSON.stringify(data)}`);
+  if (failures.length < 400) failures.push(`${name}: ${JSON.stringify(data)}`);
 };
 const o = en.oracles;
 
@@ -92,16 +93,11 @@ for (let i = 0; i < 50_000; i += 1) {
   if (!en.checkQuestion(question.canonicalAnswer, question).correct) fail("mutation canonical", [family, i]);
   if (question.metadata.dialectVersion !== "PracticeSQL-1") fail("mutation model", [family, i]);
 }
-let sawSnapshotConflict = false;
+// snapshot_v1: when two transactions write x and the other commits first, the later committer must abort.
 for (let seed = 1; seed <= 1_000; seed += 1) {
-  const question = en.generateQuestion("isolation_schedule", 5, seed);
-  const source = question.prompt.blocks.map((block) => block.text || "").join("\n");
-  if (source.includes("T1 writes x and tries to commit")) {
-    sawSnapshotConflict = true;
-    if (!question.expectedText.includes("T1 aborts")) fail("snapshot later-writer conflict", [seed, question.expectedText]);
-  }
+  const question = en.generateQuestion("isolation_schedule", 3, seed);
+  if (!question.expectedText.includes("T1 aborts")) fail("snapshot later-writer conflict", [seed, question.expectedText]);
 }
-if (!sawSnapshotConflict) fail("snapshot conflict coverage", []);
 
 const closureRef = (start, fds) => {
   const out = new Set(start);
@@ -136,6 +132,62 @@ for (let i = 0; i < 25_000; i += 1) {
   if (o.indexPrefix(["a", "b", "c"], predicates) !== prefixRef(["a", "b", "c"], predicates)) fail("index prefix", [i]);
 }
 
+
+// Replay generated scenarios in SQLite wherever the generator marks them as sharing PracticeSQL-1 semantics.
+let sqliteReplays = 0;
+{
+  const norm = (v) => typeof v === "bigint" ? Number(v) : v;
+  for (const family of en.families) for (let level = 1; level <= 5; level += 1) for (let sample = 1; sample <= 80; sample += 1) {
+    const q = en.generateQuestion(family.id, level, sample * 7477 + level * 31);
+    const check = q.metadata.sqlCheck;
+    if (!check) continue;
+    const db = new Database(":memory:");
+    db.exec("PRAGMA case_sensitive_like = ON; PRAGMA foreign_keys = ON;");
+    if (check.setup) db.exec(check.setup);
+    for (const step of check.steps || []) { try { db.exec(step); } catch {} }
+    let got;
+    try { got = db.query(check.query).values().map((row) => row.map(norm)); }
+    catch (error) { got = { error: String(error.message) }; }
+    db.close();
+    const want = check.expect;
+    const same = Array.isArray(got) && (check.ordered ? JSON.stringify(got) === JSON.stringify(want) : o.bagEqual(got, want));
+    if (!same) fail("SQLite replay", [family.id, level, sample, check.query, want, got]);
+    sqliteReplays += 1;
+  }
+}
+
+// Normal forms and candidate keys against an independent brute-force reference.
+{
+  const attrsAll = ["A", "B", "C", "D", "E"];
+  const subsetsOf = (xs) => { const out = []; for (let m = 1; m < (1 << xs.length); m += 1) out.push(xs.filter((_, i) => m & (1 << i))); return out; };
+  const covers = (x, xs, fds) => { const c = closureRef(x, fds); return xs.every((a) => c.includes(a)); };
+  let seed = 99;
+  const rnd = (n) => { seed = (seed * 1103515245 + 12345) >>> 0; return seed % n; };
+  for (let i = 0; i < 20_000; i += 1) {
+    const xs = attrsAll.slice(0, 3 + rnd(3)), fds = [];
+    for (let k = 0; k < 1 + rnd(4); k += 1) {
+      const lhs = xs.filter(() => rnd(3) === 0); if (!lhs.length) lhs.push(xs[rnd(xs.length)]);
+      const rest = xs.filter((a) => !lhs.includes(a)); if (!rest.length) continue;
+      fds.push([lhs.sort(), [rest[rnd(rest.length)]]]);
+    }
+    const supers = subsetsOf(xs).filter((s) => covers(s, xs, fds));
+    const keys = supers.filter((s) => !s.some((a) => covers(s.filter((b) => b !== a), xs, fds)));
+    const prime = new Set(keys.flat());
+    let bcnf = true, third = true, second = true;
+    for (const x of subsetsOf(xs)) {
+      if (covers(x, xs, fds)) continue;
+      for (const a of closureRef(x, fds)) {
+        if (x.includes(a)) continue;
+        bcnf = false;
+        if (!prime.has(a)) { third = false; if (keys.some((k) => x.every((y) => k.includes(y)) && x.length < k.length)) second = false; }
+      }
+    }
+    const want = bcnf ? 4 : third ? 3 : second ? 2 : 1;
+    const gotKeys = o.candidateKeys(xs, fds).map((k) => k.join("")).sort().join("|");
+    if (gotKeys !== keys.map((k) => k.join("")).sort().join("|")) fail("candidate keys", [xs.join(""), fds]);
+    if (o.normalForm(xs, fds) !== want) fail("normal form", [xs.join(""), fds, want]);
+  }
+}
 let generated = 0;
 for (let familyIndex = 0; familyIndex < en.families.length; familyIndex += 1) {
   const family = en.families[familyIndex];
@@ -172,4 +224,4 @@ if (failures.length) {
   }
   if (!choiceFields || firstPosition / choiceFields > 0.45) throw new Error(`Choice-position bias: correct option first in ${firstPosition}/${choiceFields}`);
 }
-console.log(`SQL extended validation passed: 100,000 scalar/3VL cases, 100,000 bag/order cases, 100,000 joins, 50,000 aggregates, 50,000 subquery/set cases, 50,000 mutation/transaction questions, 25,000 FD cases, 25,000 index cases, and ${generated.toLocaleString("en-US")} bilingual generated questions.`);
+console.log(`SQL extended validation passed: ${sqliteReplays.toLocaleString("en-US")} SQLite replays of generated scenarios, 100,000 scalar/3VL cases, 100,000 bag/order cases, 100,000 joins, 50,000 aggregates, 50,000 subquery/set cases, 50,000 mutation/transaction questions, 25,000 FD cases, 20,000 normal-form/key cases, 25,000 index cases, and ${generated.toLocaleString("en-US")} bilingual generated questions.`);
