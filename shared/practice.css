@@ -672,3 +672,20 @@ th {
 #feedback th {
   text-transform: none;
 }
+
+/* A select's minimum width is its longest option, and generated options can be long. Let answer
+   selects (and the grid cells holding them) shrink to the column so the page never scrolls
+   sideways; the open dropdown still shows each option in full. */
+select {
+  max-width: 100%;
+  min-width: 0;
+}
+
+.answer-controls,
+.answer-control {
+  min-width: 0;
+}
+
+.answer-control {
+  grid-template-columns: minmax(0, 1fr);
+}

@@ -178,7 +178,13 @@ window.__smoke = {
   },
   layoutProblems(scope) {
     const problems = [], width = document.documentElement.clientWidth;
-    if (document.documentElement.scrollWidth > width + 1) problems.push(scope + ": page scrolls horizontally (" + document.documentElement.scrollWidth + "px > " + width + "px)");
+    if (document.documentElement.scrollWidth > width + 1) {
+      // Name the outermost elements that stick out (ignoring content inside its own scroller) and the question on screen.
+      const sticking = [...document.querySelectorAll("body *")].filter((el) => el.getBoundingClientRect().right > width + 1 && __smoke.visible(el) && !__smoke.inScroller(el));
+      const outermost = sticking.filter((el) => !sticking.includes(el.parentElement)).slice(0, 3).map((el) => __smoke.describe(el) + (el.className && typeof el.className === "string" ? "." + el.className.trim().split(/\s+/).join(".") : "") + " (right " + Math.round(el.getBoundingClientRect().right) + "px)");
+      const shown = [document.getElementById("questionFamily"), document.getElementById("questionLevel")].map((el) => el ? el.textContent.trim() : "").filter(Boolean).join(" ");
+      problems.push(scope + ": page scrolls horizontally (" + document.documentElement.scrollWidth + "px > " + width + "px)" + (outermost.length ? "; sticking out: " + outermost.join(", ") : "") + (shown ? "; question: " + shown : ""));
+    }
     const view = document.querySelector(".view.active") || document.body;
     const scopeEls = [...document.querySelectorAll("header *, nav *"), ...view.querySelectorAll("*")];
     const controls = scopeEls.filter((el) => el.matches("button, input, select, textarea") && __smoke.visible(el));
