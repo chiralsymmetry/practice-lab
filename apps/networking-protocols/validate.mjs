@@ -71,11 +71,38 @@ function socketRef(socks, p) {
 // ---------- Generated sweep ----------
 const answerLabel = (q, id = "answer") => { const f = q.fields.find((x) => x.id === id); return f.options ? f.options.find((x) => x.value === f.answer).label : f.answer; };
 let generated = 0, referenceChecks = 0;
-const routeCases = [], v6Packets = [], ipv4Packets = [], udpPackets = [];
+const routeCases = [], v6Packets = [], ipv4Packets = [], udpPackets = [], framePackets = [], arpPackets = [], solCases = [], slaacCases = [], nextHopCases = [];
+// Switching references.
+function learnRef({ before, events, elapsed, maxAge }) {
+  const fdb = {};
+  for (const [k, v] of Object.entries(before)) if (v.age + elapsed < maxAge) fdb[k] = v.port;
+  for (const e of events) fdb[`${e.vlan}|${e.src}`] = e.port;
+  return Object.fromEntries(Object.keys(fdb).sort().map((k) => [k, fdb[k]]));
+}
+function bridgeRef({ ports, fdb, frame }) {
+  const table = { ...fdb, [`${frame.vlan}|${frame.src}`]: frame.port };
+  const members = ports.filter((p) => p.vlans.includes(frame.vlan)).map((p) => p.id);
+  const out = frame.dst === "broadcast" ? undefined : table[`${frame.vlan}|${frame.dst}`];
+  if (out === undefined) return { action: "flood", ports: members.filter((p) => p !== frame.port) };
+  return out === frame.port ? { action: "filter", ports: [] } : { action: "forward", ports: [out] };
+}
+function vlanPathRef({ inPort, outPort, frame }) {
+  let vlan;
+  if (inPort.mode === "access") { if (frame.tag !== null) return "drop"; vlan = inPort.vlan; }
+  else { if (frame.tag === null || !inPort.allowed.includes(frame.tag)) return "drop"; vlan = frame.tag; }
+  if (outPort.mode === "access") return outPort.vlan === vlan ? "untagged" : "drop";
+  return outPort.allowed.includes(vlan) ? `tag ${vlan}` : "drop";
+}
+function isolationRef({ hosts, links, src }) {
+  const s = hosts.find((h) => h.id === src), seen = new Set([s.sw]), queue = [s.sw];
+  while (queue.length) { const x = queue.shift(); for (const l of links) { const o = l.a === x ? l.b : l.b === x ? l.a : null; if (o && l.allowed.includes(s.vlan) && !seen.has(o)) { seen.add(o); queue.push(o); } } }
+  return hosts.filter((h) => h.id !== src && h.vlan === s.vlan && seen.has(h.sw)).map((h) => h.id);
+}
+const icmpRef = (c) => ({ ttl: "te", hop6: "te", echo: "echo", noRoute: "net", noRoute6: "net", udpClosed: "port", df4: "fragNeeded", frag4: "none", ptb6: "ptb", errAboutErr: "none", nonFirstFrag: "none", broadcastDst: "none" })[c];
 for (let familyIndex = 0; familyIndex < en.families.length; familyIndex += 1) {
   const family = en.families[familyIndex];
   if (sv.families[familyIndex]?.id !== family.id) fail("locale family parity", family.id);
-  for (let level = 1; level <= 5; level += 1) {
+  for (const level of family.levels) {
     const signatures = new Set();
     for (let sample = 0; sample < 4_000; sample += 1) {
       const s = ((familyIndex + 1) * 10_000_000 + level * 100_000 + sample + 1) >>> 0, q = en.generateQuestion(family.id, level, s), m = q.metadata, where = [family.id, level, s];
@@ -102,6 +129,19 @@ for (let familyIndex = 0; familyIndex < en.families.length; familyIndex += 1) {
       if (m.checksum && m.checksum.words) { const bytes = m.checksum.words.flatMap((w) => [w >>> 8, w & 255]); if (parseInt(q.canonicalAnswer.answer, 16) !== checksumBytes(bytes)) fail("checksum reference", where); referenceChecks += 1; }
       if (m.checksum && m.checksum.incremental) { if (m.checksum.inc !== m.checksum.full) fail("incremental checksum equals recomputation", where); referenceChecks += 1; }
       if (m.route && sample < 400) routeCases.push({ where, ...m.route });
+      if (m.frame && m.frame.bytes && !m.frame.issue && sample < 300) framePackets.push({ where, ...m.frame });
+      if (m.arp && m.arp.op && sample < 300) arpPackets.push({ where, ...m.arp });
+      if (m.sol && sample < 400) solCases.push({ where, ...m.sol });
+      if (m.slaac && m.slaac.cand && m.slaac.iid && sample < 400) slaacCases.push({ where, ...m.slaac });
+      if (m.nextHop && !m.nextHop.v6 && sample < 400) nextHopCases.push({ where, ...m.nextHop });
+      if (m.fdb) { if (!equal(learnRef(m.fdb), Object.fromEntries(Object.keys(m.fdb.after).sort().map((k) => [k, m.fdb.after[k].port])))) fail("switch learning reference", where); referenceChecks += 1; }
+      if (m.bridge) { if (!equal(bridgeRef(m.bridge), { action: m.bridge.res.action, ports: m.bridge.res.ports })) fail("switch forwarding reference", where); referenceChecks += 1; }
+      if (m.vlanPath) { if (!equal(vlanPathRef(m.vlanPath), m.vlanPath.res.drop ? "drop" : m.vlanPath.res.tag === null ? "untagged" : `tag ${m.vlanPath.res.tag}`)) fail("VLAN port reference", where); referenceChecks += 1; }
+      if (m.iso) { if (!equal(isolationRef(m.iso), m.iso.recv)) fail("VLAN isolation reference", where); referenceChecks += 1; }
+      if (m.icmp) { if (icmpRef(m.icmp.c) !== m.icmp.ans) fail("ICMP selection reference", where); referenceChecks += 1; }
+      if (m.ping && m.ping.loss !== undefined) { const got = new Set(m.ping.replies.map((x) => x.seq)); const ref = Math.round(1000 * (m.ping.probes.length - got.size) / m.ping.probes.length) / 10; if (ref !== m.ping.loss) fail("ping loss reference", where); referenceChecks += 1; }
+      if (m.pmtu) { const pm = Math.min(...m.pmtu.links); if (pm !== m.pmtu.pmtu || pm - m.pmtu.tunnel - m.pmtu.ipH - m.pmtu.tcpHdr !== m.pmtu.mss || Number(q.canonicalAnswer.mss) !== m.pmtu.mss) fail("PMTU/MSS reference", where); referenceChecks += 1; }
+      if (m.tunnel) { if (m.tunnel.pmtu - m.tunnel.over !== m.tunnel.budget) fail("tunnel budget reference", where); referenceChecks += 1; }
       if (m.v6 && sample < 300) v6Packets.push({ where, ...m.v6 });
       if (m.wire && m.wire.kind === "ipv4" && m.wire.bytes && sample < 300) ipv4Packets.push({ where, ...m.wire });
       if (m.wire && m.wire.kind === "udp" && m.wire.fields && sample < 300) udpPackets.push({ where, ...m.wire });
@@ -119,7 +159,19 @@ if (py.exitCode === 0) {
   const script = `
 import ipaddress, json, sys
 data = json.load(sys.stdin)
-out = {"v6": [ipaddress.IPv6Address(a).compressed for a in data["addrs"]], "routes": []}
+out = {"v6": [ipaddress.IPv6Address(a).compressed for a in data["addrs"]], "routes": [], "sol": [], "slaac": [], "nexthop": []}
+for c in data["sol"]:
+    t = int(ipaddress.IPv6Address(c["target"]))
+    m = int(ipaddress.IPv6Address("ff02::1:ff00:0")) | (t & 0xFFFFFF)
+    out["sol"].append([str(ipaddress.IPv6Address(m)), "33:33:" + ":".join("%02x" % ((m >> (8 * i)) & 255) for i in (3, 2, 1, 0))])
+for c in data["slaac"]:
+    out["slaac"].append(str(ipaddress.IPv6Network(c["pre"] + "/64")[int(ipaddress.IPv6Address("::" + c["iid"]))]))
+for c in data["nexthop"]:
+    dst = ipaddress.ip_address(c["dst"]); best = None
+    for r in c["routes"]:
+        net = ipaddress.ip_network(r["p"])
+        if dst in net and (best is None or net.prefixlen > best[0].prefixlen): best = (net, r["via"])
+    out["nexthop"].append(best[1] or c["dst"])
 for case in data["routes"]:
     dst = ipaddress.ip_address(case["dst"])
     best = None
@@ -129,20 +181,23 @@ for case in data["routes"]:
             best = (r["p"], r["m"], r["id"])
     out["routes"].append(best[2] if best else None)
 print(json.dumps(out))`;
-  const run = Bun.spawnSync(["/usr/bin/env", "python3", "-I", "-c", script], { stdin: Buffer.from(JSON.stringify({ addrs, routes: routeCases })), stdout: "pipe", stderr: "pipe" });
+  const run = Bun.spawnSync(["/usr/bin/env", "python3", "-I", "-c", script], { stdin: Buffer.from(JSON.stringify({ addrs, routes: routeCases, sol: solCases, slaac: slaacCases, nexthop: nextHopCases })), stdout: "pipe", stderr: "pipe" });
   if (run.exitCode !== 0) fail("python ipaddress run", run.stderr.toString().slice(0, 300));
   else {
     const out = JSON.parse(run.stdout.toString());
     addrs.forEach((a, i) => { if (o.v6Format(o.v6Parse(a)) !== out.v6[i]) fail("IPv6 compression vs Python", [a, o.v6Format(o.v6Parse(a)), out.v6[i]]); pythonChecks += 1; });
     routeCases.forEach((c, i) => { if (c.best !== out.routes[i]) fail("route selection vs Python", [...c.where, c.best, out.routes[i]]); pythonChecks += 1; });
+    solCases.forEach((c, i) => { if (o.v6Format(o.v6Parse(c.ip)) !== o.v6Format(o.v6Parse(out.sol[i][0])) || c.mac !== out.sol[i][1]) fail("solicited-node vs Python", [...c.where, c.ip, c.mac, out.sol[i]]); pythonChecks += 1; });
+    slaacCases.forEach((c, i) => { if (o.v6Format(o.v6Parse(c.cand)) !== o.v6Format(o.v6Parse(out.slaac[i]))) fail("SLAAC address vs Python", [...c.where, c.cand, out.slaac[i]]); pythonChecks += 1; });
+    nextHopCases.forEach((c, i) => { if (c.target !== out.nexthop[i]) fail("next-hop target vs Python", [...c.where, c.target, out.nexthop[i]]); pythonChecks += 1; });
   }
 } else pythonNote = " Python ipaddress checks skipped: python3 not found.";
 
 // ---------- tcpdump decoding of serialized packets ----------
 let tcpdumpNote = "", tcpdumpChecks = 0;
-function pcap(packets) {
+function pcap(packets, linktype = 101) {
   const parts = [], gh = Buffer.alloc(24);
-  gh.writeUInt32LE(0xa1b2c3d4, 0); gh.writeUInt16LE(2, 4); gh.writeUInt16LE(4, 6); gh.writeUInt32LE(262144, 16); gh.writeUInt32LE(101, 20); parts.push(gh);
+  gh.writeUInt32LE(0xa1b2c3d4, 0); gh.writeUInt16LE(2, 4); gh.writeUInt16LE(4, 6); gh.writeUInt32LE(262144, 16); gh.writeUInt32LE(linktype, 20); parts.push(gh);
   packets.forEach((p, i) => { const h = Buffer.alloc(16); h.writeUInt32LE(i, 0); h.writeUInt32LE(p.length, 8); h.writeUInt32LE(p.length, 12); parts.push(h, Buffer.from(p)); });
   return Buffer.concat(parts);
 }
@@ -196,8 +251,26 @@ if (hasTcpdump) {
       if (!equal(seen, p.chain.map((t) => tokenOf[t])) || upper !== p.upper) fail("tcpdump IPv6 chain vs answer", [...p.where, line.slice(0, 200)]);
       tcpdumpChecks += 1;
     });
+    // Ethernet frames (linktype 1): compare tcpdump's MACs, EtherType, and VLAN ID with the question's model.
+    const decodeEth = (packets) => { writeFileSync(join(dir, "e.pcap"), pcap(packets, 1)); const r = Bun.spawnSync(["/usr/bin/env", "-i", "PATH=/usr/bin:/bin", "tcpdump", "-nn", "-e", "-r", join(dir, "e.pcap")], { stdout: "pipe", stderr: "pipe" }); return r.stdout.toString().split(/\n(?=\d\d:)/).filter(Boolean); };
+    const ethNames = { 2048: "IPv4", 34525: "IPv6", 2054: "ARP" };
+    const linesE = decodeEth(framePackets.map((f) => { const b = f.bytes.split(" ").map((x) => parseInt(x, 16)); while (b.length < 60) b.push(0); return b; }));
+    framePackets.forEach((f, i) => {
+      const line = linesE[i] ?? "", m = /^\S+ ([0-9a-f:]{17}) > ([0-9a-f:]{17}), ethertype (?:802\.1Q \(0x8100\), length \d+: vlan (\d+), p (\d+), (?:DEI, )?ethertype )?(\w+) \(0x([0-9a-f]{4})\)/.exec(line);
+      if (!m || (f.src && m[1] !== f.src) || (f.dst && m[2] !== f.dst) || parseInt(m[6], 16) !== f.et || (f.tagged && Number(m[3]) !== f.vid) || (!f.tagged && m[3] !== undefined)) fail("tcpdump Ethernet fields vs answer", [...f.where, line.slice(0, 200)]);
+      tcpdumpChecks += 1;
+    });
+    // ARP: serialize requests and replies from the question's model and compare tcpdump's reading.
+    const macB = (x) => x.split(":").map((h) => parseInt(h, 16)), ipB = (x) => x.split(".").map(Number);
+    const arpFrames = arpPackets.map((a) => { const req = a.op === "request", sha = a.sha, tha = req ? "00:00:00:00:00:00" : a.tha, dstMac = req ? "ff:ff:ff:ff:ff:ff" : a.tha; return [...macB(dstMac), ...macB(sha), 8, 6, 0, 1, 8, 0, 6, 4, 0, req ? 1 : 2, ...macB(sha), ...ipB(a.spa), ...macB(tha), ...ipB(a.tpa), ...Array(18).fill(0)]; });
+    const linesA = decodeEth(arpFrames);
+    arpPackets.forEach((a, i) => {
+      const line = linesA[i] ?? "", want = a.op === "request" ? `Request who-has ${a.tpa} tell ${a.spa}` : `Reply ${a.spa} is-at ${a.sha}`;
+      if (!line.includes(want) || !line.includes(a.op === "request" ? "> ff:ff:ff:ff:ff:ff" : `> ${a.tha}`)) fail("tcpdump ARP vs answer", [...a.where, line.slice(0, 200)]);
+      tcpdumpChecks += 1;
+    });
   } finally { rmSync(dir, { recursive: true, force: true }); }
 } else tcpdumpNote = " tcpdump checks skipped: tcpdump not found on PATH=/usr/bin:/bin.";
 
 if (failures.length) { console.error(failures.join("\n")); process.exit(1); }
-console.log(`Networking extended validation passed: ${propertyCases.toLocaleString("en-US")} checksum/fragmentation property cases, ${referenceChecks.toLocaleString("en-US")} independent reference checks, ${pythonChecks.toLocaleString("en-US")} Python ipaddress checks, ${tcpdumpChecks.toLocaleString("en-US")} packets decoded by tcpdump, and ${generated.toLocaleString("en-US")} generated questions (4,000 per family and level), with bilingual seed parity.${pythonNote}${tcpdumpNote}`);
+console.log(`Networking extended validation passed: ${propertyCases.toLocaleString("en-US")} checksum/fragmentation property cases, ${referenceChecks.toLocaleString("en-US")} independent reference checks, ${pythonChecks.toLocaleString("en-US")} Python ipaddress checks, ${tcpdumpChecks.toLocaleString("en-US")} packets decoded by tcpdump, and ${generated.toLocaleString("en-US")} generated questions (4,000 per family and supported level), with bilingual seed parity.${pythonNote}${tcpdumpNote}`);

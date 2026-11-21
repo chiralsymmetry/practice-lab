@@ -2,3 +2,8 @@
 
 /* The answer keypad rows are six keys wide. */
 .keypad{grid-template-columns:repeat(6,minmax(0,1fr))}
+
+.unavailable-cell {
+  color: var(--muted);
+  text-align: center;
+}
