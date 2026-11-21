@@ -1,4 +1,7 @@
 import vm from "node:vm";
+import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, symlinkSync, rmSync, existsSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join, dirname } from "node:path";
 
 async function loadApp(localeCode) {
   const locale = (await import(`./locales/${localeCode}.mjs`)).default;
@@ -96,6 +99,97 @@ for (let familyIndex = 0; familyIndex < en.families.length; familyIndex += 1) {
   }
 }
 
+// Independent references for the models that cannot be replayed against real tools.
+function classOf(identity, obj) { return identity.uid === obj.uid ? 6 : identity.gids.includes(obj.gid) ? 3 : 0; }
+function bits(identity, obj) { return (obj.mode >> classOf(identity, obj)) & 7; }
+function dirRef({ identity, anc, dir, file, op }) {
+  if (!(bits(identity, anc) & 1)) return "ancX";
+  if (op === "list") return bits(identity, dir) & 4 ? "ok" : "dirR";
+  if (!(bits(identity, dir) & 1)) return "dirX";
+  if (op === "read") return bits(identity, file) & 4 ? "ok" : "fileR";
+  if (!(bits(identity, dir) & 2)) return "dirW";
+  if (op === "remove" && (dir.mode & 0o1000) && identity.uid !== file.uid && identity.uid !== dir.uid) return "sticky";
+  return "ok";
+}
+function storageRef({ blocks, inodes, existing, ops }) {
+  const names = new Map(), objs = [];
+  for (const [name, b] of existing) { const o = { blocks: b, links: 1 }; objs.push(o); names.set(name, o); }
+  let free = blocks, freeI = inodes; const failed = [];
+  ops.forEach(([kind, a, b], i) => {
+    const fail = () => failed.push(i + 1);
+    if (kind === "create") { if (names.has(a) || free < b || freeI < 1) return fail(); free -= b; freeI -= 1; names.set(a, { blocks: b, links: 1 }); }
+    else if (kind === "append") { const o = names.get(a); if (!o || free < b) return fail(); free -= b; o.blocks += b; }
+    else if (kind === "ln") { const o = names.get(a); if (!o || names.has(b)) return fail(); names.set(b, o); o.links += 1; }
+    else if (kind === "rm") { const o = names.get(a); if (!o) return fail(); names.delete(a); if (--o.links === 0) { free += o.blocks; freeI += 1; } }
+  });
+  return { blocks: free, inodes: freeI, failed };
+}
+function dnsRef({ recs, cache, q }) {
+  const src = cache.concat(recs), seen = new Set([q]), chain = [q]; let cur = q;
+  for (;;) {
+    const hit = src.find(([n, t]) => n === cur && (t === "A" || t === "CNAME"));
+    if (!hit) return { chain, end: src.some(([n]) => n === cur) ? "nodata" : "nx" };
+    if (hit[1] === "A") return { chain, end: hit[2] };
+    cur = hit[2]; if (seen.has(cur)) return { chain: chain.concat([cur]), end: "loop" }; seen.add(cur); chain.push(cur);
+  }
+}
+function httpRef({ routes, method, path, token }) {
+  const segs = path.split("/"), hits = routes.filter((r) => { const a = r.path.split("/"); return a.length === segs.length && a.every((x, i) => x === "{id}" ? /^[0-9]+$/.test(segs[i]) : x === segs[i]); });
+  if (!hits.length) return { status: 404, route: "none" };
+  const h = hits.find((r) => r.methods.includes(method));
+  if (!h) return { status: 405, route: "none" };
+  return h.auth && !token ? { status: 401, route: h.id } : { status: h.status, route: h.id };
+}
+function socketRef({ listeners, proto, addr, port }) {
+  const h = listeners.find((l) => l.proto === proto && l.port === port && (l.addr === "0.0.0.0" || l.addr === addr));
+  return h ? h.id : null;
+}
+let referenceCases = 0;
+for (const family of en.families) for (let level = 1; level <= 5; level += 1) for (let sample = 0; sample < 2000; sample += 1) {
+  const seed = (level * 7_000_003 + sample * 104_729 + 17) >>> 0, q = en.generateQuestion(family.id, level, seed), m = q.metadata;
+  if (m.access) { const { identity, inode, op } = m.access, ops = op === "all" ? ["read", "write", "execute"] : [op], cls = classOf(identity, inode), clsName = cls === 6 ? "owner" : cls === 3 ? "group" : "other";
+    if (q.canonicalAnswer.class !== clsName) fail("file access class", [family.id, level, seed]);
+    for (const o of ops) { const bit = o === "read" ? 4 : o === "write" ? 2 : 1, want = (inode.mode >> cls) & bit ? "allowed" : "denied", got = op === "all" ? q.canonicalAnswer[o] : q.canonicalAnswer.result; if (got !== want) fail("file access decision", [family.id, level, seed, o]); }
+    referenceCases += 1; }
+  if (m.dirAccess) { if (dirRef(m.dirAccess) !== m.dirAccess.why) fail("directory access reference", [level, seed]); referenceCases += 1; }
+  if (m.storage && m.storage.result) { const ref = storageRef(m.storage); if (JSON.stringify(ref) !== JSON.stringify(m.storage.result)) fail("storage reference", [level, seed, ref, m.storage.result]); if (q.canonicalAnswer.blocks !== undefined && (Number(q.canonicalAnswer.blocks) !== ref.blocks || Number(q.canonicalAnswer.inodes) !== ref.inodes)) fail("storage answer fields", [level, seed]); referenceCases += 1; }
+  if (m.dns) { const ref = dnsRef(m.dns); if (ref.end !== m.dns.end || ref.chain.join() !== m.dns.chain.join()) fail("DNS reference", [level, seed]); referenceCases += 1; }
+  if (m.http) { const ref = httpRef(m.http); if (ref.status !== m.http.status || ref.route !== m.http.route || Number(q.canonicalAnswer.answer) !== ref.status) fail("HTTP reference", [level, seed, ref]); referenceCases += 1; }
+  if (m.socket) { if (socketRef(m.socket) !== m.socket.hit) fail("socket reference", [level, seed]); referenceCases += 1; }
+}
+
+// Replay every shell-model question against the real GNU tools (bash, coreutils, grep, sed, gawk, findutils).
+function gnuToolsAvailable() {
+  const p = Bun.spawnSync(["/usr/bin/env", "-i", "PATH=/usr/bin:/bin", "bash", "-c", "grep --version; sed --version; find --version; xargs --version; realpath --version; awk --version"], { stdout: "pipe", stderr: "pipe" });
+  const out = p.stdout.toString();
+  return p.exitCode === 0 && /GNU grep/.test(out) && /GNU sed/.test(out) && /GNU findutils/.test(out) && /coreutils/.test(out) && /GNU Awk/.test(out);
+}
+let replayed = 0, replayNote = "";
+if (gnuToolsAvailable()) {
+  const cases = [];
+  en.families.forEach((family, fi) => { for (let level = 1; level <= 5; level += 1) for (let sample = 0; sample < 60; sample += 1) {
+    const seed = ((fi + 1) * 1_000_003 + level * 7919 + sample * 104_729) >>> 0, q = en.generateQuestion(family.id, level, seed);
+    if (q.metadata.replay) cases.push({ id: family.id, level, seed, replay: q.metadata.replay });
+  } });
+  const base = mkdtempSync(join(tmpdir(), "admin-replay-"));
+  try {
+    let runner = "";
+    cases.forEach(({ replay: rp }, i) => {
+      const dir = join(base, "c" + i); mkdirSync(dir);
+      (rp.dirs || []).forEach((d) => mkdirSync(join(dir, d), { recursive: true }));
+      Object.entries(rp.files || {}).forEach(([p, content]) => { mkdirSync(dirname(join(dir, p)), { recursive: true }); writeFileSync(join(dir, p), content); });
+      (rp.links || []).forEach(([p, target]) => { mkdirSync(dirname(join(dir, p)), { recursive: true }); symlinkSync(target.startsWith("/") ? join(dir, "root") + target : target, join(dir, p)); });
+      writeFileSync(join(base, "s" + i + ".sh"), rp.script + "\n");
+      runner += `(cd "${base}/c${i}" && . "${base}/s${i}.sh") >"${base}/o${i}" 2>/dev/null </dev/null\n`;
+    });
+    writeFileSync(join(base, "runner.sh"), runner);
+    const run = Bun.spawnSync(["/usr/bin/env", "-i", "PATH=/usr/bin:/bin", "LC_ALL=C", "HOME=/nonexistent", "bash", "--norc", "--noprofile", join(base, "runner.sh")], { stdout: "pipe", stderr: "pipe", timeout: 600_000 });
+    if (run.exitCode === null) fail("GNU replay", ["runner timed out"]);
+    cases.forEach((c, i) => { const got = existsSync(join(base, "o" + i)) ? readFileSync(join(base, "o" + i), "utf8") : null; if (got !== c.replay.expect) fail("GNU replay", [c.id, c.level, c.seed, c.replay.script, c.replay.expect, got]); });
+    replayed = cases.length;
+  } finally { rmSync(base, { recursive: true, force: true }); }
+} else replayNote = " GNU tool replay skipped: GNU bash/coreutils/grep/sed/gawk/findutils not found on PATH=/usr/bin:/bin.";
+
 if (failures.length) {
   console.error(failures.join("\n"));
   process.exit(1);
@@ -112,4 +206,4 @@ if (failures.length) {
   }
   if (!choiceFields || firstPosition / choiceFields > 0.45) throw new Error(`Choice-position bias: correct option first in ${firstPosition}/${choiceFields}`);
 }
-console.log(`Administration extended validation passed: 354,096 independent oracle/property cases and ${generated.toLocaleString("en-US")} generated questions (10,000 per family and level), with bilingual seed parity.`);
+console.log(`Administration extended validation passed: 354,096 independent oracle/property cases, ${referenceCases.toLocaleString("en-US")} independent model-reference checks, ${replayed.toLocaleString("en-US")} questions replayed against real GNU tools, and ${generated.toLocaleString("en-US")} generated questions (10,000 per family and level), with bilingual seed parity.${replayNote}`);
