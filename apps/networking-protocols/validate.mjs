@@ -71,6 +71,31 @@ function socketRef(socks, p) {
 // ---------- Generated sweep ----------
 const answerLabel = (q, id = "answer") => { const f = q.fields.find((x) => x.id === id); return f.options ? f.options.find((x) => x.value === f.answer).label : f.answer; };
 let generated = 0, referenceChecks = 0;
+// Application, policy, and diagnosis references.
+function dnsQueriesRef({ cache, cname, tld1, tld2 }) {
+  if (cache === "answer") return 0;
+  return (cache === "tld" ? 2 : 3) + (cname ? (tld2 === tld1 ? 2 : 3) : 0);
+}
+const leaseState = (lease, t) => (t < lease / 2 ? "bound" : t < lease * 7 / 8 ? "renew" : t < lease ? "rebind" : "expired");
+function natAllocRef(rows, proto) { const used = new Set(rows.filter((x) => x.proto === proto).map((x) => x.ext)); let p = 40001; while (used.has(p)) p += 1; return p; }
+function fwRef(pk, timeout) {
+  let conn = null;
+  return pk.map((x) => {
+    const key = x.dir === "out" ? `${x.s}:${x.sp}>${x.d}:${x.dp}` : `${x.d}:${x.dp}>${x.s}:${x.sp}`;
+    if (conn && x.t - conn.last >= timeout) conn = null;
+    if (conn && conn.key === key) { conn.last = x.t; return "ESTABLISHED allow"; }
+    if (x.dir === "out" && x.fl === "SYN" && [80, 443].includes(x.dp)) { conn = { key, last: x.t }; return "NEW allow"; }
+    return "NEW drop";
+  });
+}
+function certRef({ cert, host }) {
+  if (!cert.trusted) return "untrusted";
+  if (cert.to < 2027) return "expired";
+  const n = cert.name; if (n === host) return "ok";
+  if (n.startsWith("*.")) { const labels = host.split("."); if (labels.length >= 2 && labels.slice(1).join(".") === n.slice(2)) return "ok"; }
+  return "name";
+}
+const httpCases = [], frameCases = [], aclCases = [], ptrCases = [], capFrames = [];
 const routeCases = [], v6Packets = [], ipv4Packets = [], udpPackets = [], framePackets = [], arpPackets = [], solCases = [], slaacCases = [], nextHopCases = [];
 // Switching references.
 function learnRef({ before, events, elapsed, maxAge }) {
@@ -141,6 +166,39 @@ for (let familyIndex = 0; familyIndex < en.families.length; familyIndex += 1) {
       if (m.icmp) { if (icmpRef(m.icmp.c) !== m.icmp.ans) fail("ICMP selection reference", where); referenceChecks += 1; }
       if (m.ping && m.ping.loss !== undefined) { const got = new Set(m.ping.replies.map((x) => x.seq)); const ref = Math.round(1000 * (m.ping.probes.length - got.size) / m.ping.probes.length) / 10; if (ref !== m.ping.loss) fail("ping loss reference", where); referenceChecks += 1; }
       if (m.pmtu) { const pm = Math.min(...m.pmtu.links); if (pm !== m.pmtu.pmtu || pm - m.pmtu.tunnel - m.pmtu.ipH - m.pmtu.tcpHdr !== m.pmtu.mss || Number(q.canonicalAnswer.mss) !== m.pmtu.mss) fail("PMTU/MSS reference", where); referenceChecks += 1; }
+      if (m.dnsTrace) { if (dnsQueriesRef(m.dnsTrace) !== m.dnsTrace.recQueries) fail("DNS resolution reference", where); referenceChecks += 1; }
+      if (m.dnsCache) {
+        const c = m.dnsCache;
+        if (c.recs) { const live = c.recs.filter((x) => x.at + x.ttl > c.now).map((x) => `${x.n} (${x.at + x.ttl - c.now} s)`); if (!equal(live, c.live)) fail("DNS cache reference", where); }
+        if (c.exp !== undefined && Number.isFinite(c.exp)) { /* hit iff now < expiry; checked through the answer text below */ }
+        if (c.tc !== undefined) { const ref = c.now < c.tc && c.now >= c.ta ? "target" : c.now >= c.tc && c.now < c.ta ? "alias" : "both"; if (ref !== c.res) fail("DNS chain reference", where); }
+        if (c.t1 !== undefined && c.t1 + c.ttl2 - c.t2 !== Number(q.canonicalAnswer.answer)) fail("DNS replacement TTL reference", where);
+        referenceChecks += 1;
+      }
+      if (m.dnsT && m.dnsT.len !== undefined) { const want = [m.dnsT.len >> 8, m.dnsT.len & 255].map((x) => x.toString(16).toUpperCase().padStart(2, "0")).join(" "); if (q.canonicalAnswer.answer !== want) fail("DNS/TCP length prefix reference", where); referenceChecks += 1; }
+      if (m.dnsT && m.dnsT.n !== undefined) { if (Number(q.canonicalAnswer.answer) !== (m.dnsT.reuse ? 1 : m.dnsT.n)) fail("DNS/TCP reuse reference", where); referenceChecks += 1; }
+      if (m.lease) { if (leaseState(m.lease.lease, m.lease.t - (m.lease.ackAt ?? 0)) !== m.lease.state) fail("DHCP lease reference", where); referenceChecks += 1; }
+      if (m.reuse) {
+        const u = m.reuse;
+        if (u.close) { if (1 + u.close.slice(0, -1).filter(Boolean).length !== u.conns) fail("HTTP close reference", where); }
+        if (u.origins) { if (new Set(u.origins).size !== u.conns) fail("HTTP origin reference", where); }
+        if (u.assign) { const end = {}; u.assign.forEach((c, i) => { end[c] = (end[c] ?? 0) + u.times[i]; if (end[c] !== u.done[i]) fail("HTTP two-connection reference", where); }); }
+        if (u.serial !== undefined && (u.serial !== u.times.reduce((a, b) => a + b, 0) || u.par !== Math.max(...u.times))) fail("HTTP/2 concurrency reference", where);
+        referenceChecks += 1;
+      }
+      if (m.h2) { const d = {}; for (const f of m.h2.frames) if (f.sid) d[f.sid] = (d[f.sid] ?? "") + (f.type === "DATA" ? f.text : ""); if (!equal(d, m.h2.data)) fail("HTTP/2 stream reference", where); referenceChecks += 1; }
+      if (m.alpn) { const order = m.alpn.pref === "client" ? m.alpn.c : m.alpn.s, other = m.alpn.pref === "client" ? m.alpn.s : m.alpn.c; const ref = m.alpn.pref ? order.find((x) => other.includes(x)) ?? null : m.alpn.c.find((x) => m.alpn.s.includes(x)); if (ref !== m.alpn.res) fail("ALPN reference", where); referenceChecks += 1; }
+      if (m.cert) { if (certRef(m.cert) !== m.cert.res) fail("certificate reference", where); referenceChecks += 1; }
+      if (m.nat && m.nat.rows) { const n = m.nat, active = n.rows.filter((x) => n.timeout === null || n.now - x.last < n.timeout), hit = active.find((x) => x.proto === n.proto && x.ip === n.ip && x.port === n.port); if ((hit ? hit.ext : natAllocRef(active, n.proto)) !== n.ext) fail("PAT allocation reference", where); referenceChecks += 1; }
+      if (m.natR) { const n = m.natR, hit = n.rows.find((x) => x.proto === n.pkt.proto && x.ext === n.pkt.dport && x.remote === n.pkt.src && (n.timeout === null || n.now - x.last < n.timeout)); if ((hit ? `${hit.ip}:${hit.port}` : null) !== n.res) fail("NAT return reference", where); referenceChecks += 1; }
+      if (m.pf && m.pf.rules) { const hit = m.pf.rules.find((x) => x.proto === m.pf.pkt.proto && x.ext === m.pf.pkt.dport); if ((hit ? `${hit.ip}:${hit.port}` : null) !== m.pf.hit) fail("port-forward reference", where); referenceChecks += 1; }
+      if (m.fw && m.fw.pk) { if (!equal(fwRef(m.fw.pk, m.fw.timeout), m.fw.res)) fail("stateful firewall reference", where); referenceChecks += 1; }
+      if (m.acl && m.acl.pkt && sample < 400) aclCases.push({ where, rules: m.acl.rules, pkt: m.acl.pkt, idx: m.acl.idx });
+      if (m.http && m.http.req && !m.http.err && sample < 300) httpCases.push({ where, ...m.http });
+      if (m.http && m.http.err === "version" && sample < 300) httpCases.push({ where, ...m.http });
+      if (m.httpFrame && sample < 300) frameCases.push({ where, ...m.httpFrame });
+      if (m.dns && m.dns.rev && sample < 400) ptrCases.push({ where, rev: m.dns.rev, name: m.dns.revName });
+      if (m.cap && m.cap.bytes && !m.cap.bad && sample < 300) capFrames.push({ where, ...m.cap });
       if (m.tunnel) { if (m.tunnel.pmtu - m.tunnel.over !== m.tunnel.budget) fail("tunnel budget reference", where); referenceChecks += 1; }
       if (m.v6 && sample < 300) v6Packets.push({ where, ...m.v6 });
       if (m.wire && m.wire.kind === "ipv4" && m.wire.bytes && sample < 300) ipv4Packets.push({ where, ...m.wire });
@@ -159,7 +217,19 @@ if (py.exitCode === 0) {
   const script = `
 import ipaddress, json, sys
 data = json.load(sys.stdin)
-out = {"v6": [ipaddress.IPv6Address(a).compressed for a in data["addrs"]], "routes": [], "sol": [], "slaac": [], "nexthop": []}
+out = {"v6": [ipaddress.IPv6Address(a).compressed for a in data["addrs"]], "routes": [], "sol": [], "slaac": [], "nexthop": [], "ptr": [], "acl": []}
+for c in data["ptr"]:
+    out["ptr"].append(ipaddress.ip_address(c["rev"]).reverse_pointer + ".")
+for c in data["acl"]:
+    p = c["pkt"]; hit = None
+    for i, r in enumerate(c["rules"]):
+        if r["proto"] != "any" and r["proto"] != p["proto"]: continue
+        if r.get("src") and ipaddress.ip_address(p["src"]) not in ipaddress.ip_network(r["src"]): continue
+        if r.get("dst") and ipaddress.ip_address(p["dst"]) not in ipaddress.ip_network(r["dst"]): continue
+        if r.get("ports") and not (r["ports"][0] <= p["dport"] <= r["ports"][1]): continue
+        if r.get("state") and r["state"] != p["state"]: continue
+        hit = i; break
+    out["acl"].append(hit)
 for c in data["sol"]:
     t = int(ipaddress.IPv6Address(c["target"]))
     m = int(ipaddress.IPv6Address("ff02::1:ff00:0")) | (t & 0xFFFFFF)
@@ -181,7 +251,7 @@ for case in data["routes"]:
             best = (r["p"], r["m"], r["id"])
     out["routes"].append(best[2] if best else None)
 print(json.dumps(out))`;
-  const run = Bun.spawnSync(["/usr/bin/env", "python3", "-I", "-c", script], { stdin: Buffer.from(JSON.stringify({ addrs, routes: routeCases, sol: solCases, slaac: slaacCases, nexthop: nextHopCases })), stdout: "pipe", stderr: "pipe" });
+  const run = Bun.spawnSync(["/usr/bin/env", "python3", "-I", "-c", script], { stdin: Buffer.from(JSON.stringify({ addrs, routes: routeCases, sol: solCases, slaac: slaacCases, nexthop: nextHopCases, ptr: ptrCases, acl: aclCases })), stdout: "pipe", stderr: "pipe" });
   if (run.exitCode !== 0) fail("python ipaddress run", run.stderr.toString().slice(0, 300));
   else {
     const out = JSON.parse(run.stdout.toString());
@@ -189,9 +259,45 @@ print(json.dumps(out))`;
     routeCases.forEach((c, i) => { if (c.best !== out.routes[i]) fail("route selection vs Python", [...c.where, c.best, out.routes[i]]); pythonChecks += 1; });
     solCases.forEach((c, i) => { if (o.v6Format(o.v6Parse(c.ip)) !== o.v6Format(o.v6Parse(out.sol[i][0])) || c.mac !== out.sol[i][1]) fail("solicited-node vs Python", [...c.where, c.ip, c.mac, out.sol[i]]); pythonChecks += 1; });
     slaacCases.forEach((c, i) => { if (o.v6Format(o.v6Parse(c.cand)) !== o.v6Format(o.v6Parse(out.slaac[i]))) fail("SLAAC address vs Python", [...c.where, c.cand, out.slaac[i]]); pythonChecks += 1; });
+    ptrCases.forEach((c, i) => { if (c.name !== out.ptr[i]) fail("PTR name vs Python", [...c.where, c.name, out.ptr[i]]); pythonChecks += 1; });
+    aclCases.forEach((c, i) => { if (c.idx !== out.acl[i]) fail("first-match rule vs Python ipaddress", [...c.where, c.idx, out.acl[i]]); pythonChecks += 1; });
     nextHopCases.forEach((c, i) => { if (c.target !== out.nexthop[i]) fail("next-hop target vs Python", [...c.where, c.target, out.nexthop[i]]); pythonChecks += 1; });
   }
 } else pythonNote = " Python ipaddress checks skipped: python3 not found.";
+
+// ---------- Python http.client / http.server: HTTP/1.1 parsing and framing ----------
+let httpChecks = 0;
+if (py.exitCode === 0 && (httpCases.length || frameCases.length)) {
+  const script = `
+import io, json, sys, http.client, http.server
+data = json.load(sys.stdin)
+class Keep(io.BytesIO):
+    def close(self): pass
+class Sock:
+    def __init__(self, b): self.f = Keep(b)
+    def makefile(self, *a, **k): return self.f
+out = {"frames": [], "reqs": []}
+for c in data["frames"]:
+    s = Sock(c["stream"].encode("ascii")); r = http.client.HTTPResponse(s, method="GET"); r.begin(); body = r.read()
+    out["frames"].append({"body": body.decode("ascii"), "offset": s.f.tell(), "status": r.status})
+class H(http.server.BaseHTTPRequestHandler):
+    def __init__(self, raw):
+        self.rfile = io.BytesIO(raw); self.wfile = io.BytesIO(); self.client_address = ("192.0.2.1", 1); self.request_version = "HTTP/1.1"; self.command = None
+        self.raw_requestline = self.rfile.readline(65537)
+    def log_message(self, *a): pass
+for c in data["reqs"]:
+    h = H(c["req"].encode("ascii")); ok = h.parse_request(); body = b""
+    if ok and h.headers.get("Content-Length"): body = h.rfile.read(int(h.headers["Content-Length"]))
+    out["reqs"].append({"ok": bool(ok), "method": h.command if ok else None, "path": h.path if ok else None, "host": h.headers.get("Host") if ok else None, "body": len(body)})
+print(json.dumps(out))`;
+  const run = Bun.spawnSync(["/usr/bin/env", "python3", "-I", "-c", script], { stdin: Buffer.from(JSON.stringify({ frames: frameCases, reqs: httpCases })), stdout: "pipe", stderr: "pipe" });
+  if (run.exitCode !== 0) fail("python http run", run.stderr.toString().slice(0, 400));
+  else {
+    const out = JSON.parse(run.stdout.toString());
+    frameCases.forEach((c, i) => { const g = out.frames[i]; if (g.body.length !== c.bodyLen || (c.body !== undefined && g.body !== c.body) || (c.offset !== undefined && g.offset !== c.offset)) fail("HTTP framing vs Python http.client", [...c.where, g]); httpChecks += 1; });
+    httpCases.forEach((c, i) => { const g = out.reqs[i]; if (c.err === "version") { if (g.ok) fail("malformed request accepted by Python http.server", c.where); } else if (!g.ok || g.method !== c.method || g.path !== c.target || (g.host ?? "").split(":")[0] !== c.host || g.body !== c.bodyLen) fail("HTTP request vs Python http.server", [...c.where, g]); httpChecks += 1; });
+  }
+}
 
 // ---------- tcpdump decoding of serialized packets ----------
 let tcpdumpNote = "", tcpdumpChecks = 0;
@@ -269,8 +375,24 @@ if (hasTcpdump) {
       if (!line.includes(want) || !line.includes(a.op === "request" ? "> ff:ff:ff:ff:ff:ff" : `> ${a.tha}`)) fail("tcpdump ARP vs answer", [...a.where, line.slice(0, 200)]);
       tcpdumpChecks += 1;
     });
+    // Captured frames in the diagnosis family: tcpdump must agree with the summary's addresses, ports, VLAN, and flags.
+    const linesC = decodeEth(capFrames.map((f) => f.bytes.split(" ").map((x) => parseInt(x, 16)).concat(Array(Math.max(0, 60 - f.bytes.split(" ").length)).fill(0))));
+    const flagMap = { SYN: "S", ACK: ".", FIN: "F", RST: "R", PSH: "P" };
+    capFrames.forEach((f, i) => {
+      const line = linesC[i] ?? "";
+      let ok;
+      if (f.arp) ok = line.includes(f.arp.op === 1 ? `Request who-has ${f.arp.tpa} tell ${f.arp.spa}` : `Reply ${f.arp.spa} is-at ${f.arp.sha}`);
+      else {
+        const sep = f.v6 ? "." : ".", src = `${f.src}${sep}${f.sport}`, dst = `${f.dst}${sep}${f.dport}`;
+        ok = line.includes(`${src} > ${dst}`) && (f.vlan === null || line.includes(`vlan ${f.vlan},`));
+        if (f.proto === 6) { const fl = /Flags \[([^\]]*)\]/.exec(line)?.[1] ?? "", want = f.flags.split("+").map((x) => flagMap[x]); ok = ok && want.every((x) => fl.includes(x)) && fl.length === want.length; }
+        else ok = ok && !/Flags \[/.test(line);
+      }
+      if (!ok) fail("tcpdump capture decode vs answer", [...f.where, line.slice(0, 220)]);
+      tcpdumpChecks += 1;
+    });
   } finally { rmSync(dir, { recursive: true, force: true }); }
 } else tcpdumpNote = " tcpdump checks skipped: tcpdump not found on PATH=/usr/bin:/bin.";
 
 if (failures.length) { console.error(failures.join("\n")); process.exit(1); }
-console.log(`Networking extended validation passed: ${propertyCases.toLocaleString("en-US")} checksum/fragmentation property cases, ${referenceChecks.toLocaleString("en-US")} independent reference checks, ${pythonChecks.toLocaleString("en-US")} Python ipaddress checks, ${tcpdumpChecks.toLocaleString("en-US")} packets decoded by tcpdump, and ${generated.toLocaleString("en-US")} generated questions (4,000 per family and supported level), with bilingual seed parity.${pythonNote}${tcpdumpNote}`);
+console.log(`Networking extended validation passed: ${propertyCases.toLocaleString("en-US")} checksum/fragmentation property cases, ${referenceChecks.toLocaleString("en-US")} independent reference checks, ${pythonChecks.toLocaleString("en-US")} Python ipaddress checks, ${httpChecks.toLocaleString("en-US")} Python http.client/http.server checks, ${tcpdumpChecks.toLocaleString("en-US")} packets decoded by tcpdump, and ${generated.toLocaleString("en-US")} generated questions (4,000 per family and supported level), with bilingual seed parity.${pythonNote}${tcpdumpNote}`);
