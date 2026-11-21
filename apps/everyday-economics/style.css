@@ -279,3 +279,16 @@
     font-size: clamp(1.9rem, 12vw, 3.4rem);
   }
 }
+
+/* Same treatment as the shared keypad: word keys ("Radera") stay inside narrow phone keys even
+   with a wide fallback font. */
+@media (max-width: 620px) {
+  .calculator-keys button.function,
+  .calculator-keys button.primary {
+    padding: 0 2px;
+    font-size: 0.74rem;
+    line-height: 1.15;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+}

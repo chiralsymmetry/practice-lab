@@ -619,12 +619,17 @@ th {
     padding-top: 10px;
   }
 
+  /* Tabs size to their labels and wrap onto more rows, so a wider fallback font (or a longer
+     translation such as "Inställningar") cannot push a label out of its button. */
   .nav {
-    grid-template-columns: repeat(auto-fit, minmax(min(100%, 104px), 1fr));
+    display: flex;
+    flex-wrap: wrap;
   }
 
   .nav button {
-    padding: 0 6px;
+    flex: 1 1 auto;
+    min-width: max-content;
+    padding: 0 10px;
   }
 
   .mode-row button {
@@ -654,7 +659,9 @@ th {
   .keypad button.function,
   .keypad button.primary {
     padding: 0 2px;
-    font-size: 0.8rem;
+    font-size: 0.74rem;
+    /* Last resort for one long word ("Radera") in a narrow key with a wide fallback font. */
+    overflow-wrap: anywhere;
   }
 }
 
