@@ -124,9 +124,68 @@ function cpuRef(c) {
   return regsOk && memOk && a.pc === c.out.pc && equal(dpRef(c.st, c.ins, ctlRef(c.ins.op)).regs, a.regs);
 }
 
+// ---------- References for pipelines, caches, virtual memory, and performance ----------
+function pipeRef(p) { const k = p.stages.length, extra = p.slow >= 0 ? p.m - 1 : 0, fin = Array.from({ length: p.n }, (_, i) => i + k + (p.slow >= 0 && i >= p.slow ? extra : 0)); if (!equal(fin, p.finish)) return false; if (p.st !== undefined && p.slow < 0) { const idx = p.c - p.j; const st = idx < 0 ? "not started" : idx >= k ? "done" : p.stages[idx]; return st === p.st; } return true; }
+const dRef = (x) => (["ST", "BEQ", "BNE", "J"].includes(x.op) ? 0 : ["ADDI", "LD"].includes(x.op) ? x.rt : x.rd) || 0;
+const uRef = (x) => (x.op === "J" ? [] : ["ADDI", "LD"].includes(x.op) ? [x.rs] : [x.rs, x.rt]);
+function depRef(a, b) { const da = dRef(a), db = dRef(b); return { raw: !!da && uRef(b).includes(da), war: !!db && uRef(a).includes(db), waw: !!da && da === db }; }
+function stallRef(st) {
+  const prog = st.prog;
+  if (st.k === "struct") { // fetch cycles skip any cycle in which an earlier load/store occupies MEM (fetch + 3).
+    const fetch = []; const memBusy = new Set();
+    prog.forEach((x, i) => { let c = i === 0 ? 1 : fetch[i - 1] + 1; while (memBusy.has(c)) c += 1; fetch.push(c); if (x.op === "LD" || x.op === "ST") memBusy.add(c + 3); });
+    return fetch[fetch.length - 1] + 4;
+  }
+  const id = [];
+  prog.forEach((x, i) => { let t = i === 0 ? 2 : id[i - 1] + 1; for (const reg of uRef(x)) { if (!reg) continue; let j = i - 1; while (j >= 0 && dRef(prog[j]) !== reg) j -= 1; if (j < 0) continue; const ready = st.mode === "none" ? id[j] + 3 : prog[j].op === "LD" ? id[j] + 2 : id[j] + 1; t = Math.max(t, ready); } id.push(t); });
+  return id[id.length - 1] + 3;
+}
+function cacheRef(c) { const sets = new Map(), out = []; let time = 0; for (const a of c.addrs) { time += 1; const blk = Math.floor(a / c.blk), set = blk % c.sets, tag = Math.floor(blk / c.sets); if (!sets.has(set)) sets.set(set, new Map()); const lines = sets.get(set); if (lines.has(tag)) { out.push(true); lines.set(tag, time); } else { out.push(false); if (lines.size === c.ways) { let old = null; for (const [t, u] of lines) if (old === null || u < lines.get(old)) old = t; lines.delete(old); } lines.set(tag, time); } } return out; }
+function replRef(seq, ways, policy) { const use = new Map(), ins = new Map(); let time = 0, victim = null; for (const b of seq) { time += 1; if (use.has(b)) { if (policy === "lru") use.set(b, time); continue; } if (use.size === ways) { const by = policy === "lru" ? use : ins; let v = null; for (const [k, t] of by) if (v === null || t < by.get(v)) v = k; victim = v; use.delete(v); ins.delete(v); } use.set(b, time); ins.set(b, time); } const by = policy === "lru" ? use : ins; return { victim, order: [...by.keys()].sort((a, b) => by.get(a) - by.get(b)).join(", ") }; }
+function writeSeqRef(w) { const line = [null, null]; let wr = 0, rd = 0; for (const op of w.ops) { const s = op.b % 2, L = line[s], hit = !!L && L.b === op.b; if (op.w) { if (hit) { if (w.wb) L.d = true; else wr += 1; } else if (w.alloc) { if (L && L.d) wr += 1; rd += 1; line[s] = { b: op.b, d: w.wb }; if (!w.wb) wr += 1; } else wr += 1; } else if (!hit) { if (L && L.d) wr += 1; rd += 1; line[s] = { b: op.b, d: false }; } } return { w: wr, r: rd }; }
+function tlbRef(t) { const ent = []; return t.vpns.map((v, i) => { const key = `${t.asids ? t.asids[i] : 0}/${v}`, k = ent.findIndex((e) => e.key === key); if (k >= 0) { if (t.policy === "lru") { const [e] = ent.splice(k, 1); ent.push(e); } return true; } if (ent.length === t.size) ent.shift(); ent.push({ key }); return false; }); }
+function ioRef(io) {
+  if (io.k === "poll") { let c = 0, t = 0; while (true) { c += 1; if (t >= io.ready) break; t += io.p; } return c === io.checks && t === io.seen; }
+  if (io.k === "cost") { let c = 0, t = 0; while (true) { c += 1; if (t >= io.ready) break; t += io.p; } return c === io.polls && c * io.cost === io.v; }
+  if (io.k === "int") return io.v === io.ready + io.lat + io.hand;
+  if (io.k === "dma") return io.pio === io.N * io.w && io.dma === io.setup + io.irq;
+  return Object.keys(io.costs).every((k) => io.costs[k] >= io.costs[io.best]);
+}
+function mmioRef(x) {
+  const map = [["RAM", 0, 0x7fff], ["ROM", 0x8000, 0xbfff], ["UART", 0xc000, 0xc00f], ["TIMER", 0xc010, 0xc01f], ["GPIO", 0xc020, 0xc02f]];
+  if (x.k === "dev") { const d = map.find((m) => x.a >= m[1] && x.a <= m[2]); return (d ? d[0] : null) === x.ans; }
+  if (x.k === "reg") return ["DATA", "STATUS", "CTRL", "BAUD"][(x.addr - 0xc000) >> 1] === x.reg;
+  if (x.k === "clear") return x.r1 === x.st && x.r2 === x.ev;
+  if (x.k === "write") return x.after === (x.target === 1 ? x.old : x.val);
+  return x.ok === (x.width === 8 || x.a % 2 === 0);
+}
+function arbRef(a) { const pend = new Set(); let last = a.n - 1; return a.reqs.map((r) => { r.forEach((m) => pend.add(m)); let g = -1; const order = a.policy === "fixed" ? [...Array(a.n).keys()] : Array.from({ length: a.n }, (_, k) => (last + 1 + k) % a.n); for (const m of order) if (pend.has(m)) { g = m; break; } if (g >= 0) { pend.delete(g); last = g; } return g; }); }
+function cohRef(ops, mesi) {
+  // Table-driven MSI/MESI: [state][event] -> [next, busTransaction, writeback]
+  const local = { R: { I: (other) => [mesi && other === "I" ? "E" : "S", 1], S: () => ["S", 0], E: () => ["E", 0], M: () => ["M", 0] }, W: { I: () => ["M", 1], S: () => ["M", 1], E: () => ["M", 0], M: () => ["M", 0] } };
+  const snoop = { R: { I: ["I", 0], S: ["S", 0], E: ["S", 0], M: ["S", 1] }, W: { I: ["I", 0], S: ["I", 0], E: ["I", 0], M: ["I", 1] } };
+  const st = ["I", "I"]; let bus = 0, wb = 0, badM = false;
+  for (const o of ops) { const me = o.c, ot = 1 - o.c, [nx, b] = local[o.op][st[me]](st[ot]); if (b) { const [sn, w] = snoop[o.op][st[ot]]; st[ot] = sn; wb += w; bus += 1; } st[me] = nx; if (st.filter((x) => x === "M" || x === "E").length > 1) badM = true; }
+  return { st, bus, wb, badM };
+}
+function fsRef(f) {
+  const bx = Math.floor(f.x / f.B), by = Math.floor(f.y / f.B);
+  if (f.k === "same") return (bx === by) === f.same;
+  if (f.k === "count") return f.inv === (bx === by ? 2 * f.n - 1 : 0);
+  if (f.k === "pad") { let p = 0; while (Math.floor((f.y + p) / f.B) === bx) p += 1; return p === f.pad && f.y > f.x; }
+  return f.kind === (f.x === f.y ? "true" : bx === by ? "false" : "none");
+}
+function latRef(l) {
+  if (l.k === "thr") return l.v === l.mhz * l.per;
+  if (l.k === "xfer") return l.v === l.lat + l.size / l.bw;
+  if (l.k === "bott") return l.v === Math.min(...l.rates) && l.rates[l.bi] === l.v;
+  if (l.k === "pipe") return l.lat === l.st * l.tc && l.thr === 1000 / l.tc;
+  return l.v === l.st * l.tc + (l.N - 1) * l.tc;
+}
+
 // ---------- Sweep ----------
 let generated = 0, referenceChecks = 0;
-const ivCases = [], ysCases = [], kmapCases = [], seqCases = [];
+const ivCases = [], ysCases = [], kmapCases = [], seqCases = [], decCases = [];
 for (let fi = 0; fi < en.families.length; fi += 1) {
   const family = en.families[fi];
   if (sv.families[fi]?.id !== family.id) fail("locale family parity", family.id);
@@ -189,6 +248,35 @@ for (let fi = 0; fi < en.families.length; fi += 1) {
       if (m.pc && m.pc.k === "branch") { const taken = m.pc.op === "BEQ" ? m.pc.a === m.pc.b : m.pc.a !== m.pc.b, nx = taken ? (m.pc.pc + 2 + 2 * m.pc.off) & 0xffff : (m.pc.pc + 2) & 0xffff; if (taken !== m.pc.taken || nx !== m.pc.next) fail("branch PC reference", where); referenceChecks += 1; }
       if (m.pc && m.pc.k === "jump") { if (((m.pc.w & 0xfff) << 1) !== m.pc.next || m.pc.w >> 12 !== 6) fail("jump PC reference", where); referenceChecks += 1; }
       if (m.fault && m.fault.k === "value") { const out = dpRef(m.fault.st, m.fault.ins, { ...ctlRef(m.fault.ins.op), [m.fault.fault[0]]: m.fault.fault[1] }); const c = ctlRef(m.fault.ins.op), dest = c.RegDst ? m.fault.ins.rd : m.fault.ins.rt; if (out.regs[dest] !== m.fault.v) fail("fault injection reference", where); referenceChecks += 1; }
+      if (m.pipe) { if (!pipeRef(m.pipe)) fail("pipeline occupancy reference", where); referenceChecks += 1; }
+      if (m.dep && m.dep.k === "reg") { const d = depRef(m.dep.a, m.dep.b), kinds = ["raw", "war", "waw"].filter((k) => d[k]); const t = kinds.length ? kinds[0] : "none"; if (kinds.length > 1 || t !== m.dep.type || (t === "raw" && m.dep.mid.length <= 1) !== m.dep.hazard) fail("dependence reference", where); referenceChecks += 1; }
+      if (m.fwd) { const src = (reg) => (!reg ? "rf" : dRef(m.fwd.p1) === reg ? "exmem" : dRef(m.fwd.p2) === reg ? "memwb" : "rf"); if (src(m.fwd.c.rs) !== m.fwd.fa || src(m.fwd.c.rt) !== m.fwd.fb) fail("forwarding reference", where); referenceChecks += 1; }
+      if (m.stall) { if (stallRef(m.stall) !== m.stall.total) fail("stall/cycle reference", where); referenceChecks += 1; }
+      if (m.ctrl && m.ctrl.k === "flush") { const mis = m.ctrl.pred === "nt" ? m.ctrl.taken : !m.ctrl.taken, next = m.ctrl.taken ? (m.ctrl.pc + 2 + 2 * m.ctrl.off + 65536) % 65536 : m.ctrl.pc + 2; if ((mis ? m.ctrl.pen : 0) !== m.ctrl.flush || next !== m.ctrl.next) fail("branch flush reference", where); referenceChecks += 1; }
+      if (m.geo) { const g = m.geo; if (g.sets * g.ways * g.blk !== g.cap || 2 ** g.off !== g.blk || 2 ** g.idx !== g.sets || g.tag + g.idx + g.off !== g.aw) fail("cache geometry identities", where); referenceChecks += 1; }
+      if (m.split) { const b = m.split.a.toString(2).padStart(m.split.aw, "0"), w = m.split.aw, o = m.split.off, ix = m.split.idx; const ref = { off: parseInt(b.slice(w - o) || "0", 2), set: parseInt(b.slice(w - o - ix, w - o) || "0", 2), tag: parseInt(b.slice(0, w - o - ix) || "0", 2) }; if (!equal(ref, { off: m.split.sp.off, set: m.split.sp.set, tag: m.split.sp.tag })) fail("address split vs string slicing", where); referenceChecks += 1; }
+      if (m.cache) { if (!equal(cacheRef(m.cache), m.cache.out)) fail("cache simulator reference", where); referenceChecks += 1; }
+      if (m.repl && m.repl.k === "trace") { const r2 = replRef(m.repl.seq, m.repl.ways, m.repl.policy); if (r2.victim !== m.repl.victim || r2.order !== m.repl.order) fail("replacement reference", where); referenceChecks += 1; }
+      if (m.wp && m.wp.k === "seq") { const r2 = writeSeqRef(m.wp); if (r2.w !== m.wp.writes || r2.r !== m.wp.reads) fail("write-policy sequence reference", where); referenceChecks += 1; }
+      if (m.wp && m.wp.k === "one") { const mw = m.wp.wb ? (m.wp.hit || m.wp.alloc ? 0 : 1) : 1, dirty = m.wp.wb && (m.wp.hit || m.wp.alloc), cached = m.wp.hit || m.wp.alloc; if (mw !== m.wp.memWrites || dirty !== m.wp.dirty || cached !== m.wp.cached) fail("write-policy reference", where); referenceChecks += 1; }
+      if (m.arr && m.arr.k === "build") { if (m.arr.chips !== m.arr.dm * m.arr.wm || 2 ** m.arr.lines !== m.arr.cd * m.arr.dm) fail("memory array reference", where); referenceChecks += 1; }
+      if (m.arr && (m.arr.k === "bank" || m.arr.k === "local")) { if (Math.floor(m.arr.addr / m.arr.cd) !== m.arr.bank || m.arr.addr % m.arr.cd !== m.arr.local) fail("bank select reference", where); referenceChecks += 1; }
+      if (m.bank && m.bank.k === "rows") { const open = {}, res = m.bank.addrs.map((a) => { const b = a.toString(2).padStart(4 + m.bank.bb + m.bank.cb, "0"), row = b.slice(0, 4), bank = b.slice(4, 4 + m.bank.bb), hit = open[bank] === row; open[bank] = row; return hit; }); if (!equal(res, m.bank.res)) fail("DRAM row-buffer reference", where); referenceChecks += 1; }
+      if (m.vm && m.vm.k === "one") { const e = m.vm.pt[m.vm.va >> 8], out = !e.v ? "fault" : m.vm.write && !e.perm.includes("W") ? "prot" : "ok"; if (out !== m.vm.outcome || (out === "ok" && e.ppn * 256 + (m.vm.va & 255) !== m.vm.pa)) fail("translation reference", where); referenceChecks += 1; }
+      if (m.vm && m.vm.k === "split") { if (Math.floor(m.vm.va / 2 ** m.vm.pb) !== m.vm.vpn || m.vm.va % 2 ** m.vm.pb !== m.vm.off) fail("page split reference", where); referenceChecks += 1; }
+      if (m.walk && m.walk.k === "pte") { if (m.walk.base + 2 * m.walk.i2 !== m.walk.pteAddr || m.walk.ppn * 256 + m.walk.off !== m.walk.pa || (m.walk.i1 << 12 | m.walk.i2 << 8 | m.walk.off) !== m.walk.va) fail("page walk reference", where); referenceChecks += 1; }
+      if (m.walk && m.walk.k === "outcome") { const out = !m.walk.l1v ? "l1" : !m.walk.l2v ? "l2" : "ok"; if (out !== m.walk.outcome) fail("page walk outcome reference", where); referenceChecks += 1; }
+      if (m.tlb) { if (!equal(tlbRef(m.tlb), m.tlb.out)) fail("TLB reference", where); referenceChecks += 1; }
+      if (m.acc) { const a = m.acc, first = a.tlbHit ? "tlbHit" : a.present ? "tlbMissFill" : "tlbMiss"; const ref = first === "tlbMiss" ? ["tlbMiss", "fault"] : a.write && !a.perm.includes("W") ? [first, "prot"] : [first, "pa", a.cached ? "cacheHit" : "cacheMiss"]; if (!equal(ref, a.steps)) fail("access outcome reference", where); referenceChecks += 1; }
+      if (m.io) { if (!ioRef(m.io)) fail("I/O method reference", where); referenceChecks += 1; }
+      if (m.mmio) { if (!mmioRef(m.mmio)) fail("memory-mapped I/O reference", where); referenceChecks += 1; }
+      if (m.arb && m.arb.k === "trace") { if (!equal(arbRef(m.arb), m.arb.grants)) fail("arbitration reference", where); referenceChecks += 1; }
+      if (m.arb && m.arb.k === "starve") { if ((m.arb.policy === "fixed") !== m.arb.v) fail("starvation reference", where); referenceChecks += 1; }
+      if (m.coh) { const r2 = cohRef(m.coh.ops, m.coh.mesi); if (!equal(r2.st, m.coh.st) || r2.bus !== m.coh.bus || r2.wb !== m.coh.wb || r2.badM) fail("coherence protocol reference", where); referenceChecks += 1; }
+      if (m.fs) { if (!fsRef(m.fs)) fail("false sharing reference", where); referenceChecks += 1; }
+      if (m.lat) { if (!latRef(m.lat)) fail("latency/throughput reference", where); referenceChecks += 1; }
+      // Exact rational checks (Python fractions) for answers shown as rounded decimals.
+      if (sample < 200 && (m.cpi || m.amat || m.perf || m.amd)) { const fieldId = q.fields.find((f) => f.options && /^[0-9.]+$/.test(f.options[0]?.label ?? "") && f.options.some((o) => /^[0-9.]+$/.test(o.label)))?.id; if (fieldId) decCases.push({ where, spec: m.cpi || m.amat || m.perf || m.amd, fam: m.cpi ? "cpi" : m.amat ? "amat" : m.perf ? "perf" : "amd", label: correctLabel(q, fieldId) }); }
       generated += 1;
     }
     if (signatures.size < 2) fail("structural variation", [family.id, level]);
@@ -196,6 +284,35 @@ for (let fi = 0; fi < en.families.length; fi += 1) {
 }
 // Brute-force minimality.
 for (const c of kmapCases) { const b = bruteMin(c.vars.length, c.ones, c.dcs); if (!b || b.terms !== c.terms || b.lits !== c.lits) fail("K-map minimality vs brute force", [...c.where, b, c.terms, c.lits]); referenceChecks += 1; }
+
+// ---------- Python fractions: exact values behind every rounded decimal answer ----------
+let pyChecks = 0;
+if (Bun.spawnSync(["/usr/bin/env", "python3", "-c", "import fractions"], { stdout: "pipe", stderr: "pipe" }).exitCode === 0 && decCases.length) {
+  const script = `
+import json, sys
+from fractions import Fraction as F
+out = []
+for c in json.load(sys.stdin):
+    f, s = c["fam"], c["spec"]
+    q = lambda x: F(str(x))
+    if f == "cpi":
+        k = s["k"]
+        v = F(s["n"] + 4, s["n"]) if k == "short" else 1 + q(s["fb"]) / 100 * q(s["pm"]) / 100 * s["pp"] if k == "branch" else 1 + q(s["fl"]) / 100 * q(s["lu"]) / 100 + q(s["fb"]) / 100 * q(s["pm"]) / 100 * 2 if k == "mixed" else F(s["n"] * s["st"], s["n"] + s["st"] - 1) if k == "speedup" else None
+    elif f == "amat":
+        k = s["k"]
+        v = s["ht"] + q(s["mr"]) / 100 * s["mp"] if k == "one" else s["h1"] + q(s["m1"]) / 100 * (s["h2"] + q(s["m2"]) / 100 * s["mem"]) if k == "two" else q(s["m1"]) * q(s["m2"]) / 100 if k == "global" else (s["t"] - s["h1"]) / (q(s["m1"]) / 100)
+    elif f == "perf":
+        k = s["k"]
+        v = (max(q(s["ca"]) / q(s["fa"]), q(s["cb"]) / q(s["fb"])) / min(q(s["ca"]) / q(s["fa"]), q(s["cb"]) / q(s["fb"]))) if k == "cmp" else q(s["v"]) if k == "cpi" else q(s["ic"]) * q(s["cpi"]) / s["t"] if k == "rate" else 1 / ((1 - q(s["dI"]) / 100) * (1 + q(s["dC"]) / 100)) if k == "compiler" else None
+    else:
+        k = s["k"]; fr = q(s["f"])
+        v = 1 / ((1 - fr) + fr / s["s"]) if k == "one" else 1 / (1 - fr) if k == "max" else max(1 / ((1 - fr) + fr / s["s"]), 1 / ((1 - q(s["f2"])) + q(s["f2"]) / s["s2"])) if k == "cmp" else (None if 1 / q(s["T"]) - (1 - fr) <= 0 else fr / (1 / q(s["T"]) - (1 - fr)))
+    out.append(None if v is None else [v.numerator, v.denominator])
+print(json.dumps(out))`;
+  const run = Bun.spawnSync(["/usr/bin/env", "python3", "-I", "-c", script], { stdin: Buffer.from(JSON.stringify(decCases)), stdout: "pipe", stderr: "pipe" });
+  if (run.exitCode !== 0) fail("python fractions run", run.stderr.toString().slice(0, 500));
+  else JSON.parse(run.stdout.toString()).forEach((v, i) => { const c = decCases[i]; if (v === null) return; const exact = v[0] / v[1], shown = Number(c.label), d = (c.label.split(".")[1] ?? "").length, tol = 0.5 * 10 ** -Math.max(d, 0) + 1e-9; if (!Number.isFinite(shown) || Math.abs(exact - shown) > Math.max(tol, 0.5 * 10 ** -3)) fail("decimal answer vs exact fraction", [...c.where, c.label, v]); pyChecks += 1; });
+}
 
 // ---------- Icarus Verilog ----------
 const hasTool = (t) => Bun.spawnSync(["/usr/bin/env", "-i", "PATH=/usr/bin:/bin", "sh", "-c", `command -v ${t}`], { stdout: "pipe" }).exitCode === 0;
@@ -429,4 +546,4 @@ try {
 } finally { rmSync(dir, { recursive: true, force: true }); }
 
 if (failures.length) { console.error(failures.join("\n")); process.exit(1); }
-console.log(`Digital-logic extended validation passed: ${propertyCases.toLocaleString("en-US")} gate property cases, ${referenceChecks.toLocaleString("en-US")} independent reference checks (including brute-force K-map minimality), ${ivChecks.toLocaleString("en-US")} circuits simulated by Icarus Verilog, ${ysChecks.toLocaleString("en-US")} Yosys SAT proofs, and ${generated.toLocaleString("en-US")} generated questions (4,000 per family and supported level), with bilingual seed parity.${toolNote}`);
+console.log(`Digital-logic extended validation passed: ${propertyCases.toLocaleString("en-US")} gate property cases, ${referenceChecks.toLocaleString("en-US")} independent reference checks (including brute-force K-map minimality), ${ivChecks.toLocaleString("en-US")} circuits simulated by Icarus Verilog, ${ysChecks.toLocaleString("en-US")} Yosys SAT proofs, ${pyChecks.toLocaleString("en-US")} exact-fraction checks (Python), and ${generated.toLocaleString("en-US")} generated questions (4,000 per family and supported level), with bilingual seed parity.${toolNote}`);
